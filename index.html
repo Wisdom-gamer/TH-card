@@ -2,67 +2,445 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+
     <title>Cavlike — 游戏 UI 原型</title>
+
     <link rel="stylesheet" href="styles.css" />
   </head>
+
   <body>
+    <!--
+      战斗场景 UI。
+      默认由 CSS 设置为隐藏。
+
+      需要显示时，可以通过 JavaScript 添加 is-active 类：
+      document.querySelector(".game-area").classList.add("is-active");
+    -->
     <div class="game-area">
-      <!-- 上方玩家 区域 -->
+      <!-- 敌人区域 -->
       <div class="player top">
         <div class="avatar-container">
           <div class="avatar-inner">
-            <img src="null.png" alt="enemy avatar" class="avatar-img" />
+            <img
+              src="null.png"
+              alt="enemy avatar"
+              class="avatar-img"
+            />
           </div>
+
           <div class="stats">
-            <div class="hp">HP: <span id="enemyhp" data-var="enemyhp"></span></div>
-            <div class="mp">MP: <span id="enemymp" data-var="enemymp"></span></div>
+            <div class="hp">
+              HP:
+              <span
+                id="enemyhp"
+                data-var="enemyhp"
+              ></span>
+            </div>
+
+            <div class="mp">
+              MP:
+              <span
+                id="enemymp"
+                data-var="enemymp"
+              ></span>
+            </div>
           </div>
         </div>
 
         <div class="hand large-hand">
           <div class="hand-label">卡牌</div>
+
           <div class="slots">
-            <button class="card-slot" type="button" aria-label="card-slot-1"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-2"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-3"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-4"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-5"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-6"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-7"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-8"><img src="null.png" alt="card"/></button>
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-1"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-2"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-3"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-4"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-5"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-6"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-7"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-8"
+            >
+              <img src="null.png" alt="card" />
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- 结束回合 按钮 -->
-      <button class="end-turn" type="button">结束回合</button>
+      <!-- 结束回合按钮 -->
+      <button
+        class="end-turn"
+        type="button"
+      >
+        结束回合
+      </button>
 
-      <!-- 下方玩家 区域 -->
+      <!-- 玩家区域 -->
       <div class="player bottom">
         <div class="avatar-container">
           <div class="avatar-inner">
-            <img src="null.png" alt="player avatar" class="avatar-img" />
+            <img
+              src="null.png"
+              alt="player avatar"
+              class="avatar-img"
+            />
           </div>
+
           <div class="stats">
-            <div class="hp">HP: <span id="playerhp" data-var="playerhp"></span></div>
-            <div class="mp">MP: <span id="playermp" data-var="playermp"></span></div>
+            <div class="hp">
+              HP:
+              <span
+                id="playerhp"
+                data-var="playerhp"
+              ></span>
+            </div>
+
+            <div class="mp">
+              MP:
+              <span
+                id="playermp"
+                data-var="playermp"
+              ></span>
+            </div>
           </div>
         </div>
 
         <div class="hand large-hand bottom-hand">
           <div class="hand-label">卡牌</div>
+
           <div class="slots">
-            <button class="card-slot" type="button" aria-label="card-slot-b1"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b2"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b3"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b4"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b5"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b6"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b7"><img src="null.png" alt="card"/></button>
-            <button class="card-slot" type="button" aria-label="card-slot-b8"><img src="null.png" alt="card"/></button>
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b1"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b2"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b3"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b4"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b5"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b6"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b7"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="card-slot-b8"
+            >
+              <img src="null.png" alt="card" />
+            </button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!--
+      冒险场景 UI。
+      与 game-area 处于相同层级。
+
+      整体使用四个区域：
+      左上：cardinfo
+      右上：nextcards
+      左下：复制的 player top
+      右下：playerbag
+    -->
+    <div id="adventure">
+      <!-- 左上卡牌信息区域 -->
+      <div
+        id="cardinfo"
+        aria-label="card information"
+      >
+        <!--
+          按钮文字默认留空。
+          JavaScript 可通过以下方式修改：
+          document.querySelector("#cardinfo-button").textContent = "确认";
+        -->
+        <button
+          id="cardinfo-button"
+          type="button"
+          aria-label="card information action"
+        ></button>
+      </div>
+
+      <!--
+        右上待选卡牌区域。
+        容器没有粗硬边框，包含五个可点击卡牌。
+      -->
+      <div
+        id="nextcards"
+        class="slots"
+        aria-label="next cards"
+      >
+        <button
+          class="card-slot"
+          type="button"
+          aria-label="next-card-1"
+        >
+          <img src="null.png" alt="next card 1" />
+        </button>
+
+        <button
+          class="card-slot"
+          type="button"
+          aria-label="next-card-2"
+        >
+          <img src="null.png" alt="next card 2" />
+        </button>
+
+        <button
+          class="card-slot"
+          type="button"
+          aria-label="next-card-3"
+        >
+          <img src="null.png" alt="next card 3" />
+        </button>
+
+        <button
+          class="card-slot"
+          type="button"
+          aria-label="next-card-4"
+        >
+          <img src="null.png" alt="next card 4" />
+        </button>
+
+        <button
+          class="card-slot"
+          type="button"
+          aria-label="next-card-5"
+        >
+          <img src="null.png" alt="next card 5" />
+        </button>
+      </div>
+
+      <!--
+        左下玩家区域。
+        内容复制自原来的 player top，但使用独立 ID，
+        避免一个页面内出现重复 ID。
+      -->
+      <div class="player top adventure-player">
+        <div class="avatar-container">
+          <div class="avatar-inner">
+            <img
+              src="null.png"
+              alt="adventure player avatar"
+              class="avatar-img"
+            />
+          </div>
+
+          <div class="stats">
+            <div class="hp">
+              HP:
+              <span
+                id="adventurehp"
+                data-var="adventurehp"
+              ></span>
+            </div>
+
+            <div class="mp">
+              MP:
+              <span
+                id="adventuremp"
+                data-var="adventuremp"
+              ></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hand large-hand">
+          <div class="hand-label">卡牌</div>
+
+          <div class="slots">
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-1"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-2"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-3"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-4"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-5"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-6"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-7"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+
+            <button
+              class="card-slot"
+              type="button"
+              aria-label="adventure-card-8"
+            >
+              <img src="null.png" alt="card" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        右下背包区域。
+
+        bagcards 自动占据剩余宽度。
+        bagitem 固定宽度为 60px，并位于右侧。
+
+        JavaScript 可以在两个容器中动态创建或移除以下元素：
+
+        <button class="bag-slot" type="button">
+          <img src="物品图片路径" alt="物品名称">
+        </button>
+
+        CSS 会自动将它们排列为 50px × 50px 的背包窗格。
+      -->
+      <div id="playerbag">
+        <div
+          id="bagcards"
+          class="bag-grid"
+          aria-label="bag cards"
+        ></div>
+
+        <div
+          id="bagitem"
+          class="bag-grid"
+          aria-label="bag items"
+        ></div>
       </div>
     </div>
   </body>
