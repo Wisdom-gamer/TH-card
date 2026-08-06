@@ -344,8 +344,14 @@
           </div>
         </div>
 
-        <div class="hand large-hand">
-          <div class="slots">
+
+        </div>
+      <div id="playerbag">
+        <div
+          id="bagcards"
+          class="bag-grid"
+          aria-label="bag cards"
+        >          <div class="slots">
             <button
               class="card-slot"
               type="button"
@@ -409,44 +415,15 @@
             >
               <img src="null.png" alt="card" />
             </button>
-          </div>
-        </div>
+          </div></div>
+
+        <div
+          id="bagitem"
+          class="bag-grid"
+          aria-label="bag items"
+        ></div>
       </div>
-
-      <!--
-        右下背包区域。
-
-        bagcards 自动占据剩余宽度。
-        bagitem 固定宽度为 60px，并位于右侧。
-
-        JavaScript 可以在两个容器中动态创建或移除以下元素：
-
-        <button class="bag-slot" type="button">
-          <img src="物品图片路径" alt="物品名称">
-        </button>
-
-        CSS 会自动将它们排列为 50px × 50px 的背包窗格。
-      -->
-      <div id="playerbag">
-        <section class="bag-panel bag-panel-cards" aria-label="牌库面板">
-          <div class="bag-panel-title">牌库</div>
-          <div
-            id="bagcards"
-            class="bag-grid"
-            aria-label="bag cards"
-          ></div>
-        </section>
-
-        <section class="bag-panel bag-panel-items" aria-label="背包面板">
-          <div class="bag-panel-title bag-panel-title-center">背包</div>
-          <div
-            id="bagitem"
-            class="bag-grid"
-            aria-label="bag items"
-          ></div>
-        </section>
-      </div>
-
+    </div>
     <script src="bag.js"></script>
     <script src="cards.js"></script>
   </body>
