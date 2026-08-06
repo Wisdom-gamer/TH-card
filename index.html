@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1"
     />
 
-    <title>Cavlike — 游戏 UI 原型</title>
+    <title>Cavlike — TH cards</title>
 
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -341,88 +341,51 @@
                 data-var="adventuremp"
               ></span>
             </div>
+            <div class="xp">
+              XP:
+              <span
+                id="adventurexp"
+                data-var="adventurexp"
+              ></span>
+            </div>
+            <div class="gold">
+              Gold:
+              <span
+                id="adventuregold"
+                data-var="adventuregold"
+              ></span>
+            </div>
           </div>
         </div>
 
 
         </div>
-      <div id="playerbag">
-        <div
-          id="bagcards"
-          class="bag-grid"
-          aria-label="bag cards"
-        >          <div class="slots">
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-1"
-            >
-              <img src="null.png" alt="card" />
-            </button>
+<div id="playerbag">
+  <div
+    id="bagcards"
+    class="bag-grid"
+    aria-label="bag cards"
+  ></div>
 
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-2"
-            >
-              <img src="null.png" alt="card" />
-            </button>
+  <!-- 右侧栏 -->
+  <div id="bag-side">
 
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-3"
-            >
-              <img src="null.png" alt="card" />
-            </button>
+    <!-- 装备栏 -->
+    <div
+      id="equip"
+      class="bag-grid"
+      aria-label="equipment"
+    ></div>
 
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-4"
-            >
-              <img src="null.png" alt="card" />
-            </button>
+    <!-- 背包栏 -->
+    <div
+      id="bagitem"
+      class="bag-grid"
+      aria-label="bag items"
+    ></div>
 
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-5"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-6"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-7"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="adventure-card-8"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-          </div></div>
-
-        <div
-          id="bagitem"
-          class="bag-grid"
-          aria-label="bag items"
-        ></div>
-      </div>
+  </div>
+</div>
     </div>
     <script src="bag.js"></script>
     <script src="cards.js"></script>

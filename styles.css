@@ -451,8 +451,8 @@ body {
   min-height: 0;
 
   /*
-    bagcards 在左侧自动扩展；
-    bagitem 在右侧固定为 60px。
+    左侧 bagcards 自动扩展；
+    右侧 bag-side 固定为 60px。
   */
   display: flex;
   gap: var(--scene-gap);
@@ -461,57 +461,218 @@ body {
   background: #fff;
 }
 
-/* 两个背包子容器的通用布局 */
-#bagcards,
-#bagitem {
+
+/* =========================================================
+   左侧牌库
+   ========================================================= */
+
+#bagcards {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
-  padding: 5px;
+
+  padding: 32px 5px 5px 5px;
 
   display: grid;
   grid-auto-rows: var(--bag-slot-size);
-  align-content: start;
+  grid-template-columns:
+    repeat(auto-fill, var(--bag-slot-size));
 
+  align-content: start;
   gap: 5px;
 
   overflow: auto;
   background: #f3f3f3;
 
-  /*
-    使用内阴影表现容器边缘，
-    不会占用 bagitem 的 60px 实际宽度。
-  */
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  position: relative;
+
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
 }
 
-/* 左侧卡牌背包自动占据剩余宽度 */
-#bagcards {
-  flex: 1 1 auto;
-  min-width: 0;
 
-  grid-template-columns:
-    repeat(auto-fill, var(--bag-slot-size));
+/* 牌库标题 */
+#bagcards::before {
+  content: "牌库";
+
+  position: absolute;
+  top: 5px;
+  left: 5px;
+
+  padding: 2px 6px;
+
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.2;
+
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+
+  border-radius: 3px;
+
+  z-index: 10;
+  pointer-events: none;
 }
 
-/*
-  右侧物品背包固定为 60px：
-  左右各 5px 内边距，中间正好容纳一个 50px 窗格。
-*/
-#bagitem {
+
+/* =========================================================
+   右侧区域
+   ========================================================= */
+
+#bag-side {
   width: 60px;
   flex: 0 0 60px;
 
-  grid-template-columns: var(--bag-slot-size);
+  min-height: 0;
+
+  /*
+    上下排列：
+    equip
+    bagitem
+  */
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+
+  overflow: hidden;
 }
 
-/*
-  JavaScript 动态创建的 RPG 背包窗格。
 
-  推荐创建：
-  <button class="bag-slot" type="button"></button>
+/* =========================================================
+   装备栏
+   ========================================================= */
 
-  或：
-  <div class="bag-slot"></div>
-*/
+#equip {
+  width: 60px;
+
+  /*
+    装备栏占右侧区域的一半
+  */
+  height: 50%;
+  flex: 1 1 50%;
+
+  min-height: 0;
+
+  padding: 32px 5px 5px 5px;
+
+  display: grid;
+  grid-template-columns: var(--bag-slot-size);
+  grid-auto-rows: var(--bag-slot-size);
+
+  align-content: start;
+  gap: 5px;
+
+  overflow: auto;
+
+  position: relative;
+
+  background: #f3f3f3;
+
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+
+  box-sizing: border-box;
+}
+
+
+/* 装备标题 */
+#equip::before {
+  content: "装备";
+
+  position: absolute;
+  top: 5px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  padding: 2px 4px;
+
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.2;
+
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+
+  border-radius: 3px;
+
+  white-space: nowrap;
+
+  z-index: 10;
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   背包栏
+   ========================================================= */
+
+#bagitem {
+  width: 60px;
+
+  /*
+    背包高度变为原右侧区域的一半
+  */
+  height: 50%;
+  flex: 1 1 50%;
+
+  min-height: 0;
+
+  padding: 32px 5px 5px 5px;
+
+  display: grid;
+  grid-template-columns: var(--bag-slot-size);
+  grid-auto-rows: var(--bag-slot-size);
+
+  align-content: start;
+  gap: 5px;
+
+  overflow: auto;
+
+  position: relative;
+
+  background: #f3f3f3;
+
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+
+  box-sizing: border-box;
+}
+
+
+/* 背包标题 */
+#bagitem::before {
+  content: "背包";
+
+  position: absolute;
+  top: 5px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  padding: 2px 4px;
+
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.2;
+
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+
+  border-radius: 3px;
+
+  white-space: nowrap;
+
+  z-index: 10;
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   JavaScript 动态创建的 RPG 背包窗格
+   ========================================================= */
+
 .bag-slot {
   width: var(--bag-slot-size);
   height: var(--bag-slot-size);
@@ -545,6 +706,7 @@ body {
   -webkit-appearance: none;
 }
 
+
 /* 背包窗格中的图片 */
 .bag-slot img {
   width: 100%;
@@ -555,6 +717,7 @@ body {
 
   pointer-events: none;
 }
+
 
 /* 背包窗格交互状态 */
 .bag-slot:hover,

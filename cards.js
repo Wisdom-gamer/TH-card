@@ -333,9 +333,14 @@ function renderDeck(){
 
 
 
-function moveItem(name){
+// cards.js - 修复版本
 
-
+function moveItem(name) {
+  // 检查卡牌类型 - 基本卡不允许移动
+  const card = cardDatabase[name];
+  if (card && card["类型"] === "基本卡") {
+    return; // 基本卡不支持移动，直接返回
+  }
 
   /*
     如果点击的是道具卡：
@@ -343,60 +348,24 @@ function moveItem(name){
 
     如果点击的是背包：
     背包 -> 牌库
-
   */
 
+  const index = deckCards.indexOf(name);
 
-  const index =
-    deckCards.indexOf(name);
+  if (index !== -1) {
+    deckCards.splice(index, 1);
 
-
-
-  if(index !== -1){
-
-
-    deckCards.splice(
-      index,
-      1
-    );
-
-
-    if(window.playerBag){
-
-      window.playerBag.add(
-        name
-      );
-
+    if (window.playerBag) {
+      window.playerBag.add(name);
     }
+  } else if (window.playerBag) {
+    window.playerBag.remove(name);
 
-
+    deckCards.push(name);
   }
-
-
-  else if(
-    window.playerBag
-  ){
-
-
-    window.playerBag.remove(
-      name
-    );
-
-
-    deckCards.push(
-      name
-    );
-
-
-  }
-
-
 
   saveCards();
-
   renderDeck();
-
-
 }
 
 
