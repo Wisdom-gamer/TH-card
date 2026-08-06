@@ -275,7 +275,11 @@ body {
   min-height: 0;
 
   position: relative;
+  padding: 16px 16px 74px;
   overflow: auto;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.65), transparent 50%),
+    linear-gradient(180deg, #fff8e9 0%, #f0e0c1 100%);
 
   /*
     cardinfo 与左下 adventure-player 分别占据
@@ -310,7 +314,59 @@ body {
   appearance: none;
   -webkit-appearance: none;
 }
+.cardinfo-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
+.cardinfo-empty,
+.cardinfo-title,
+.cardinfo-section-title {
+  color: #21160d;
+}
+
+.cardinfo-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.cardinfo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 14px;
+}
+
+.cardinfo-meta span,
+.cardinfo-section {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.cardinfo-section {
+ padding: 10px 12px;
+}
+
+.cardinfo-section-title {
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cardinfo-text,
+.cardinfo-effect-row {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cardinfo-effect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 #cardinfo-button:hover,
 #cardinfo-button:focus-visible {
   box-shadow: 0 0 0 4px var(--focus-color);
@@ -450,57 +506,75 @@ body {
   min-width: 0;
   min-height: 0;
 
-  /*
-    bagcards 在左侧自动扩展；
-    bagitem 在右侧固定为 60px。
-  */
-  display: flex;
+ display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 150px);
   gap: var(--scene-gap);
 
   overflow: hidden;
-  background: #fff;
+  background: transparent;
+}
+
+.bag-panel {
+  min-width: 0;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+
+  border: var(--border-thick) solid #1f140b;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 58%),
+    linear-gradient(180deg, #3d2b19 0%, #21160e 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    inset 0 -24px 30px rgba(0, 0, 0, 0.16);
+}
+
+.bag-panel-title {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+  color: #f7e6c4;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
+
+.bag-panel-title-center {
+  text-align: center;
 }
 
 /* 两个背包子容器的通用布局 */
 #bagcards,
 #bagitem {
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 5px;
+  padding: 8px;
 
   display: grid;
-  grid-auto-rows: var(--bag-slot-size);
   align-content: start;
-
-  gap: 5px;
+  gap: 8px;
 
   overflow: auto;
-  background: #f3f3f3;
-
-  /*
-    使用内阴影表现容器边缘，
-    不会占用 bagitem 的 60px 实际宽度。
-  */
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  scrollbar-gutter: stable both-edges;
+  background: rgba(255, 244, 217, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-/* 左侧卡牌背包自动占据剩余宽度 */
 #bagcards {
-  flex: 1 1 auto;
-  min-width: 0;
-
-  grid-template-columns:
-    repeat(auto-fill, var(--bag-slot-size));
+  grid-template-columns: repeat(auto-fill, var(--bag-slot-size));
 }
 
-/*
-  右侧物品背包固定为 60px：
-  左右各 5px 内边距，中间正好容纳一个 50px 窗格。
-*/
 #bagitem {
-  width: 60px;
-  flex: 0 0 60px;
-
   grid-template-columns: var(--bag-slot-size);
+  justify-content: center;
+}
+
+#bagitem .bag-slot {
+  justify-self: center;
+
 }
 
 /*
@@ -517,15 +591,10 @@ body {
   height: var(--bag-slot-size);
   padding: 0;
 
-  border: 2px solid #2e2e2e;
-  border-radius: 3px;
+  border: 2px solid #6a4c1d;
+  border-radius: 6px;
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.95),
-      rgba(215, 215, 215, 0.95)
-    );
+  background: linear-gradient(180deg, #f4e4bc, #d1b07b);
 
   display: grid;
   place-items: center;
@@ -533,18 +602,26 @@ body {
   position: relative;
   overflow: hidden;
 
-  color: #111;
   cursor: pointer;
   outline: none;
 
   box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.8),
-    inset -2px -2px 0 rgba(0, 0, 0, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.16),
+    0 2px 4px rgba(0, 0, 0, 0.2);
 
   appearance: none;
   -webkit-appearance: none;
 }
+.bag-slot.is-basic-card {
+  border-color: #4d6d96;
+  background: linear-gradient(180deg, #eaf2ff, #b9c9e0);
+}
 
+.bag-slot.is-item-card {
+  border-color: #92711c;
+  background: linear-gradient(180deg, #fff0c5, #e0c176);
+}
 /* 背包窗格中的图片 */
 .bag-slot img {
   width: 100%;
@@ -555,14 +632,58 @@ body {
 
   pointer-events: none;
 }
+.bag-slot-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 4px;
 
+  color: #fff8e6;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.bag-slot-type {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 1px 4px;
+
+  border-radius: 3px;
+  background: rgba(255, 248, 230, 0.82);
+  color: #3b2711;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.bag-slot-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 18px;
+  padding: 1px 4px;
+
+  border-radius: 999px;
+  background: rgba(20, 14, 8, 0.82);
+  color: #fff2d7;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  pointer-events: none;
+}
 /* 背包窗格交互状态 */
 .bag-slot:hover,
 .bag-slot:focus-visible {
   box-shadow:
-    0 0 0 3px var(--focus-color),
-    inset 2px 2px 0 rgba(255, 255, 255, 0.8),
-    inset -2px -2px 0 rgba(0, 0, 0, 0.2);
+    0 0 0 3px rgba(255, 215, 110, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.16),
+    0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* =========================================================
@@ -595,6 +716,10 @@ body {
 
   #adventure .adventure-player {
     gap: 8px;
+  }
+
+  #playerbag {
+    grid-template-columns: minmax(0, 1fr) minmax(104px, 128px);
   }
 
   #adventure .adventure-player .avatar-container {

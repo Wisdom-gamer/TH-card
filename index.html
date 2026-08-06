@@ -345,8 +345,6 @@
         </div>
 
         <div class="hand large-hand">
-          <div class="hand-label">卡牌</div>
-
           <div class="slots">
             <button
               class="card-slot"
@@ -430,18 +428,26 @@
         CSS 会自动将它们排列为 50px × 50px 的背包窗格。
       -->
       <div id="playerbag">
-        <div
-          id="bagcards"
-          class="bag-grid"
-          aria-label="bag cards"
-        ></div>
+        <section class="bag-panel bag-panel-cards" aria-label="牌库面板">
+          <div class="bag-panel-title">牌库</div>
+          <div
+            id="bagcards"
+            class="bag-grid"
+            aria-label="bag cards"
+          ></div>
+        </section>
 
-        <div
-          id="bagitem"
-          class="bag-grid"
-          aria-label="bag items"
-        ></div>
+        <section class="bag-panel bag-panel-items" aria-label="背包面板">
+          <div class="bag-panel-title bag-panel-title-center">背包</div>
+          <div
+            id="bagitem"
+            class="bag-grid"
+            aria-label="bag items"
+          ></div>
+        </section>
       </div>
-    </div>
+
+    <script src="bag.js"></script>
+    <script src="cards.js"></script>
   </body>
 </html>
