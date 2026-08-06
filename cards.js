@@ -85,53 +85,42 @@ function loadCards(){
 
 function initCards(){
 
-
   deckCards = [];
-
   itemCards = [];
 
+  Object.keys(cardDatabase).forEach(function(name){
+    const card = cardDatabase[name];
 
-  Object.keys(cardDatabase)
-  .forEach(
-    function(name){
-
-
-      const card =
-        cardDatabase[name];
-
-
-      if(
-        card["类型"]
-        ===
-        "基本卡"
-      ){
-
-        deckCards.push(name);
-
-        deckCards.push(name);
-
-
-      }
-
-
-      else if(
-        card["类型"]
-        ===
-        "道具卡"
-      ){
-
-        itemCards.push(name);
-
-
-      }
-
-
+    if (card["类型"] === "基本卡") {
+      deckCards.push(name);
+      deckCards.push(name);
     }
-  );
+    else if (card["类型"] === "道具卡") {
+      itemCards.push(name);
+    }
+  });
 
+  /*
+    将牌库保存到本地（牌库存在 TH_CARD_DECK）
+    道具卡由背包管理 —— 如果背包当前为空（首次安装/首次运行），
+    将 itemCards 添加到 window.playerBag 中，由 bag.js 负责保存并渲染。
+  */
+  if (window.playerBag) {
+    try {
+      const existing = window.playerBag.getCards();
+      if (!existing || existing.length === 0) {
+        // 首次初始化：把所有道具卡添加到背包（每种 1 张）
+        itemCards.forEach(function(name){
+          window.playerBag.add(name);
+        });
+      }
+    } catch (e) {
+      // 容错：如果 playerBag 接口异常，不阻塞后续保存牌库操作
+      console.error("初始化时向背包添加道具卡失败", e);
+    }
+  }
 
   saveCards();
-
 }
 
 

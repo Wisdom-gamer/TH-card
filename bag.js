@@ -180,29 +180,20 @@
 
 
 
-  function renderBag() {
+    function renderBag() {
 
-    const container =
-      document.querySelector("#bagcards");
-
+    // 背包项应该在 #bagitem 容器显示（#bagcards 是牌库）
+    const container = document.querySelector("#bagitem");
 
     if (!container) {
       return;
     }
 
-
     container.innerHTML = "";
 
-
-    playerBagCards.forEach(
-      function(cardName){
-
-        container.appendChild(
-          createBagSlot(cardName)
-        );
-
-      }
-    );
+    playerBagCards.forEach(function(cardName) {
+      container.appendChild(createBagSlot(cardName));
+    });
 
   }
 
