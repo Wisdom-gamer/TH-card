@@ -1,1172 +1,1212 @@
-/* styles.css — 游戏 UI 原型 */
-
-:root {
-  --border-thick: 6px;
-  --slot-size: 80px;
-  --avatar-size: 110px;
-
-  --bag-slot-size: 50px;
-  --scene-gap: 5px;
-
-  --black: #000;
-  --bg: #fff;
-  --focus-color: rgba(30, 144, 255, 0.35);
-}
-
-/* 全局重置 */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html,
-body {
-  width: 100%;
-  height: 100%;
-  background: var(--bg);
-  color: #111;
-  font-family:
-    "Microsoft YaHei",
-    "PingFang SC",
-    Helvetica,
-    Arial,
-    sans-serif;
-}
-/* =========================================================
-   角色选择界面
-   ========================================================= */
-#character-select {
-  width: 100%;
-  min-height: 100vh;
-  padding: 24px;
-
-  display: grid;
-  grid-template-columns:
-    minmax(70px, 1fr)
-    minmax(300px, 520px)
-    minmax(70px, 1fr);
-  align-items: center;
-  justify-items: center;
-  gap: clamp(12px, 4vw, 64px);
-
-  background: var(--bg);
-}
-
-#character-select.is-hidden {
-  display: none;
-}
-
-/* 黑框：唯一实际显示的外框 */
-#character-display {
-  width: 100%;
-  height: min(76vh, 640px);
-  min-height: 420px;
-  padding: clamp(18px, 4vw, 42px);
-
-  border: 8px solid var(--black);
-  background: #fff;
-
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  align-items: center;
-  justify-items: center;
-  gap: 20px;
-
-  overflow: hidden;
-}
-
-/* 图片 */
-#character-image {
-  width: min(82%, 360px);
-  max-width: 100%;
-  height: 100%;
-  max-height: 470px;
-
-  display: block;
-  object-fit: contain;
-
-  border: 0;
-  background: transparent;
-}
-
-/* 名字 */
-#character-name {
-  max-width: 100%;
-  padding: 8px 14px;
-
-  border: 0;
-  background: transparent;
-
-  color: #111;
-  font: inherit;
-  font-size: clamp(24px, 3vw, 42px);
-  line-height: 1.25;
-  text-align: center;
-
-  cursor: pointer;
-  overflow-wrap: anywhere;
-
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.character-arrow {
-  width: clamp(64px, 9vw, 120px);
-  height: clamp(64px, 9vw, 120px);
-  padding: 0;
-
-  border: 0;
-  background: transparent;
-
-  color: #000;
-  font-size: clamp(48px, 8vw, 96px);
-  line-height: 1;
-
-  cursor: pointer;
-  user-select: none;
-
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-#character-name:hover,
-#character-name:focus-visible,
-.character-arrow:hover,
-.character-arrow:focus-visible {
-  outline: none;
-  filter: drop-shadow(0 0 5px var(--focus-color));
-}
-
-#character-name:disabled,
-.character-arrow:disabled {
-  cursor: wait;
-  opacity: 0.45;
-}
-
-/* =========================================================
-   原战斗场景 game-area
-   ========================================================= */
-
-.game-area {
-  width: 1150px;
-  height: 880px;
-  margin: 24px auto;
-  padding: 20px;
-
-  position: relative;
-
-  /*
-    战斗 UI 默认隐藏。
-    JavaScript 可以添加 is-active 类来显示。
-  */
-  display: none;
-
-  grid-template-rows: auto 1fr auto;
-  gap: 0;
-}
-
-/* 显示战斗场景时使用 */
-.game-area.is-active {
-  display: grid;
-}
-
-/* 顶部玩家区域 */
-.player.top {
-  grid-row: 1;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-/* 底部玩家区域 */
-.player.bottom {
-  position: static;
-  grid-row: 3;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-/* 玩家区域默认左对齐 */
-.player {
-  justify-self: start;
-}
-
-/* 头像外层容器 */
-.avatar-container {
-  width: 160px;
-  padding: 12px;
-
-  border: var(--border-thick) solid var(--black);
-  background: #fff;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 12px;
-
-  flex-shrink: 0;
-}
-
-/* 头像区域 */
-.avatar-inner {
-  width: var(--avatar-size);
-  height: var(--avatar-size);
-  margin-bottom: 6px;
-  padding: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  overflow: hidden;
-  background: #fff;
-}
-
-/* 头像图片 */
-.avatar-inner .avatar-img {
-  width: 100%;
-  height: 100%;
-
-  display: block;
-  object-fit: cover;
-}
-
-/* HP、MP 数据 */
-.stats {
-  color: #111;
-  font-size: 16px;
-}
-
-.stats .hp,
-.stats .mp {
-  margin-top: 6px;
-}
-
-/* 卡牌栏整体 */
-.hand.large-hand {
-  padding: 10px;
-
-  border: var(--border-thick) solid var(--black);
-  background: #fff;
-
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* 卡牌栏标题 */
-.hand-label {
-  padding-left: 6px;
-  color: #111;
-  font-size: 18px;
-}
-
-/* 卡槽排列区域 */
-.slots {
-  padding: 6px;
-
-  display: grid;
-  grid-template-columns: repeat(8, var(--slot-size));
-  gap: 8px;
-}
-
-/* 可点击卡牌 */
-.card-slot {
-  width: var(--slot-size);
-  height: var(--slot-size);
-  padding: 0;
-
-  border: 4px solid var(--black);
-  background: #fff;
-
-  display: inline-block;
-  overflow: hidden;
-
-  cursor: pointer;
-  outline: none;
-
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-/* 卡牌图片 */
-.card-slot img {
-  width: 100%;
-  height: 100%;
-
-  display: block;
-  object-fit: cover;
-
-  border: 0;
-}
-
-/* 卡牌悬停及键盘焦点效果 */
-.card-slot:hover,
-.card-slot:focus-visible {
-  box-shadow: 0 0 0 4px var(--focus-color);
-}
-
-/* 原底部卡牌区域 */
-.bottom-hand {
-  margin-left: 6px;
-}
-
-/* 结束回合按钮 */
-.end-turn {
-  position: absolute;
-  top: 42%;
-  right: 48px;
-
-  padding: 12px 18px;
-
-  border: 6px solid var(--black);
-  background: #fff;
-
-  color: #111;
-  font-size: 16px;
-
-  cursor: pointer;
-  user-select: none;
-
-  transform: translateY(-50%);
-
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.end-turn:hover,
-.end-turn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--focus-color);
-}
-
-/* =========================================================
-   冒险场景 adventure
-   ========================================================= */
-
-#adventure {
-  width: 100vw;
-  height: 100vh;
-  padding: var(--scene-gap);
-
-  /*
-    以屏幕中心划分左右区域。
-    上下左右容器之间保持 5px 距离。
-  */
-  display: none;
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1fr);
-  grid-template-rows:
-    minmax(0, 1fr)
-    minmax(0, 1fr);
-  gap: var(--scene-gap);
-
-  overflow: hidden;
-  background: var(--bg);
-}
-
-/* JavaScript 隐藏冒险场景时可以添加此类 */
-#adventure.is-active {
-  display: grid;
-}
-
-#adventure.is-hidden {
-  display: none;
-}
-
-/* =========================================================
-   左上 cardinfo
-   ========================================================= */
-
-#cardinfo {
-  grid-column: 1;
-  grid-row: 1;
-
-  min-width: 0;
-  min-height: 0;
-
-  position: relative;
-  overflow: auto;
-
-  /*
-    cardinfo 与左下 adventure-player 分别占据
-    相同大小的网格区域，因此两者尺寸相同。
-  */
-  border: var(--border-thick) solid var(--black);
-  background: #fff;
-}
-#cardinfo-content {
-  min-height: 100%;
-  padding: 16px 70px 16px 16px;
-}
-
-#cardinfo-content h3 {
-  margin-bottom: 10px;
-}
-
-#cardinfo-content p + p {
-  margin-top: 8px;
-}
-/* cardinfo 右下角空白按钮 */
-#cardinfo-button {
-  width: 50px;
-  height: 50px;
-  padding: 0;
-
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-
-  border: 4px solid var(--black);
-  background: #fff;
-
-  color: #111;
-  font-size: 14px;
-  line-height: 1;
-
-  cursor: pointer;
-  overflow: hidden;
-
-  outline: none;
-
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-#cardinfo-button:hover,
-#cardinfo-button:focus-visible {
-  box-shadow: 0 0 0 4px var(--focus-color);
-}
-
-/* =========================================================
-   右上 nextcards
-   ========================================================= */
-
-#nextcards {
-  grid-column: 2;
-  grid-row: 1;
-
-  width: 100%;
-  height: 100%;
-
-  min-width: 0;
-  min-height: 0;
-
-  /*
-    容器占据整个右上区域。
-    外层不设置粗硬边框。
-  */
-  padding: clamp(12px, 3vw, 40px);
-  border: 0;
-  background: transparent;
-
-  grid-template-columns: repeat(5, minmax(50px, 1fr));
-  align-items: center;
-  align-content: center;
-  justify-items: center;
-
-  overflow: auto;
-}
-
 /*
-  nextcards 内的卡牌使用较轻的边缘，
-  避免出现粗硬边框。
+  bag.js
+
+  功能：
+
+  1. 管理装备栏 equip
+  2. 管理背包栏 bagitem
+  3. adventureequip 保存当前装备栏卡牌
+  4. adventurebagitem 保存当前背包栏卡牌
+  5. adventureequip / adventurebagitem 保存到 Local Storage
+  6. 新获得卡牌时自动根据卡牌类型分配位置
+  7. 玩家主动移动卡牌时不触发“新卡自动分配”
+  8. 装备栏容量由 ME 决定
+  9. 背包栏容量由 MB 决定
 */
-#nextcards .card-slot {
-  width: 100%;
-  max-width: 120px;
-  height: auto;
 
-  aspect-ratio: 1 / 1;
+(function () {
+  "use strict";
 
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  border-radius: 8px;
+  const BAG_STORAGE_KEY = "TH_CARD_PLAYER_BAG";
+  const CHARACTER_STORAGE_KEY = "TH_CARD_CHARACTER";
 
-  background: rgba(255, 255, 255, 0.9);
+  let equipmentCards = [];
+  let bagItemCards = [];
 
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-}
+  let limits = {
+    ME: 0,
+    MB: 0
+  };
 
-#nextcards .card-slot:hover,
-#nextcards .card-slot:focus-visible {
-  box-shadow:
-    0 0 0 4px var(--focus-color),
-    0 5px 12px rgba(0, 0, 0, 0.18);
-}
-
-/* =========================================================
-   左下 adventure-player
-   ========================================================= */
-
-#adventure .adventure-player {
-  grid-column: 1;
-  grid-row: 2;
-
-  width: 100%;
-  height: 100%;
-
-  min-width: 0;
-  min-height: 0;
 
   /*
-    覆盖原 .player.top 的第一行设置，
-    将复制的 player top 放入冒险 UI 左下角。
+    --------------------------------------------------
+    基础工具
+    --------------------------------------------------
   */
-  display: flex;
-  align-items: flex-end;
-  justify-self: stretch;
 
-  gap: 12px;
+  function toNonNegativeInteger(value) {
+    const number = Number(value);
 
-  overflow: hidden;
-}
+    if (!Number.isFinite(number) || number <= 0) {
+      return 0;
+    }
 
-/* 左下头像保持原有大小 */
-#adventure .adventure-player .avatar-container {
-  flex: 0 0 160px;
-  max-height: 100%;
-}
+    return Math.floor(number);
+  }
 
-/* 卡牌栏自动占据左下区域的剩余空间 */
-#adventure .adventure-player .hand.large-hand {
-  flex: 1 1 auto;
-
-  min-width: 0;
-  max-height: 100%;
-
-  overflow: hidden;
-}
-
-/*
-  保持八张卡牌为一行。
-  当空间不足时可以横向滚动。
-*/
-#adventure .adventure-player .slots {
-  width: 100%;
-
-  grid-template-columns: repeat(8, minmax(40px, 1fr));
-
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-/* 冒险玩家卡牌随可用宽度缩放 */
-#adventure .adventure-player .card-slot {
-  width: 100%;
-  min-width: 40px;
-  height: auto;
-
-  aspect-ratio: 1 / 1;
-}
-
-/* =========================================================
-   右下 playerbag
-   ========================================================= */
-
-#playerbag {
-  grid-column: 2;
-  grid-row: 2;
-
-  min-width: 0;
-  min-height: 0;
 
   /*
-    左侧 bagcards 自动扩展；
-    右侧 bag-side 固定为 60px。
+    --------------------------------------------------
+    同步全局变量
+    --------------------------------------------------
+
+    这两个变量就是你要求新增的：
+
+    window.adventureequip
+    window.adventurebagitem
   */
-  display: flex;
-  gap: var(--scene-gap);
 
-  overflow: hidden;
-  background: #fff;
-}
+  function syncAdventureVariables() {
+    window.adventureequip =
+      equipmentCards.slice();
 
+    window.adventurebagitem =
+      bagItemCards.slice();
+  }
 
-/* =========================================================
-   左侧牌库
-   ========================================================= */
-
-#bagcards {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-
-  padding: 32px 5px 5px 5px;
-
-  display: grid;
-  grid-auto-rows: var(--bag-slot-size);
-  grid-template-columns:
-    repeat(auto-fill, var(--bag-slot-size));
-
-  align-content: start;
-  gap: 5px;
-
-  overflow: auto;
-  background: #f3f3f3;
-
-  position: relative;
-
-  box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-}
-
-
-/* 牌库标题 */
-#bagcards::before {
-  content: "牌库";
-
-  position: absolute;
-  top: 5px;
-  left: 5px;
-
-  padding: 2px 6px;
-
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 1.2;
-
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-
-  border-radius: 3px;
-
-  z-index: 10;
-  pointer-events: none;
-}
-
-
-/* =========================================================
-   右侧区域
-   ========================================================= */
-
-#bag-side {
-  width: 60px;
-  flex: 0 0 60px;
-
-  min-height: 0;
 
   /*
-    上下排列：
-    equip
-    bagitem
+    --------------------------------------------------
+    保存 adventureequip / adventurebagitem
+    --------------------------------------------------
+
+    保存到：
+
+    TH_CARD_CHARACTER
+
+    同时保存旧版：
+
+    TH_CARD_PLAYER_BAG
   */
-  display: flex;
-  flex-direction: column;
 
-  gap: 5px;
+  function saveCharacterAdventureCards() {
+    let characterState = {};
 
-  overflow: hidden;
-}
+    const savedCharacter =
+      localStorage.getItem(
+        CHARACTER_STORAGE_KEY
+      );
 
+    if (savedCharacter) {
+      try {
+        const parsed =
+          JSON.parse(savedCharacter);
 
-/* =========================================================
-   装备栏
-   ========================================================= */
+        if (
+          parsed &&
+          typeof parsed === "object"
+        ) {
+          characterState = parsed;
+        }
 
-#equip {
-  width: 60px;
+      } catch (error) {
+        console.warn(
+          "角色存档读取失败，重新创建角色卡牌数据",
+          error
+        );
+      }
+    }
+
+    characterState.adventureequip =
+      equipmentCards.slice();
+
+    characterState.adventurebagitem =
+      bagItemCards.slice();
+
+    localStorage.setItem(
+      CHARACTER_STORAGE_KEY,
+      JSON.stringify(characterState)
+    );
+  }
+
 
   /*
-    装备栏占右侧区域的一半
+    --------------------------------------------------
+    保存背包
+    --------------------------------------------------
   */
-  height: 50%;
-  flex: 1 1 50%;
 
-  min-height: 0;
+  function saveBag() {
+    const data = {
+      equip: equipmentCards.slice(),
+      bagitem: bagItemCards.slice()
+    };
 
-  padding: 32px 5px 5px 5px;
-
-  display: grid;
-  grid-template-columns: var(--bag-slot-size);
-  grid-auto-rows: var(--bag-slot-size);
-
-  align-content: start;
-  gap: 5px;
-
-  overflow: auto;
-
-  position: relative;
-
-  background: #f3f3f3;
-
-  box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-
-  box-sizing: border-box;
-}
-
-
-/* 装备标题 */
-#equip::before {
-  content: "装备";
-
-  position: absolute;
-  top: 5px;
-  left: 50%;
-
-  transform: translateX(-50%);
-
-  padding: 2px 4px;
-
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1.2;
-
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-
-  border-radius: 3px;
-
-  white-space: nowrap;
-
-  z-index: 10;
-  pointer-events: none;
-}
-
-
-/* =========================================================
-   背包栏
-   ========================================================= */
-
-#bagitem {
-  width: 60px;
-
-  /*
-    背包高度变为原右侧区域的一半
-  */
-  height: 50%;
-  flex: 1 1 50%;
-
-  min-height: 0;
-
-  padding: 32px 5px 5px 5px;
-
-  display: grid;
-  grid-template-columns: var(--bag-slot-size);
-  grid-auto-rows: var(--bag-slot-size);
-
-  align-content: start;
-  gap: 5px;
-
-  overflow: auto;
-
-  position: relative;
-
-  background: #f3f3f3;
-
-  box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-
-  box-sizing: border-box;
-}
-
-
-/* 背包标题 */
-#bagitem::before {
-  content: "背包";
-
-  position: absolute;
-  top: 5px;
-  left: 50%;
-
-  transform: translateX(-50%);
-
-  padding: 2px 4px;
-
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1.2;
-
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-
-  border-radius: 3px;
-
-  white-space: nowrap;
-
-  z-index: 10;
-  pointer-events: none;
-}
-
-
-/* =========================================================
-   JavaScript 动态创建的 RPG 背包窗格
-   ========================================================= */
-
-.bag-slot {
-  width: var(--bag-slot-size);
-  height: var(--bag-slot-size);
-  padding: 0;
-
-  border: 2px solid #2e2e2e;
-  border-radius: 3px;
-
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.95),
-      rgba(215, 215, 215, 0.95)
+    localStorage.setItem(
+      BAG_STORAGE_KEY,
+      JSON.stringify(data)
     );
 
-  display: grid;
-  place-items: center;
+    syncAdventureVariables();
 
-  position: relative;
-  overflow: hidden;
-
-  color: #111;
-  cursor: pointer;
-  outline: none;
-
-  box-shadow:
-    inset 2px 2px 0 rgba(255, 255, 255, 0.8),
-    inset -2px -2px 0 rgba(0, 0, 0, 0.2);
-
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-
-/* 背包窗格中的图片 */
-.bag-slot img {
-  width: 100%;
-  height: 100%;
-
-  display: block;
-  object-fit: contain;
-
-  pointer-events: none;
-}
-
-
-/* 背包窗格交互状态 */
-.bag-slot:hover,
-.bag-slot:focus-visible {
-  box-shadow:
-    0 0 0 3px var(--focus-color),
-    inset 2px 2px 0 rgba(255, 255, 255, 0.8),
-    inset -2px -2px 0 rgba(0, 0, 0, 0.2);
-}
-
-/* =========================================================
-   响应式调整
-   ========================================================= */
-
-@media (max-width: 1200px) {
-  :root {
-    --slot-size: 60px;
-    --avatar-size: 90px;
+    saveCharacterAdventureCards();
   }
 
-  .game-area {
-    width: 95%;
+
+  /*
+    --------------------------------------------------
+    读取角色容量
+    --------------------------------------------------
+  */
+
+  function loadLimitsFromCharacter() {
+    const savedCharacter =
+      localStorage.getItem(
+        CHARACTER_STORAGE_KEY
+      );
+
+    if (!savedCharacter) {
+      return;
+    }
+
+    try {
+      const data =
+        JSON.parse(savedCharacter);
+
+      if (
+        data &&
+        typeof data === "object"
+      ) {
+        setLimits(
+          data.ME,
+          data.MB
+        );
+      }
+
+    } catch (error) {
+      console.warn(
+        "角色容量数据读取失败",
+        error
+      );
+    }
   }
 
-  .game-area .slots {
-    grid-template-columns:
-      repeat(8, minmax(40px, 1fr));
+
+  /*
+    --------------------------------------------------
+    设置容量
+
+    注意：
+
+    这里只设置容量，
+    不会因为容量改变而自动移动已有卡牌。
+    --------------------------------------------------
+  */
+
+  function setLimits(me, mb) {
+    limits.ME =
+      toNonNegativeInteger(me);
+
+    limits.MB =
+      toNonNegativeInteger(mb);
   }
 
-  .game-area .card-slot {
-    height: 60px;
+
+  /*
+    --------------------------------------------------
+    从 Local Storage 读取装备和背包
+    --------------------------------------------------
+  */
+
+  function loadBag() {
+    equipmentCards = [];
+    bagItemCards = [];
+
+    let loadedFromBagStorage = false;
+
+    /*
+      先读取旧的 TH_CARD_PLAYER_BAG
+    */
+
+    const savedBag =
+      localStorage.getItem(
+        BAG_STORAGE_KEY
+      );
+
+    if (savedBag) {
+      try {
+        const data =
+          JSON.parse(savedBag);
+
+        /*
+          兼容旧版：
+
+          TH_CARD_PLAYER_BAG
+          直接保存数组
+        */
+
+        if (Array.isArray(data)) {
+          bagItemCards =
+            data.slice();
+
+          loadedFromBagStorage = true;
+        }
+
+        /*
+          新版：
+
+          {
+            equip: [],
+            bagitem: []
+          }
+        */
+
+        else if (
+          data &&
+          typeof data === "object"
+        ) {
+          if (
+            Array.isArray(data.equip)
+          ) {
+            equipmentCards =
+              data.equip.slice();
+          }
+
+          if (
+            Array.isArray(data.bagitem)
+          ) {
+            bagItemCards =
+              data.bagitem.slice();
+          }
+
+          loadedFromBagStorage = true;
+        }
+
+      } catch (error) {
+        console.warn(
+          "TH_CARD_PLAYER_BAG 读取失败",
+          error
+        );
+      }
+    }
+
+
+    /*
+      ------------------------------------------------
+      从 TH_CARD_CHARACTER 读取 adventureequip /
+      adventurebagitem
+
+      如果存在这两个字段，则它们作为角色当前
+      装备和背包的最终状态。
+      ------------------------------------------------
+    */
+
+    const savedCharacter =
+      localStorage.getItem(
+        CHARACTER_STORAGE_KEY
+      );
+
+    if (savedCharacter) {
+      try {
+        const data =
+          JSON.parse(savedCharacter);
+
+        if (
+          data &&
+          typeof data === "object"
+        ) {
+
+          if (
+            Array.isArray(
+              data.adventureequip
+            )
+          ) {
+            equipmentCards =
+              data.adventureequip.slice();
+          }
+
+          if (
+            Array.isArray(
+              data.adventurebagitem
+            )
+          ) {
+            bagItemCards =
+              data.adventurebagitem.slice();
+          }
+
+          /*
+            兼容没有 adventureequip /
+            adventurebagitem 的旧角色存档
+          */
+
+          if (
+            !Array.isArray(
+              data.adventureequip
+            ) &&
+            !loadedFromBagStorage
+          ) {
+            equipmentCards = [];
+          }
+
+          if (
+            !Array.isArray(
+              data.adventurebagitem
+            ) &&
+            !loadedFromBagStorage
+          ) {
+            bagItemCards = [];
+          }
+        }
+
+      } catch (error) {
+        console.warn(
+          "TH_CARD_CHARACTER 读取失败",
+          error
+        );
+      }
+    }
+
+
+    /*
+      恢复 ME / MB
+    */
+
+    loadLimitsFromCharacter();
+
+
+    /*
+      同步全局变量
+    */
+
+    syncAdventureVariables();
   }
 
-  #nextcards {
-    padding: 16px;
-    gap: 6px;
+
+  /*
+    --------------------------------------------------
+    读取卡牌信息
+    --------------------------------------------------
+  */
+
+  function getCardInfo(cardName) {
+    if (
+      window.cardDatabase &&
+      window.cardDatabase[cardName]
+    ) {
+      return window.cardDatabase[cardName];
+    }
+
+    return null;
   }
 
-  #adventure .adventure-player {
-    gap: 8px;
+
+  /*
+    --------------------------------------------------
+    判断卡牌应该进入哪个区域
+    --------------------------------------------------
+
+    返回：
+
+    equip
+    bagitem
+    deck
+    --------------------------------------------------
+  */
+
+  function getCardDestination(cardName) {
+    const card =
+      getCardInfo(cardName);
+
+    const type =
+      card &&
+      typeof card["类型"] === "string"
+        ? card["类型"].trim()
+        : "";
+
+    /*
+      装备卡
+    */
+
+    if (
+      type === "装备卡" ||
+      type === "装备"
+    ) {
+      return "equip";
+    }
+
+
+    /*
+      道具卡 / 物品卡
+    */
+
+    if (
+      type === "道具卡" ||
+      type === "物品卡" ||
+      type === "道具" ||
+      type === "物品"
+    ) {
+      return "bagitem";
+    }
+
+
+    /*
+      其他类型进入牌库
+    */
+
+    return "deck";
   }
 
-  #adventure .adventure-player .avatar-container {
-    flex-basis: 140px;
-    width: 140px;
-  }
-}
 
-/*
-  极窄屏幕仍保持四区域结构，
-  允许页面横向滚动，避免控件被强行压扁。
-*/
-@media (max-width: 760px) {
-  #character-select {
-  width: 720px;
-  min-width: 720px;
-  grid-template-columns: 90px 1fr 90px;
-}
-  html,
-  body {
-    min-width: 720px;
-    overflow: auto;
+  /*
+    --------------------------------------------------
+    HTML 转义
+    --------------------------------------------------
+  */
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
-  #adventure {
-    width: 720px;
-    min-width: 720px;
+
+  /*
+    --------------------------------------------------
+    显示卡牌信息
+    --------------------------------------------------
+  */
+
+  function showCardInfo(cardName) {
+    const box =
+      document.querySelector(
+        "#cardinfo-content"
+      );
+
+    if (!box) {
+      return;
+    }
+
+    const card =
+      getCardInfo(cardName);
+
+    if (!card) {
+      box.textContent =
+        cardName;
+
+      return;
+    }
+
+    let html =
+      `<h3>${escapeHtml(cardName)}</h3>`;
+
+    if (card["类型"]) {
+      html +=
+        `<p>类型：${escapeHtml(
+          card["类型"]
+        )}</p>`;
+    }
+
+    if (debugmode==1){
+    if (
+      card["效果"] &&
+      card["效果"]["描述"]
+    ) {
+      html +=
+        `<p>${escapeHtml(
+          card["效果"]["描述"]
+        )}</p>`;
+    }
+    }else{
+      html +=
+        `<p>${escapeHtml(
+          card["描述"]
+        )}</p>`;
+      
+    }
+    
+
+    box.innerHTML =
+      html;
   }
-}
-/* =========================================================
-   冒险场景 adventure
-   ========================================================= */
 
-#adventure {
-  width: 100vw;
-  height: 100vh;
-  padding: var(--scene-gap);
 
-  display: none;
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1fr);
-  grid-template-rows:
-    minmax(0, 1fr)
-    minmax(0, 1fr);
-  gap: var(--scene-gap);
+  /*
+    --------------------------------------------------
+    创建装备 / 背包卡牌按钮
+    --------------------------------------------------
+  */
 
-  overflow: hidden;
-  background: var(--bg);
-}
+  function createBagSlot(
+    cardName,
+    source
+  ) {
+    const button =
+      document.createElement(
+        "button"
+      );
 
-#adventure.is-active {
-  display: grid;
-}
+    const img =
+      document.createElement(
+        "img"
+      );
 
-#adventure.is-hidden {
-  display: none;
-}
+    const card =
+      getCardInfo(cardName);
 
-/* 左上 cardinfo */
-#cardinfo {
-  grid-column: 1;
-  grid-row: 1;
 
-  min-width: 0;
-  min-height: 0;
+    button.className =
+      "bag-slot";
 
-  position: relative;
-  overflow: auto;
+    button.type =
+      "button";
 
-  border: var(--border-thick) solid var(--black);
-  background: #fff;
-}
+    button.dataset.card =
+      cardName;
 
-#cardinfo-content {
-  min-height: 100%;
-  padding: 16px 70px 16px 16px;
-}
+    button.dataset.source =
+      source;
 
-#cardinfo-content h3 {
-  margin-bottom: 10px;
-}
+    button.setAttribute(
+      "aria-label",
+      cardName
+    );
 
-#cardinfo-content p + p {
-  margin-top: 8px;
-}
 
-/* 右下角 action 区 */
-#cardinfo-button {
-  width: auto;
-  height: auto;
-  min-height: 50px;
-  padding: 0;
+    img.src =
+      card &&
+      card["图片"]
+        ? card["图片"]
+        : "null.png";
 
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
+    img.alt =
+      cardName;
 
-  border: 0;
-  background: transparent;
 
-  display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-  align-items: flex-end;
-  gap: 5px;
+    button.appendChild(img);
 
-  max-width: calc(100% - 10px);
-  overflow: visible;
-}
 
-#cardinfo-button:hover,
-#cardinfo-button:focus-visible {
-  box-shadow: none;
-}
+    /*
+      鼠标悬停
+    */
 
-#cardinfo-button .cardinfo-action {
-  min-width: 50px;
-  height: 50px;
-  padding: 0 10px;
+    button.addEventListener(
+      "mouseenter",
+      function () {
+        showCardInfo(cardName);
+      }
+    );
 
-  border: 4px solid var(--black);
-  background: #fff;
 
-  color: #111;
-  font-size: 14px;
-  line-height: 1;
+    /*
+      点击：
 
-  cursor: pointer;
-  white-space: nowrap;
+      equip → 牌库
+      bagitem → 牌库
+    */
 
-  appearance: none;
-  -webkit-appearance: none;
-}
+    button.addEventListener(
+      "click",
+      function () {
 
-#cardinfo-button .cardinfo-action:hover,
-#cardinfo-button .cardinfo-action:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--focus-color);
-}
+        if (
+          typeof window.moveCardToDeck ===
+          "function"
+        ) {
 
-/* 右上 nextcards */
-#nextcards {
-  grid-column: 2;
-  grid-row: 1;
+          window.moveCardToDeck(
+            cardName,
+            source
+          );
 
-  width: 100%;
-  height: 100%;
+        }
 
-  min-width: 0;
-  min-height: 0;
+      }
+    );
 
-  padding: clamp(12px, 3vw, 40px);
 
-  border: 0;
-  background: transparent;
+    return button;
+  }
 
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: var(--scene-gap);
 
-  overflow: auto;
-}
+  /*
+    --------------------------------------------------
+    渲染指定容器
+    --------------------------------------------------
+  */
 
-/* 牌堆计数牌 */
-#adventuredeck {
-  width: 150px;
-  height: 72px;
+  function renderContainer(
+    selector,
+    cards,
+    source
+  ) {
+    const container =
+      document.querySelector(
+        selector
+      );
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
+    if (!container) {
+      return;
+    }
 
-  border: 6px solid var(--black);
-  background: #808080;
+    container.innerHTML =
+      "";
 
-  color: #fff;
-  font-size: 24px;
-  font-weight: bold;
-  line-height: 1;
-}
+    cards.forEach(
+      function (cardName) {
 
-#adventurecardnum {
-  color: #fff;
-  font-weight: bold;
-  font-size: 24px;
-  line-height: 1;
-}
+        container.appendChild(
+          createBagSlot(
+            cardName,
+            source
+          )
+        );
 
-/* 手牌区域 */
-#adventure-hand {
-  width: 100%;
-  padding: 6px;
+      }
+    );
+  }
 
-  display: grid;
-  grid-template-columns: repeat(5, minmax(50px, 1fr));
-  align-items: center;
-  align-content: center;
-  justify-items: center;
 
-  gap: 8px;
+  /*
+    --------------------------------------------------
+    渲染装备栏和背包栏
+    --------------------------------------------------
+  */
 
-  overflow: auto;
-}
+  function renderBag() {
 
-#adventure-hand .card-slot {
-  width: 100%;
-  max-width: 120px;
-  height: auto;
+    renderContainer(
+      "#equip",
+      equipmentCards,
+      "equip"
+    );
 
-  aspect-ratio: 1 / 1;
-}
 
-#adventure-hand .card-slot.is-empty,
-#adventure-hand .card-slot:disabled {
-  opacity: 0.35;
-  cursor: default;
-  box-shadow: none;
-}
+    renderContainer(
+      "#bagitem",
+      bagItemCards,
+      "bagitem"
+    );
 
-/* 左下 adventure-player */
-#adventure .adventure-player {
-  grid-column: 1;
-  grid-row: 2;
 
-  width: 100%;
-  height: 100%;
+    syncAdventureVariables();
+  }
 
-  min-width: 0;
-  min-height: 0;
 
-  display: flex;
-  align-items: flex-end;
-  justify-self: stretch;
+  /*
+    --------------------------------------------------
+    将卡牌直接加入牌库
+    --------------------------------------------------
+  */
 
-  gap: 12px;
+  function sendToDeck(cardName) {
 
-  overflow: hidden;
-}
+    if (
+      window.playerDeck &&
+      typeof window.playerDeck.addDirect ===
+      "function"
+    ) {
 
-#adventure .adventure-player .avatar-container {
-  flex: 0 0 160px;
-  max-height: 100%;
-}
+      window.playerDeck.addDirect(
+        cardName
+      );
 
-#adventure .adventure-player .hand.large-hand {
-  flex: 1 1 auto;
+      return;
+    }
 
-  min-width: 0;
-  max-height: 100%;
 
-  overflow: hidden;
-}
+    /*
+      cards.js 尚未建立 playerDeck 时，
+      先进入等待队列
+    */
 
-#adventure .adventure-player .slots {
-  width: 100%;
-  grid-template-columns: repeat(8, minmax(40px, 1fr));
+    window.TH_CARD_PENDING_DECK =
+      window.TH_CARD_PENDING_DECK ||
+      [];
 
-  overflow-x: auto;
-  overflow-y: hidden;
-}
+    window.TH_CARD_PENDING_DECK.push(
+      cardName
+    );
+  }
 
-#adventure .adventure-player .card-slot {
-  width: 100%;
-  min-width: 40px;
-  height: auto;
 
-  aspect-ratio: 1 / 1;
-}
+  /*
+    --------------------------------------------------
+    新获得卡牌
+    --------------------------------------------------
 
-/* 右下 playerbag */
-#playerbag {
-  grid-column: 2;
-  grid-row: 2;
+    只有这里执行自动分配：
 
-  min-width: 0;
-  min-height: 0;
+    装备卡：
+      equip 未满 → equip
+      equip 已满 → deck
 
-  display: flex;
-  gap: var(--scene-gap);
+    道具卡：
+      bagitem 未满 → bagitem
+      bagitem 已满 → deck
 
-  overflow: hidden;
-  background: #fff;
-}
+    其他：
+      deck
+    --------------------------------------------------
+  */
+
+  function addNewCard(cardName) {
+
+    const destination =
+      getCardDestination(
+        cardName
+      );
+
+
+    let actualDestination =
+      "deck";
+
+
+    if (
+      destination === "equip"
+    ) {
+
+      if (
+        equipmentCards.length <
+        limits.ME
+      ) {
+
+        equipmentCards.push(
+          cardName
+        );
+
+        actualDestination =
+          "equip";
+
+      } else {
+
+        sendToDeck(
+          cardName
+        );
+
+      }
+
+    }
+
+
+    else if (
+      destination === "bagitem"
+    ) {
+
+      if (
+        bagItemCards.length <
+        limits.MB
+      ) {
+
+        bagItemCards.push(
+          cardName
+        );
+
+        actualDestination =
+          "bagitem";
+
+      } else {
+
+        sendToDeck(
+          cardName
+        );
+
+      }
+
+    }
+
+
+    else {
+
+      sendToDeck(
+        cardName
+      );
+
+    }
+
+
+    /*
+      保存并刷新
+
+      注意：
+
+      这里只会执行一次“获得新卡”的自动分配。
+      save / render 不会再次移动卡牌。
+    */
+
+    saveBag();
+    renderBag();
+
+
+    return actualDestination;
+  }
+
+
+  /*
+    --------------------------------------------------
+    牌库 → 专用栏
+
+    这是玩家主动移动已有卡牌。
+
+    不执行“新卡自动分配”。
+
+    只移动到该卡牌对应的专用栏。
+    如果专用栏已满，则保持在牌库。
+    --------------------------------------------------
+  */
+
+  function moveFromDeck(cardName) {
+
+    const destination =
+      getCardDestination(
+        cardName
+      );
+
+
+    /*
+      装备卡
+    */
+
+    if (
+      destination === "equip"
+    ) {
+
+      if (
+        equipmentCards.length >=
+        limits.ME
+      ) {
+        return false;
+      }
+
+      equipmentCards.push(
+        cardName
+      );
+
+      saveBag();
+      renderBag();
+
+      return true;
+    }
+
+
+    /*
+      道具卡
+    */
+
+    if (
+      destination === "bagitem"
+    ) {
+
+      if (
+        bagItemCards.length >=
+        limits.MB
+      ) {
+        return false;
+      }
+
+      bagItemCards.push(
+        cardName
+      );
+
+      saveBag();
+      renderBag();
+
+      return true;
+    }
+
+
+    /*
+      基本卡及其他卡牌
+      不允许移动到专用栏
+    */
+
+    return false;
+  }
+
+
+  /*
+    --------------------------------------------------
+    从指定专用栏删除一张卡
+    --------------------------------------------------
+
+    source 必须是：
+
+    equip
+    bagitem
+    --------------------------------------------------
+  */
+
+  function takeCard(
+    cardName,
+    source
+  ) {
+
+    let cards = null;
+
+
+    if (
+      source === "equip"
+    ) {
+
+      cards =
+        equipmentCards;
+
+    }
+
+    else if (
+      source === "bagitem"
+    ) {
+
+      cards =
+        bagItemCards;
+
+    }
+
+
+    if (!cards) {
+      return false;
+    }
+
+
+    /*
+      只删除一张相同卡名的卡。
+      解决多张相同卡牌移动时全部消失的问题。
+    */
+
+    const index =
+      cards.indexOf(
+        cardName
+      );
+
+
+    if (index === -1) {
+      return false;
+    }
+
+
+    cards.splice(
+      index,
+      1
+    );
+
+
+    saveBag();
+    renderBag();
+
+
+    return true;
+  }
+
+
+  /*
+    --------------------------------------------------
+    删除卡牌
+    --------------------------------------------------
+  */
+
+  function removeCard(
+    cardName,
+    source
+  ) {
+
+    if (source) {
+      return takeCard(
+        cardName,
+        source
+      );
+    }
+
+
+    return (
+      takeCard(
+        cardName,
+        "equip"
+      ) ||
+      takeCard(
+        cardName,
+        "bagitem"
+      )
+    );
+  }
+
+
+  /*
+    --------------------------------------------------
+    根据 adventureequip /
+    adventurebagitem 恢复状态
+
+    character.js 恢复角色时调用。
+    --------------------------------------------------
+  */
+
+  function restoreState(
+    equip,
+    bagitem
+  ) {
+
+    equipmentCards =
+      Array.isArray(equip)
+        ? equip.slice()
+        : [];
+
+
+    bagItemCards =
+      Array.isArray(bagitem)
+        ? bagitem.slice()
+        : [];
+
+
+    syncAdventureVariables();
+
+    saveBag();
+    renderBag();
+  }
+
+
+  /*
+    --------------------------------------------------
+    重置背包
+
+    新角色开始游戏时调用。
+    --------------------------------------------------
+  */
+
+  function resetBag() {
+
+    equipmentCards = [];
+    bagItemCards = [];
+
+
+    syncAdventureVariables();
+
+    saveBag();
+    renderBag();
+  }
+
+
+  /*
+    --------------------------------------------------
+    对外接口
+    --------------------------------------------------
+  */
+
+  window.playerBag = {
+
+    /*
+      兼容旧代码：
+
+      getCards()
+      返回道具栏
+    */
+
+    getCards: function () {
+      return bagItemCards.slice();
+    },
+
+
+    /*
+      返回完整状态
+    */
+
+    getState: function () {
+
+      return {
+        equip:
+          equipmentCards.slice(),
+
+        bagitem:
+          bagItemCards.slice(),
+
+        adventureequip:
+          equipmentCards.slice(),
+
+        adventurebagitem:
+          bagItemCards.slice(),
+
+        ME:
+          limits.ME,
+
+        MB:
+          limits.MB
+      };
+
+    },
+
+
+    /*
+      设置专用槽位容量
+    */
+
+    setLimits:
+      setLimits,
+
+
+    /*
+      新获得卡牌
+
+      自动分配
+    */
+
+    add:
+      addNewCard,
+
+    addNew:
+      addNewCard,
+
+
+    /*
+      牌库 → 专用栏
+    */
+
+    moveFromDeck:
+      moveFromDeck,
+
+
+    /*
+      专用栏 → 牌库
+    */
+
+    take:
+      takeCard,
+
+    remove:
+      removeCard,
+
+
+    /*
+      从角色存档恢复
+    */
+
+    restoreState:
+      restoreState,
+
+
+    /*
+      清空
+    */
+
+    reset:
+      resetBag,
+
+
+    /*
+      刷新显示
+    */
+
+    refresh:
+      renderBag
+
+  };
+
+
+  /*
+    --------------------------------------------------
+    DOM 加载后读取存档
+    --------------------------------------------------
+  */
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+      loadBag();
+
+      renderBag();
+
+    }
+  );
+
+})();

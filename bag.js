@@ -493,15 +493,6 @@
     let html =
       `<h3>${escapeHtml(cardName)}</h3>`;
 
-
-    if (card["角色归属"]) {
-      html +=
-        `<p>角色：${escapeHtml(
-          card["角色归属"]
-        )}</p>`;
-    }
-
-
     if (card["类型"]) {
       html +=
         `<p>类型：${escapeHtml(
@@ -509,7 +500,7 @@
         )}</p>`;
     }
 
-
+    if (debugmode==1){
     if (
       card["效果"] &&
       card["效果"]["描述"]
@@ -519,7 +510,14 @@
           card["效果"]["描述"]
         )}</p>`;
     }
-
+    }else{
+      html +=
+        `<p>${escapeHtml(
+          card["描述"]
+        )}</p>`;
+      
+    }
+    
 
     box.innerHTML =
       html;
