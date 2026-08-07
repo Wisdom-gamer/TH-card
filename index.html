@@ -13,6 +13,45 @@
   </head>
 
   <body>
+    <section
+  id="character-select"
+  aria-label="角色选择"
+  aria-hidden="false"
+>
+  <button
+    id="character-prev"
+    class="character-arrow"
+    type="button"
+    aria-label="上一个角色"
+  >
+    &#9664;
+  </button>
+
+  <div id="character-display">
+    <img
+      id="character-image"
+      src="null.png"
+      alt="角色"
+    />
+
+    <button
+      id="character-name"
+      type="button"
+      aria-label="选择当前角色"
+    >
+      正在读取角色……
+    </button>
+  </div>
+
+  <button
+    id="character-next"
+    class="character-arrow"
+    type="button"
+    aria-label="下一个角色"
+  >
+    &#9654;
+  </button>
+</section>
     <!--
       战斗场景 UI。
       默认由 CSS 设置为隐藏。
@@ -242,12 +281,15 @@
       左下：复制的 player top
       右下：playerbag
     -->
-    <div id="adventure">
+    <div id="adventure" aria-hidden="true">
       <!-- 左上卡牌信息区域 -->
       <div
         id="cardinfo"
         aria-label="card information"
-      >
+      ><div
+  id="cardinfo-content"
+  aria-live="polite"
+></div>
         <!--
           按钮文字默认留空。
           JavaScript 可通过以下方式修改：
@@ -319,6 +361,7 @@
         <div class="avatar-container">
           <div class="avatar-inner">
             <img
+              id="adventure-character-image"
               src="null.png"
               alt="adventure player avatar"
               class="avatar-img"
@@ -389,5 +432,6 @@
     </div>
     <script src="bag.js"></script>
     <script src="cards.js"></script>
+    <script src="character.js"></script>
   </body>
 </html>

@@ -33,6 +33,116 @@ body {
     Arial,
     sans-serif;
 }
+/* =========================================================
+   角色选择界面
+   ========================================================= */
+#character-select {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(70px, 1fr)
+    minmax(300px, 520px)
+    minmax(70px, 1fr);
+  align-items: center;
+  justify-items: center;
+  gap: clamp(12px, 4vw, 64px);
+
+  background: var(--bg);
+}
+
+#character-select.is-hidden {
+  display: none;
+}
+
+/* 黑框：唯一实际显示的外框 */
+#character-display {
+  width: 100%;
+  height: min(76vh, 640px);
+  min-height: 420px;
+  padding: clamp(18px, 4vw, 42px);
+
+  border: 8px solid var(--black);
+  background: #fff;
+
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-items: center;
+  gap: 20px;
+
+  overflow: hidden;
+}
+
+/* 图片 */
+#character-image {
+  width: min(82%, 360px);
+  max-width: 100%;
+  height: 100%;
+  max-height: 470px;
+
+  display: block;
+  object-fit: contain;
+
+  border: 0;
+  background: transparent;
+}
+
+/* 名字 */
+#character-name {
+  max-width: 100%;
+  padding: 8px 14px;
+
+  border: 0;
+  background: transparent;
+
+  color: #111;
+  font: inherit;
+  font-size: clamp(24px, 3vw, 42px);
+  line-height: 1.25;
+  text-align: center;
+
+  cursor: pointer;
+  overflow-wrap: anywhere;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.character-arrow {
+  width: clamp(64px, 9vw, 120px);
+  height: clamp(64px, 9vw, 120px);
+  padding: 0;
+
+  border: 0;
+  background: transparent;
+
+  color: #000;
+  font-size: clamp(48px, 8vw, 96px);
+  line-height: 1;
+
+  cursor: pointer;
+  user-select: none;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#character-name:hover,
+#character-name:focus-visible,
+.character-arrow:hover,
+.character-arrow:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 5px var(--focus-color));
+}
+
+#character-name:disabled,
+.character-arrow:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
 
 /* =========================================================
    原战斗场景 game-area
@@ -245,7 +355,7 @@ body {
     以屏幕中心划分左右区域。
     上下左右容器之间保持 5px 距离。
   */
-  display: grid;
+  display: none;
   grid-template-columns:
     minmax(0, 1fr)
     minmax(0, 1fr);
@@ -259,6 +369,10 @@ body {
 }
 
 /* JavaScript 隐藏冒险场景时可以添加此类 */
+#adventure.is-active {
+  display: grid;
+}
+
 #adventure.is-hidden {
   display: none;
 }
@@ -284,7 +398,18 @@ body {
   border: var(--border-thick) solid var(--black);
   background: #fff;
 }
+#cardinfo-content {
+  min-height: 100%;
+  padding: 16px 70px 16px 16px;
+}
 
+#cardinfo-content h3 {
+  margin-bottom: 10px;
+}
+
+#cardinfo-content p + p {
+  margin-top: 8px;
+}
 /* cardinfo 右下角空白按钮 */
 #cardinfo-button {
   width: 50px;
@@ -771,6 +896,11 @@ body {
   允许页面横向滚动，避免控件被强行压扁。
 */
 @media (max-width: 760px) {
+  #character-select {
+  width: 720px;
+  min-width: 720px;
+  grid-template-columns: 90px 1fr 90px;
+}
   html,
   body {
     min-width: 720px;
