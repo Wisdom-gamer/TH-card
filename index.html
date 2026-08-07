@@ -274,89 +274,81 @@
     <!--
       冒险场景 UI。
       与 game-area 处于相同层级。
-
-      整体使用四个区域：
-      左上：cardinfo
-      右上：nextcards
-      左下：复制的 player top
-      右下：playerbag
     -->
     <div id="adventure" aria-hidden="true">
-      <!-- 左上卡牌信息区域 -->
       <div
         id="cardinfo"
         aria-label="card information"
-      ><div
-  id="cardinfo-content"
-  aria-live="polite"
-></div>
-        <!--
-          按钮文字默认留空。
-          JavaScript 可通过以下方式修改：
-          document.querySelector("#cardinfo-button").textContent = "确认";
-        -->
-        <button
+      >
+        <div
+          id="cardinfo-content"
+          aria-live="polite"
+        ></div>
+
+        <div
           id="cardinfo-button"
-          type="button"
           aria-label="card information action"
-        ></button>
+        ></div>
       </div>
 
-      <!--
-        右上待选卡牌区域。
-        容器没有粗硬边框，包含五个可点击卡牌。
-      -->
       <div
         id="nextcards"
-        class="slots"
         aria-label="next cards"
       >
-        <button
-          class="card-slot"
-          type="button"
-          aria-label="next-card-1"
+        <div
+          id="adventuredeck"
+          aria-label="deck counter"
         >
-          <img src="null.png" alt="next card 1" />
-        </button>
+          <span id="adventurecardnum">0</span>
+        </div>
 
-        <button
-          class="card-slot"
-          type="button"
-          aria-label="next-card-2"
+        <div
+          id="adventure-hand"
+          class="slots"
+          aria-label="adventure hand"
         >
-          <img src="null.png" alt="next card 2" />
-        </button>
+          <button
+            class="card-slot"
+            type="button"
+            aria-label="next-card-1"
+          >
+            <img src="null.png" alt="next card 1" />
+          </button>
 
-        <button
-          class="card-slot"
-          type="button"
-          aria-label="next-card-3"
-        >
-          <img src="null.png" alt="next card 3" />
-        </button>
+          <button
+            class="card-slot"
+            type="button"
+            aria-label="next-card-2"
+          >
+            <img src="null.png" alt="next card 2" />
+          </button>
 
-        <button
-          class="card-slot"
-          type="button"
-          aria-label="next-card-4"
-        >
-          <img src="null.png" alt="next card 4" />
-        </button>
+          <button
+            class="card-slot"
+            type="button"
+            aria-label="next-card-3"
+          >
+            <img src="null.png" alt="next card 3" />
+          </button>
 
-        <button
-          class="card-slot"
-          type="button"
-          aria-label="next-card-5"
-        >
-          <img src="null.png" alt="next card 5" />
-        </button>
+          <button
+            class="card-slot"
+            type="button"
+            aria-label="next-card-4"
+          >
+            <img src="null.png" alt="next card 4" />
+          </button>
+
+          <button
+            class="card-slot"
+            type="button"
+            aria-label="next-card-5"
+          >
+            <img src="null.png" alt="next card 5" />
+          </button>
+        </div>
       </div>
 
-      <!--
-        左下玩家区域。
-        内容复制自原来的 player top，但使用独立 ID，
-        避免一个页面内出现重复 ID。
-      -->
       <div class="player top adventure-player">
         <div class="avatar-container">
           <div class="avatar-inner">
@@ -384,6 +376,7 @@
                 data-var="adventuremp"
               ></span>
             </div>
+
             <div class="xp">
               XP:
               <span
@@ -391,6 +384,7 @@
                 data-var="adventurexp"
               ></span>
             </div>
+
             <div class="gold">
               Gold:
               <span
@@ -400,38 +394,35 @@
             </div>
           </div>
         </div>
+      </div>
 
+      <div id="playerbag">
+        <div
+          id="bagcards"
+          class="bag-grid"
+          aria-label="bag cards"
+        ></div>
 
+        <div id="bag-side">
+          <div
+            id="equip"
+            class="bag-grid"
+            aria-label="equipment"
+          ></div>
+
+          <div
+            id="bagitem"
+            class="bag-grid"
+            aria-label="bag items"
+          ></div>
         </div>
-<div id="playerbag">
-  <div
-    id="bagcards"
-    class="bag-grid"
-    aria-label="bag cards"
-  ></div>
-
-  <!-- 右侧栏 -->
-  <div id="bag-side">
-
-    <!-- 装备栏 -->
-    <div
-      id="equip"
-      class="bag-grid"
-      aria-label="equipment"
-    ></div>
-
-    <!-- 背包栏 -->
-    <div
-      id="bagitem"
-      class="bag-grid"
-      aria-label="bag items"
-    ></div>
-
-  </div>
-</div>
+      </div>
     </div>
+
     <script src="bag.js"></script>
     <script src="cards.js"></script>
     <script src="character.js"></script>
+    <script src="adventure.js"></script>
+    <script src="fight.js"></script>
   </body>
 </html>

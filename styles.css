@@ -912,3 +912,261 @@ body {
     min-width: 720px;
   }
 }
+/* =========================================================
+   冒险场景 adventure
+   ========================================================= */
+
+#adventure {
+  width: 100vw;
+  height: 100vh;
+  padding: var(--scene-gap);
+
+  display: none;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+  grid-template-rows:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+  gap: var(--scene-gap);
+
+  overflow: hidden;
+  background: var(--bg);
+}
+
+#adventure.is-active {
+  display: grid;
+}
+
+#adventure.is-hidden {
+  display: none;
+}
+
+/* 左上 cardinfo */
+#cardinfo {
+  grid-column: 1;
+  grid-row: 1;
+
+  min-width: 0;
+  min-height: 0;
+
+  position: relative;
+  overflow: auto;
+
+  border: var(--border-thick) solid var(--black);
+  background: #fff;
+}
+
+#cardinfo-content {
+  min-height: 100%;
+  padding: 16px 70px 16px 16px;
+}
+
+#cardinfo-content h3 {
+  margin-bottom: 10px;
+}
+
+#cardinfo-content p + p {
+  margin-top: 8px;
+}
+
+/* 右下角 action 区 */
+#cardinfo-button {
+  width: auto;
+  height: auto;
+  min-height: 50px;
+  padding: 0;
+
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+
+  border: 0;
+  background: transparent;
+
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 5px;
+
+  max-width: calc(100% - 10px);
+  overflow: visible;
+}
+
+#cardinfo-button:hover,
+#cardinfo-button:focus-visible {
+  box-shadow: none;
+}
+
+#cardinfo-button .cardinfo-action {
+  min-width: 50px;
+  height: 50px;
+  padding: 0 10px;
+
+  border: 4px solid var(--black);
+  background: #fff;
+
+  color: #111;
+  font-size: 14px;
+  line-height: 1;
+
+  cursor: pointer;
+  white-space: nowrap;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#cardinfo-button .cardinfo-action:hover,
+#cardinfo-button .cardinfo-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-color);
+}
+
+/* 右上 nextcards */
+#nextcards {
+  grid-column: 2;
+  grid-row: 1;
+
+  width: 100%;
+  height: 100%;
+
+  min-width: 0;
+  min-height: 0;
+
+  padding: clamp(12px, 3vw, 40px);
+
+  border: 0;
+  background: transparent;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--scene-gap);
+
+  overflow: auto;
+}
+
+/* 牌堆计数牌 */
+#adventuredeck {
+  width: 150px;
+  height: 72px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+
+  border: 6px solid var(--black);
+  background: #808080;
+
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+#adventurecardnum {
+  color: #fff;
+  font-weight: bold;
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* 手牌区域 */
+#adventure-hand {
+  width: 100%;
+  padding: 6px;
+
+  display: grid;
+  grid-template-columns: repeat(5, minmax(50px, 1fr));
+  align-items: center;
+  align-content: center;
+  justify-items: center;
+
+  gap: 8px;
+
+  overflow: auto;
+}
+
+#adventure-hand .card-slot {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+
+  aspect-ratio: 1 / 1;
+}
+
+#adventure-hand .card-slot.is-empty,
+#adventure-hand .card-slot:disabled {
+  opacity: 0.35;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* 左下 adventure-player */
+#adventure .adventure-player {
+  grid-column: 1;
+  grid-row: 2;
+
+  width: 100%;
+  height: 100%;
+
+  min-width: 0;
+  min-height: 0;
+
+  display: flex;
+  align-items: flex-end;
+  justify-self: stretch;
+
+  gap: 12px;
+
+  overflow: hidden;
+}
+
+#adventure .adventure-player .avatar-container {
+  flex: 0 0 160px;
+  max-height: 100%;
+}
+
+#adventure .adventure-player .hand.large-hand {
+  flex: 1 1 auto;
+
+  min-width: 0;
+  max-height: 100%;
+
+  overflow: hidden;
+}
+
+#adventure .adventure-player .slots {
+  width: 100%;
+  grid-template-columns: repeat(8, minmax(40px, 1fr));
+
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#adventure .adventure-player .card-slot {
+  width: 100%;
+  min-width: 40px;
+  height: auto;
+
+  aspect-ratio: 1 / 1;
+}
+
+/* 右下 playerbag */
+#playerbag {
+  grid-column: 2;
+  grid-row: 2;
+
+  min-width: 0;
+  min-height: 0;
+
+  display: flex;
+  gap: var(--scene-gap);
+
+  overflow: hidden;
+  background: #fff;
+}
