@@ -17,11 +17,94 @@
 
   let stats = {
     HP: 0,
+    maxHP: 0,
     MP: 0,
+    maxMP: 0,
     XP: 0,
     Gold: 0
   };
+  function formatStat(current, max) {
+    const cur = Number.isFinite(Number(current)) ? Math.floor(Number(current)) : 0;
+    const cap = Number.isFinite(Number(max)) ? Math.floor(Number(max)) : null;
+    return cap === null ? String(cur) : `${cur}/${cap}`;
+  }
 
+  function syncMaxFromGlobals() {
+    const globalMaxHP = Number(window.maxHP);
+    const globalMaxMP = Number(window.maxMP);
+
+    if (Number.isFinite(globalMaxHP) && globalMaxHP > 0) {
+      stats.maxHP = globalMaxHP;
+    } else if (!Number.isFinite(stats.maxHP) || stats.maxHP <= 0) {
+      stats.maxHP = stats.HP;
+    }
+
+    if (Number.isFinite(globalMaxMP) && globalMaxMP > 0) {
+      stats.maxMP = globalMaxMP;
+    } else if (!Number.isFinite(stats.maxMP) || stats.maxMP <= 0) {
+      stats.maxMP = stats.MP;
+    }
+
+    if (stats.HP > stats.maxHP) stats.HP = stats.maxHP;
+    if (stats.MP > stats.maxMP) stats.MP = stats.maxMP;
+  }
+
+  function setStat(key, value) {
+    const next = Math.floor(Number(value) || 0);
+
+    if (key === "HP") {
+      stats.HP = next;
+      if (Number.isFinite(stats.maxHP) && stats.maxHP > 0 && stats.HP > stats.maxHP) {
+        stats.HP = stats.maxHP;
+      }
+      return;
+    }
+
+    if (key === "MP") {
+      stats.MP = next;
+      if (Number.isFinite(stats.maxMP) && stats.maxMP > 0 && stats.MP > stats.maxMP) {
+        stats.MP = stats.maxMP;
+      }
+      return;
+    }
+
+    stats[key] = next;
+  }
+
+  function applyEffect(effect) {
+    if (!isObject(effect)) {
+      return;
+    }
+
+    if (effect.HP !== undefined) {
+      setStat("HP", stats.HP + (Number(effect.HP) || 0));
+    }
+
+    if (effect.MP !== undefined) {
+      setStat("MP", stats.MP + (Number(effect.MP) || 0));
+    }
+
+    if (effect.XP !== undefined) {
+      setStat("XP", stats.XP + (Number(effect.XP) || 0));
+    }
+
+    if (effect.Gold !== undefined) {
+      setStat("Gold", stats.Gold + (Number(effect.Gold) || 0));
+    }
+
+    syncStatsToDom();
+    saveStats();
+    document.dispatchEvent(new Event("th-card:stats-changed"));
+  }
+
+  function setCardInfoActionVisible(visible) {
+    const box = $("#cardinfo-button");
+    if (box) {
+      box.hidden = !visible;
+    }
+  }
+
+  window.setCardInfoActionVisible = setCardInfoActionVisible;
   function $(selector) {
     return document.querySelector(selector);
   }
@@ -267,21 +350,27 @@
   }
 
   function syncStatsToDom() {
+    syncMaxFromGlobals();
+
     const hp = $("#adventurehp");
     const mp = $("#adventuremp");
     const xp = $("#adventurexp");
     const gold = $("#adventuregold");
 
-    if (hp) hp.textContent = String(stats.HP);
-    if (mp) mp.textContent = String(stats.MP);
+    if (hp) hp.textContent = formatStat(stats.HP, stats.maxHP);
+    if (mp) mp.textContent = formatStat(stats.MP, stats.maxMP);
     if (xp) xp.textContent = String(stats.XP);
     if (gold) gold.textContent = String(stats.Gold);
 
     window.adventurehp = stats.HP;
+    window.maxHP = stats.maxHP;
     window.adventuremp = stats.MP;
+    window.maxMP = stats.maxMP;
     window.adventurexp = stats.XP;
     window.adventuregold = stats.Gold;
     window.adventureStats = { ...stats };
+
+    document.dispatchEvent(new Event("th-card:stats-changed"));
   }
 
   function loadStats() {
@@ -382,6 +471,7 @@
 
     if (actions) {
       actions.innerHTML = "";
+      actions.hidden = true;
     }
 
     activeIndex = -1;
@@ -393,12 +483,15 @@
     }
 
     if (cardData.action === "战斗") {
-      return [{
-        name: "战斗",
-        kind: "fight",
-        cost: 0,
-        detail: null
-      }];
+      return [
+        {
+          name: "战斗",
+          kind: "fight",
+          cost: 0,
+          detail: null,
+          useCount: null
+        }
+      ];
     }
 
     if (!isObject(cardData.action)) {
@@ -406,6 +499,7 @@
     }
 
     const actions = [];
+    const totalRemaining = Number.isFinite(cardState.remaining) ? cardState.remaining : Infinity;
 
     for (const [name, detail] of Object.entries(cardData.action)) {
       if (name === "actionnum") {
@@ -414,17 +508,21 @@
 
       const cost =
         isObject(detail) && detail.actionnum !== undefined
-          ? normalizeRemaining(detail.actionnum)
+          ? Math.max(0, Math.floor(Number(detail.actionnum) || 0))
           : 1;
 
-      const total = Number.isFinite(cardState.remaining) ? cardState.remaining : Infinity;
+      const useCount =
+        cost > 0 && Number.isFinite(totalRemaining)
+          ? Math.floor(totalRemaining / cost)
+          : null;
 
-      if (cost === 0 || total >= cost) {
+      if (cost === 0 || totalRemaining >= cost) {
         actions.push({
           name,
           kind: "normal",
           cost,
-          detail
+          detail,
+          useCount: useCount
         });
       }
     }
@@ -442,11 +540,21 @@
 
     const actions = getAvailableActions(cardState, cardData);
 
+    if (!actions.length) {
+      box.hidden = true;
+      return;
+    }
+
+    box.hidden = false;
+
     for (const action of actions) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "cardinfo-action";
-      button.textContent = action.name;
+      button.textContent =
+        action.useCount && action.useCount > 1
+          ? `${action.name} ×${action.useCount}`
+          : action.name;
 
       button.addEventListener("click", async function () {
         await runAction(cardState, action);
@@ -469,6 +577,10 @@
 
     const cardData = getCardData(cardState.name);
 
+    if (typeof window.setCardInfoActionVisible === "function") {
+      window.setCardInfoActionVisible(true);
+    }
+
     if (!cardData) {
       content.innerHTML = `<h3>${escapeHtml(cardState.name)}</h3>`;
       renderActions(cardState, null);
@@ -484,7 +596,6 @@
     content.innerHTML = html;
     renderActions(cardState, cardData);
   }
-
   function bindHandSlots() {
     handSlots = Array.from($("#adventure-hand")?.querySelectorAll(".card-slot") || []);
 
@@ -510,6 +621,40 @@
         showCardInfo(index);
       });
     });
+  }
+  function removeHandCardByIndex(index) {
+    if (index < 0 || index >= hand.length) {
+      return false;
+    }
+
+    hand.splice(index, 1);
+
+    if (activeIndex === index) {
+      clearInfo();
+    } else if (activeIndex > index) {
+      activeIndex -= 1;
+    }
+
+    return true;
+  }
+
+  function removeHandCardByName(name, preferredIndex) {
+    if (
+      Number.isInteger(preferredIndex) &&
+      preferredIndex >= 0 &&
+      preferredIndex < hand.length &&
+      hand[preferredIndex] &&
+      hand[preferredIndex].name === name
+    ) {
+      return removeHandCardByIndex(preferredIndex);
+    }
+
+    const index = hand.findIndex((entry) => entry.name === name);
+    if (index === -1) {
+      return false;
+    }
+
+    return removeHandCardByIndex(index);
   }
 
   function renderHand() {
@@ -542,6 +687,10 @@
         if (img) {
           img.src = "null.png";
           img.alt = "empty card";
+        }
+
+        if (activeIndex === index) {
+          clearInfo();
         }
       }
     });

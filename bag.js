@@ -480,13 +480,16 @@
       return;
     }
 
+    if (typeof window.setCardInfoActionVisible === "function") {
+      window.setCardInfoActionVisible(false);
+    }
+
     const card =
       getCardInfo(cardName);
 
     if (!card) {
       box.textContent =
         cardName;
-
       return;
     }
 
@@ -500,27 +503,24 @@
         )}</p>`;
     }
 
-    if (debugmode==1){
-    if (
-      card["效果"] &&
-      card["效果"]["描述"]
-    ) {
-      html +=
-        `<p>${escapeHtml(
-          card["效果"]["描述"]
-        )}</p>`;
-    }
-    }else{
+    if (debugmode == 1) {
+      if (
+        card["效果"] &&
+        card["效果"]["描述"]
+      ) {
+        html +=
+          `<p>${escapeHtml(
+            card["效果"]["描述"]
+          )}</p>`;
+      }
+    } else {
       html +=
         `<p>${escapeHtml(
           card["描述"]
         )}</p>`;
-      
     }
-    
 
-    box.innerHTML =
-      html;
+    box.innerHTML = html;
   }
 
 

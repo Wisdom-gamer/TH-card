@@ -76,63 +76,44 @@
     renderCharacter();
   }
 
-  function saveCharacterState(characterName, character) {
-    const hp = Number(character.HP) || 0;
-    const mp = Number(character.MP) || 0;
-    const me = Math.max(0, Math.floor(Number(character.ME) || 0));
-    const mb = Math.max(0, Math.floor(Number(character.MB) || 0));
+function saveCharacterState(characterName, character) {
+  const hp = Number(character.HP) || 0;
+  const mp = Number(character.MP) || 0;
+  const me = Math.max(0, Math.floor(Number(character.ME) || 0));
+  const mb = Math.max(0, Math.floor(Number(character.MB) || 0));
 
-    window.selectedCharacter = characterName;
-    window.adventurehp = hp;
-    window.adventuremp = mp;
-    window.adventurexp = 0;
-    window.adventuregold = 25;
+  window.selectedCharacter = characterName;
 
-    const state = {
-      name: characterName,
-      HP: hp,
-      MP: mp,
-      ME: me,
-      MB: mb,
-      adventurehp: window.adventurehp,
-      adventuremp: window.adventuremp,
-      adventurexp: window.adventurexp,
-      adventuregold: window.adventuregold
-    };
+  window.HP = hp;
+  window.maxHP = hp;
+  window.MP = mp;
+  window.maxMP = mp;
 
-    localStorage.setItem(
-      CHARACTER_STORAGE_KEY,
-      JSON.stringify(state)
-    );
+  window.adventurehp = hp;
+  window.adventuremp = mp;
+  window.adventurexp = 0;
+  window.adventuregold = 25;
 
-    return state;
-  }
+  const state = {
+    name: characterName,
+    HP: hp,
+    maxHP: hp,
+    MP: mp,
+    maxMP: mp,
+    ME: me,
+    MB: mb,
+    adventurehp: window.adventurehp,
+    adventuremp: window.adventuremp,
+    adventurexp: window.adventurexp,
+    adventuregold: window.adventuregold
+  };
 
-  function updateAdventureView(characterName, state) {
-    const values = {
-      adventurehp: state.adventurehp,
-      adventuremp: state.adventuremp,
-      adventurexp: state.adventurexp,
-      adventuregold: state.adventuregold
-    };
+  localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(state));
 
-    Object.entries(values).forEach(function (entry) {
-      const element = document.getElementById(entry[0]);
-
-      if (element) {
-        element.textContent = entry[1];
-      }
-    });
-
-    const avatar = getElement("#adventure-character-image");
-
-    if (avatar) {
-      avatar.src = characterImagePath(characterName);
-      avatar.alt = htmlToPlainText(characterName);
-    }
-  }
-
-  function showAdventure() {
+  document.dispatchEvent(new Event("th-card:stats-changed"));
+  return state;
+}
+function showAdventure() {
     const selector = getElement("#character-select");
     const adventure = getElement("#adventure");
 
@@ -146,7 +127,6 @@
       adventure.setAttribute("aria-hidden", "false");
     }
   }
-
   function selectCurrentCharacter() {
     if (characterNames.length === 0) {
       return;
@@ -173,202 +153,124 @@
       })
     );
   }
-function restoreSavedCharacter() {
+function updateAdventureView(characterName, state) {
+  const formatStat = window.thCardFormatStat
+    ? window.thCardFormatStat
+    : function (current, max) {
+        return `${current}/${max}`;
+      };
 
-  const saved =
-    localStorage.getItem(
-      CHARACTER_STORAGE_KEY
-    );
+  const values = {
+    adventurehp: formatStat(state.HP, state.maxHP),
+    adventuremp: formatStat(state.MP, state.maxMP),
+    adventurexp: state.adventurexp,
+    adventuregold: state.adventuregold
+  };
 
+  Object.entries(values).forEach(function (entry) {
+    const element = document.getElementById(entry[0]);
+    if (element) {
+      element.textContent = entry[1];
+    }
+  });
 
-  /*
-    没有角色存档
-    → 正常显示角色选择
-  */
-
-  if (!saved) {
-
-    return false;
-
+  const avatar = getElement("#adventure-character-image");
+  if (avatar) {
+    avatar.src = characterImagePath(characterName);
+    avatar.alt = htmlToPlainText(characterName);
   }
 
+  document.dispatchEvent(new Event("th-card:stats-changed"));
+}
+
+function restoreSavedCharacter() {
+  const saved = localStorage.getItem(CHARACTER_STORAGE_KEY);
+
+  if (!saved) {
+    return false;
+  }
 
   try {
-
-    const savedState =
-      JSON.parse(
-        saved
-      );
-
-
-    /*
-      存档无效
-    */
+    const savedState = JSON.parse(saved);
 
     if (
       !savedState ||
-      typeof savedState !==
-      "object" ||
+      typeof savedState !== "object" ||
       !savedState.name
     ) {
-
       return false;
-
     }
 
+    const adventureequip = Array.isArray(savedState.adventureequip)
+      ? savedState.adventureequip.slice()
+      : [];
 
-    /*
-      恢复装备栏
+    const adventurebagitem = Array.isArray(savedState.adventurebagitem)
+      ? savedState.adventurebagitem.slice()
+      : [];
 
-      兼容旧存档：
+    const hp = Number(savedState.HP) || 0;
+    const mp = Number(savedState.MP) || 0;
 
-      如果不存在 adventureequip，
-      就使用空数组。
-    */
+    const maxHP = Number.isFinite(Number(savedState.maxHP))
+      ? Number(savedState.maxHP)
+      : hp;
 
-    const adventureequip =
-      Array.isArray(
-        savedState.adventureequip
-      )
-
-        ? savedState.adventureequip.slice()
-
-        : [];
-
-
-    /*
-      恢复道具栏
-    */
-
-    const adventurebagitem =
-      Array.isArray(
-        savedState.adventurebagitem
-      )
-
-        ? savedState.adventurebagitem.slice()
-
-        : [];
-
+    const maxMP = Number.isFinite(Number(savedState.maxMP))
+      ? Number(savedState.maxMP)
+      : mp;
 
     const state = {
-
-      name:
-        savedState.name,
-
-      HP:
-        Number(
-          savedState.HP
-        ) || 0,
-
-      MP:
-        Number(
-          savedState.MP
-        ) || 0,
-
-      ME:
-        Math.max(
-          0,
-          Math.floor(
-            Number(
-              savedState.ME
-            ) || 0
-          )
-        ),
-
-      MB:
-        Math.max(
-          0,
-          Math.floor(
-            Number(
-              savedState.MB
-            ) || 0
-          )
-        ),
-
-      adventurehp:
-        Number(
-          savedState.adventurehp
-        ) || 0,
-
-      adventuremp:
-        Number(
-          savedState.adventuremp
-        ) || 0,
-
-      adventurexp:
-        Number(
-          savedState.adventurexp
-        ) || 0,
-
-      adventuregold:
-        Number(
-          savedState.adventuregold
-        ) || 0,
-
-      adventureequip:
-        adventureequip,
-
-      adventurebagitem:
-        adventurebagitem
-
+      name: savedState.name,
+      HP: Math.min(hp, maxHP),
+      maxHP: maxHP,
+      MP: Math.min(mp, maxMP),
+      maxMP: maxMP,
+      ME: Math.max(0, Math.floor(Number(savedState.ME) || 0)),
+      MB: Math.max(0, Math.floor(Number(savedState.MB) || 0)),
+      adventurehp: Number(savedState.adventurehp) || Math.min(hp, maxHP),
+      adventuremp: Number(savedState.adventuremp) || Math.min(mp, maxMP),
+      adventurexp: Number(savedState.adventurexp) || 0,
+      adventuregold: Number(savedState.adventuregold) || 0,
+      adventureequip: adventureequip,
+      adventurebagitem: adventurebagitem
     };
 
-
-    /*
-      恢复基本变量
-    */
-
     window.selectedCharacter = state.name;
+
+    window.HP = state.HP;
+    window.maxHP = state.maxHP;
+    window.MP = state.MP;
+    window.maxMP = state.maxMP;
+
     window.adventurehp = state.adventurehp;
     window.adventuremp = state.adventuremp;
     window.adventurexp = state.adventurexp;
     window.adventuregold = state.adventuregold;
 
-
-    /*
-      恢复新增变量
-    */
-
     window.adventureequip = state.adventureequip.slice();
-
-
     window.adventurebagitem = state.adventurebagitem.slice();
 
-    if (
-      window.playerBag
-    ) {
+    if (window.playerBag) {
+      window.playerBag.setLimits(state.ME, state.MB);
 
-      window.playerBag.setLimits(
-        state.ME,
-        state.MB
-      );
-      if (
-        typeof window.playerBag.restoreState ===
-        "function"
-      ) {
+      if (typeof window.playerBag.restoreState === "function") {
         window.playerBag.restoreState(
           state.adventureequip,
           state.adventurebagitem
         );
       }
     }
-    updateAdventureView(
-      state.name,
-      state
-    );
+
+    updateAdventureView(state.name, state);
     showAdventure();
+
+    document.dispatchEvent(new Event("th-card:stats-changed"));
     return true;
   } catch (error) {
-    console.warn(
-      "已保存的角色状态无法恢复，将进入角色选择",
-      error
-    );
-
-
+    console.warn("已保存的角色状态无法恢复，将进入角色选择", error);
     return false;
-
   }
-
 }
   async function loadCharacters() {
     const response = await fetch("pc.json", { cache: "no-store" });

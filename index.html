@@ -424,5 +424,158 @@
     <script src="character.js"></script>
     <script src="adventure.js"></script>
     <script src="fight.js"></script>
+    <div id="th-card-settings">
+  <button id="th-card-settings-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+    设置
+  </button>
+
+  <div id="th-card-settings-menu" hidden>
+    <button id="th-card-debug-toggle" type="button">
+      调试模式：关闭
+    </button>
+  </div>
+</div>
+
+<style>
+  #th-card-settings {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 14px;
+  }
+
+  #th-card-settings-btn {
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  #th-card-settings-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 150px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  #th-card-settings-menu button {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+(function () {
+  "use strict";
+
+  const DEBUG_KEY = "TH_CARD_DEBUGMODE";
+
+  window.debugmode = Number(localStorage.getItem(DEBUG_KEY)) === 1 ? 1 : 0;
+
+  function formatStat(current, max) {
+    const cur = Number.isFinite(Number(current)) ? Math.floor(Number(current)) : 0;
+    const cap = Number.isFinite(Number(max)) ? Math.floor(Number(max)) : null;
+    return cap === null ? String(cur) : `${cur}/${cap}`;
+  }
+
+  window.thCardFormatStat = formatStat;
+
+  function firstFiniteNumber(keys) {
+    for (const key of keys) {
+      const value = Number(window[key]);
+      if (Number.isFinite(value)) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  function paintStat(id, currentKeys, maxKeys) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const current = firstFiniteNumber(currentKeys);
+    const max = firstFiniteNumber(maxKeys);
+
+    el.textContent = max === null ? String(current ?? 0) : `${current ?? 0}/${max}`;
+  }
+
+  function syncBattleBars() {
+    paintStat("playerhp", ["playerhp", "adventurehp", "HP"], ["maxplayerhp", "playermaxhp", "maxHP"]);
+    paintStat("playermp", ["playermp", "adventuremp", "MP"], ["maxplayermp", "playermaxmp", "maxMP"]);
+    paintStat("enemyhp", ["enemyhp", "enemyHP"], ["maxenemyhp", "enemymaxhp", "maxEnemyHP"]);
+    paintStat("enemymp", ["enemymp", "enemyMP"], ["maxenemymp", "enemymaxmp", "maxEnemyMP"]);
+  }
+
+  window.thCardSyncBattleBars = syncBattleBars;
+
+  function updateDebugLabel() {
+    const toggle = document.getElementById("th-card-debug-toggle");
+    if (toggle) {
+      toggle.textContent = `调试模式：${window.debugmode ? "开启" : "关闭"}`;
+    }
+  }
+
+  function setDebugMode(next) {
+    window.debugmode = next ? 1 : 0;
+    localStorage.setItem(DEBUG_KEY, String(window.debugmode));
+    updateDebugLabel();
+    document.dispatchEvent(
+      new CustomEvent("th-card:debugmode-changed", {
+        detail: { debugmode: window.debugmode }
+      })
+    );
+  }
+
+  window.setDebugMode = setDebugMode;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const wrap = document.getElementById("th-card-settings");
+    const btn = document.getElementById("th-card-settings-btn");
+    const menu = document.getElementById("th-card-settings-menu");
+    const toggle = document.getElementById("th-card-debug-toggle");
+
+    function openMenu(open) {
+      if (!menu || !btn) return;
+      menu.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+
+    if (btn && menu) {
+      btn.addEventListener("click", function () {
+        openMenu(menu.hidden);
+      });
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        setDebugMode(window.debugmode ? 0 : 1);
+      });
+    }
+
+    document.addEventListener("click", function (event) {
+      if (!wrap || !wrap.contains(event.target)) {
+        openMenu(false);
+      }
+    });
+
+    updateDebugLabel();
+    syncBattleBars();
+  });
+
+  document.addEventListener("th-card:stats-changed", syncBattleBars);
+})();
+</script>
   </body>
 </html>
