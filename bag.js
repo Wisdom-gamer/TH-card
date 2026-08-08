@@ -1,19 +1,3 @@
-/*
-  bag.js
-
-  功能：
-
-  1. 管理装备栏 equip
-  2. 管理背包栏 bagitem
-  3. adventureequip 保存当前装备栏卡牌
-  4. adventurebagitem 保存当前背包栏卡牌
-  5. adventureequip / adventurebagitem 保存到 Local Storage
-  6. 新获得卡牌时自动根据卡牌类型分配位置
-  7. 玩家主动移动卡牌时不触发“新卡自动分配”
-  8. 装备栏容量由 ME 决定
-  9. 背包栏容量由 MB 决定
-*/
-
 (function () {
   "use strict";
 

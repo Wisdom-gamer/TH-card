@@ -479,9 +479,7 @@
 (function () {
   "use strict";
 
-  const DEBUG_KEY = "TH_CARD_DEBUGMODE";
-
-  window.debugmode = Number(localStorage.getItem(DEBUG_KEY)) === 1 ? 1 : 0;
+  window.debugmode = Number(window.debugmode) === 1 ? 1 : 0;
 
   function formatStat(current, max) {
     const cur = Number.isFinite(Number(current)) ? Math.floor(Number(current)) : 0;
@@ -494,9 +492,7 @@
   function firstFiniteNumber(keys) {
     for (const key of keys) {
       const value = Number(window[key]);
-      if (Number.isFinite(value)) {
-        return value;
-      }
+      if (Number.isFinite(value)) return value;
     }
     return null;
   }
@@ -529,8 +525,8 @@
 
   function setDebugMode(next) {
     window.debugmode = next ? 1 : 0;
-    localStorage.setItem(DEBUG_KEY, String(window.debugmode));
     updateDebugLabel();
+
     document.dispatchEvent(
       new CustomEvent("th-card:debugmode-changed", {
         detail: { debugmode: window.debugmode }
@@ -560,7 +556,7 @@
 
     if (toggle) {
       toggle.addEventListener("click", function () {
-        setDebugMode(window.debugmode ? 0 : 1);
+        setDebugMode(!window.debugmode);
       });
     }
 

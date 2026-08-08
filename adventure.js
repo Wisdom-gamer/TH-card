@@ -3,7 +3,7 @@
 
   const DEFAULT_LEVEL = "L14";
   const STATE_KEY = "TH_CARD_ADVENTURE_STATE";
-  const STATS_KEY = "TH_CARD_ADVENTURE_STATS";
+  const CHARACTER_KEY = "TH_CARD_CHARACTER";
   const HAND_LIMIT = 5;
 
   let cardDB = {};
@@ -23,88 +23,7 @@
     XP: 0,
     Gold: 0
   };
-  function formatStat(current, max) {
-    const cur = Number.isFinite(Number(current)) ? Math.floor(Number(current)) : 0;
-    const cap = Number.isFinite(Number(max)) ? Math.floor(Number(max)) : null;
-    return cap === null ? String(cur) : `${cur}/${cap}`;
-  }
 
-  function syncMaxFromGlobals() {
-    const globalMaxHP = Number(window.maxHP);
-    const globalMaxMP = Number(window.maxMP);
-
-    if (Number.isFinite(globalMaxHP) && globalMaxHP > 0) {
-      stats.maxHP = globalMaxHP;
-    } else if (!Number.isFinite(stats.maxHP) || stats.maxHP <= 0) {
-      stats.maxHP = stats.HP;
-    }
-
-    if (Number.isFinite(globalMaxMP) && globalMaxMP > 0) {
-      stats.maxMP = globalMaxMP;
-    } else if (!Number.isFinite(stats.maxMP) || stats.maxMP <= 0) {
-      stats.maxMP = stats.MP;
-    }
-
-    if (stats.HP > stats.maxHP) stats.HP = stats.maxHP;
-    if (stats.MP > stats.maxMP) stats.MP = stats.maxMP;
-  }
-
-  function setStat(key, value) {
-    const next = Math.floor(Number(value) || 0);
-
-    if (key === "HP") {
-      stats.HP = next;
-      if (Number.isFinite(stats.maxHP) && stats.maxHP > 0 && stats.HP > stats.maxHP) {
-        stats.HP = stats.maxHP;
-      }
-      return;
-    }
-
-    if (key === "MP") {
-      stats.MP = next;
-      if (Number.isFinite(stats.maxMP) && stats.maxMP > 0 && stats.MP > stats.maxMP) {
-        stats.MP = stats.maxMP;
-      }
-      return;
-    }
-
-    stats[key] = next;
-  }
-
-  function applyEffect(effect) {
-    if (!isObject(effect)) {
-      return;
-    }
-
-    if (effect.HP !== undefined) {
-      setStat("HP", stats.HP + (Number(effect.HP) || 0));
-    }
-
-    if (effect.MP !== undefined) {
-      setStat("MP", stats.MP + (Number(effect.MP) || 0));
-    }
-
-    if (effect.XP !== undefined) {
-      setStat("XP", stats.XP + (Number(effect.XP) || 0));
-    }
-
-    if (effect.Gold !== undefined) {
-      setStat("Gold", stats.Gold + (Number(effect.Gold) || 0));
-    }
-
-    syncStatsToDom();
-    saveStats();
-    document.dispatchEvent(new Event("th-card:stats-changed"));
-  }
-
-  function setCardInfoActionVisible(visible) {
-    const box = $("#cardinfo-button");
-    if (box) {
-      box.hidden = !visible;
-    }
-  }
-
-  window.setCardInfoActionVisible = setCardInfoActionVisible;
   function $(selector) {
     return document.querySelector(selector);
   }
@@ -148,22 +67,15 @@
       }
 
       if (current === "/" && next === "/") {
-        while (i < text.length && text[i] !== "\n") {
-          i += 1;
-        }
+        while (i < text.length && text[i] !== "\n") i += 1;
         result += "\n";
         continue;
       }
 
       if (current === "/" && next === "*") {
         i += 2;
-        while (
-          i < text.length &&
-          !(text[i] === "*" && text[i + 1] === "/")
-        ) {
-          if (text[i] === "\n") {
-            result += "\n";
-          }
+        while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) {
+          if (text[i] === "\n") result += "\n";
           i += 1;
         }
         i += 1;
@@ -195,6 +107,124 @@
       .replaceAll("'", "&#039;");
   }
 
+  function formatStat(current, max) {
+    const cur = Number.isFinite(Number(current)) ? Math.floor(Number(current)) : 0;
+    const cap = Number.isFinite(Number(max)) ? Math.floor(Number(max)) : null;
+    return cap === null ? String(cur) : `${cur}/${cap}`;
+  }
+
+  function readCharacterState() {
+    const saved = localStorage.getItem(CHARACTER_KEY);
+    if (!saved) return null;
+
+    try {
+      const data = JSON.parse(saved);
+      return isObject(data) ? data : null;
+    } catch (error) {
+      console.warn("角色存档读取失败", error);
+      return null;
+    }
+  }
+
+  function saveStatsToCharacter() {
+    const base = readCharacterState() || {};
+    const next = {
+      ...base,
+      name: typeof base.name === "string" ? base.name : (window.selectedCharacter || ""),
+      HP: stats.HP,
+      maxHP: stats.maxHP,
+      MP: stats.MP,
+      maxMP: stats.maxMP,
+      adventurehp: stats.HP,
+      adventuremp: stats.MP,
+      adventurexp: stats.XP,
+      adventuregold: stats.Gold
+    };
+
+    localStorage.setItem(CHARACTER_KEY, JSON.stringify(next));
+  }
+
+  function syncMaxFromGlobals() {
+    const globalMaxHP = Number(window.maxHP);
+    const globalMaxMP = Number(window.maxMP);
+
+    if (Number.isFinite(globalMaxHP) && globalMaxHP > 0) {
+      stats.maxHP = globalMaxHP;
+    } else if (!Number.isFinite(stats.maxHP) || stats.maxHP <= 0) {
+      stats.maxHP = stats.HP;
+    }
+
+    if (Number.isFinite(globalMaxMP) && globalMaxMP > 0) {
+      stats.maxMP = globalMaxMP;
+    } else if (!Number.isFinite(stats.maxMP) || stats.maxMP <= 0) {
+      stats.maxMP = stats.MP;
+    }
+
+    if (stats.HP > stats.maxHP) stats.HP = stats.maxHP;
+    if (stats.MP > stats.maxMP) stats.MP = stats.maxMP;
+    if (stats.HP < 0) stats.HP = 0;
+    if (stats.MP < 0) stats.MP = 0;
+  }
+
+  function syncStatsToDom(persist) {
+    syncMaxFromGlobals();
+
+    const hp = $("#adventurehp");
+    const mp = $("#adventuremp");
+    const xp = $("#adventurexp");
+    const gold = $("#adventuregold");
+
+    if (hp) hp.textContent = formatStat(stats.HP, stats.maxHP);
+    if (mp) mp.textContent = formatStat(stats.MP, stats.maxMP);
+    if (xp) xp.textContent = String(stats.XP);
+    if (gold) gold.textContent = String(stats.Gold);
+
+    window.HP = stats.HP;
+    window.maxHP = stats.maxHP;
+    window.MP = stats.MP;
+    window.maxMP = stats.maxMP;
+    window.adventurehp = stats.HP;
+    window.adventuremp = stats.MP;
+    window.adventurexp = stats.XP;
+    window.adventuregold = stats.Gold;
+    window.adventureStats = { ...stats };
+
+    if (persist) {
+      saveStatsToCharacter();
+    }
+
+    document.dispatchEvent(new Event("th-card:stats-changed"));
+  }
+
+  function loadStatsFromCharacter() {
+    const saved = readCharacterState();
+
+    if (saved) {
+      const hp = Number.isFinite(Number(saved.adventurehp)) ? Number(saved.adventurehp) : Number(saved.HP);
+      const mp = Number.isFinite(Number(saved.adventuremp)) ? Number(saved.adventuremp) : Number(saved.MP);
+
+      stats.HP = Number.isFinite(hp) ? Math.floor(hp) : 0;
+      stats.maxHP = Number.isFinite(Number(saved.maxHP)) ? Math.floor(Number(saved.maxHP)) : stats.HP;
+      stats.MP = Number.isFinite(mp) ? Math.floor(mp) : 0;
+      stats.maxMP = Number.isFinite(Number(saved.maxMP)) ? Math.floor(Number(saved.maxMP)) : stats.MP;
+      stats.XP = Number.isFinite(Number(saved.adventurexp)) ? Math.floor(Number(saved.adventurexp)) : 0;
+      stats.Gold = Number.isFinite(Number(saved.adventuregold)) ? Math.floor(Number(saved.adventuregold)) : 0;
+    } else {
+      const hp = Number.isFinite(Number(window.adventurehp ?? window.HP)) ? Math.floor(Number(window.adventurehp ?? window.HP)) : 0;
+      const mp = Number.isFinite(Number(window.adventuremp ?? window.MP)) ? Math.floor(Number(window.adventuremp ?? window.MP)) : 0;
+
+      stats.HP = hp;
+      stats.maxHP = Number.isFinite(Number(window.maxHP)) ? Math.floor(Number(window.maxHP)) : hp;
+      stats.MP = mp;
+      stats.maxMP = Number.isFinite(Number(window.maxMP)) ? Math.floor(Number(window.maxMP)) : mp;
+      stats.XP = Number.isFinite(Number(window.adventurexp)) ? Math.floor(Number(window.adventurexp)) : 0;
+      stats.Gold = Number.isFinite(Number(window.adventuregold)) ? Math.floor(Number(window.adventuregold)) : 0;
+    }
+
+    syncStatsToDom(false);
+    saveStatsToCharacter();
+  }
+
   function shuffle(list) {
     for (let i = list.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -213,27 +243,16 @@
   }
 
   function normalizeRemaining(value) {
-    if (value === null || value === undefined) {
-      return null;
-    }
-
-    if (value === "void") {
-      return 0;
-    }
-
+    if (value === null || value === undefined) return null;
+    if (value === "void") return 0;
     const n = Number(value);
     return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
   }
 
   function getDefaultRemaining(name) {
     const card = getCardData(name);
-    if (!card) {
-      return null;
-    }
-
-    if (card.action === "战斗") {
-      return null;
-    }
+    if (!card) return null;
+    if (card.action === "战斗") return null;
 
     if (isObject(card.action)) {
       const n = Number(card.action.actionnum);
@@ -245,20 +264,13 @@
 
   function cloneHandEntry(entry) {
     if (typeof entry === "string") {
-      return {
-        name: entry,
-        remaining: getDefaultRemaining(entry)
-      };
+      return { name: entry, remaining: getDefaultRemaining(entry) };
     }
 
-    if (!isObject(entry)) {
-      return null;
-    }
+    if (!isObject(entry)) return null;
 
     const name = String(entry.name || entry.card || "").trim();
-    if (!name) {
-      return null;
-    }
+    if (!name) return null;
 
     const remaining =
       entry.remaining === undefined
@@ -266,15 +278,13 @@
         : normalizeRemaining(entry.remaining);
 
     return {
-      name: name,
+      name,
       remaining: remaining === null ? getDefaultRemaining(name) : remaining
     };
   }
 
   function buildCardsFromGroup(groupData) {
-    if (!isObject(groupData)) {
-      return [];
-    }
+    if (!isObject(groupData)) return [];
 
     const type = String(groupData.type || groupData.trpe || "always").trim();
     const result = [];
@@ -284,14 +294,9 @@
       const pool = [];
 
       for (const [cardName, count] of Object.entries(groupData)) {
-        if (cardName === "type" || cardName === "trpe" || cardName === "maxnumber") {
-          continue;
-        }
-
+        if (cardName === "type" || cardName === "trpe" || cardName === "maxnumber") continue;
         const n = Math.max(0, toInt(count, 0));
-        for (let i = 0; i < n; i += 1) {
-          pool.push(cardName);
-        }
+        for (let i = 0; i < n; i += 1) pool.push(cardName);
       }
 
       shuffle(pool);
@@ -300,14 +305,9 @@
     }
 
     for (const [cardName, count] of Object.entries(groupData)) {
-      if (cardName === "type" || cardName === "trpe" || cardName === "maxnumber") {
-        continue;
-      }
-
+      if (cardName === "type" || cardName === "trpe" || cardName === "maxnumber") continue;
       const n = Math.max(0, toInt(count, 0));
-      for (let i = 0; i < n; i += 1) {
-        result.push(cardName);
-      }
+      for (let i = 0; i < n; i += 1) result.push(cardName);
     }
 
     return result;
@@ -315,12 +315,9 @@
 
   function buildDeckFromLevel(levelKey) {
     const level = adventureDB[levelKey];
-    if (!isObject(level)) {
-      return [];
-    }
+    if (!isObject(level)) return [];
 
     let cards = [];
-
     for (const groupData of Object.values(level)) {
       cards = cards.concat(buildCardsFromGroup(groupData));
     }
@@ -331,71 +328,17 @@
 
   function addGroupToBottom(levelKey) {
     const level = adventureDB[levelKey];
-    if (!isObject(level)) {
-      return false;
-    }
+    if (!isObject(level)) return false;
 
     const cards = [];
-
     for (const groupData of Object.values(level)) {
       cards.push(...buildCardsFromGroup(groupData));
     }
 
-    if (!cards.length) {
-      return false;
-    }
+    if (!cards.length) return false;
 
     deck.unshift(...cards);
     return true;
-  }
-
-  function syncStatsToDom() {
-    syncMaxFromGlobals();
-
-    const hp = $("#adventurehp");
-    const mp = $("#adventuremp");
-    const xp = $("#adventurexp");
-    const gold = $("#adventuregold");
-
-    if (hp) hp.textContent = formatStat(stats.HP, stats.maxHP);
-    if (mp) mp.textContent = formatStat(stats.MP, stats.maxMP);
-    if (xp) xp.textContent = String(stats.XP);
-    if (gold) gold.textContent = String(stats.Gold);
-
-    window.adventurehp = stats.HP;
-    window.maxHP = stats.maxHP;
-    window.adventuremp = stats.MP;
-    window.maxMP = stats.maxMP;
-    window.adventurexp = stats.XP;
-    window.adventuregold = stats.Gold;
-    window.adventureStats = { ...stats };
-
-    document.dispatchEvent(new Event("th-card:stats-changed"));
-  }
-
-  function loadStats() {
-    const saved = localStorage.getItem(STATS_KEY);
-
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        if (isObject(data)) {
-          for (const key of Object.keys(stats)) {
-            if (Number.isFinite(Number(data[key]))) {
-              stats[key] = Math.floor(Number(data[key]));
-            }
-          }
-        }
-      } catch (error) {
-        console.warn("冒险数值读取失败", error);
-      }
-    }
-
-    syncStatsToDom();
-  }
-
-  function saveStats() {
-    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
   }
 
   function saveState() {
@@ -416,16 +359,11 @@
 
   function loadState() {
     const saved = localStorage.getItem(STATE_KEY);
-    if (!saved) {
-      return false;
-    }
+    if (!saved) return false;
 
     try {
       const data = JSON.parse(saved);
-
-      if (!isObject(data)) {
-        return false;
-      }
+      if (!isObject(data)) return false;
 
       if (typeof data.levelKey === "string" && adventureDB[data.levelKey]) {
         currentLevel = data.levelKey;
@@ -455,9 +393,7 @@
 
   function updateCounter() {
     const counter = $("#adventurecardnum");
-    if (counter) {
-      counter.textContent = String(deck.length);
-    }
+    if (counter) counter.textContent = String(deck.length);
     window.adventurecardnum = deck.length;
   }
 
@@ -465,10 +401,7 @@
     const content = $("#cardinfo-content");
     const actions = $("#cardinfo-button");
 
-    if (content) {
-      content.innerHTML = "";
-    }
-
+    if (content) content.innerHTML = "";
     if (actions) {
       actions.innerHTML = "";
       actions.hidden = true;
@@ -478,9 +411,7 @@
   }
 
   function getAvailableActions(cardState, cardData) {
-    if (!cardData) {
-      return [];
-    }
+    if (!cardData) return [];
 
     if (cardData.action === "战斗") {
       return [
@@ -494,17 +425,13 @@
       ];
     }
 
-    if (!isObject(cardData.action)) {
-      return [];
-    }
+    if (!isObject(cardData.action)) return [];
 
     const actions = [];
     const totalRemaining = Number.isFinite(cardState.remaining) ? cardState.remaining : Infinity;
 
     for (const [name, detail] of Object.entries(cardData.action)) {
-      if (name === "actionnum") {
-        continue;
-      }
+      if (name === "actionnum") continue;
 
       const cost =
         isObject(detail) && detail.actionnum !== undefined
@@ -522,7 +449,7 @@
           kind: "normal",
           cost,
           detail,
-          useCount: useCount
+          useCount
         });
       }
     }
@@ -532,14 +459,11 @@
 
   function renderActions(cardState, cardData) {
     const box = $("#cardinfo-button");
-    if (!box) {
-      return;
-    }
+    if (!box) return;
 
     box.innerHTML = "";
 
     const actions = getAvailableActions(cardState, cardData);
-
     if (!actions.length) {
       box.hidden = true;
       return;
@@ -593,39 +517,39 @@
       html += `<p>${escapeHtml(cardData.display)}</p>`;
     }
 
+    if (cardData["描述"]) {
+      html += `<p>${escapeHtml(cardData["描述"])}</p>`;
+    }
+
+    if (cardData["类型"]) {
+      html += `<p>类型：${escapeHtml(cardData["类型"])}</p>`;
+    }
+
+    if (cardData["效果"] && cardData["效果"]["描述"]) {
+      html += `<p>${escapeHtml(cardData["效果"]["描述"])}</p>`;
+    }
+
     content.innerHTML = html;
     renderActions(cardState, cardData);
   }
+
   function bindHandSlots() {
     handSlots = Array.from($("#adventure-hand")?.querySelectorAll(".card-slot") || []);
 
     handSlots.forEach((button, index) => {
-      button.addEventListener("mouseenter", function () {
-        if (button.classList.contains("is-empty")) {
-          return;
-        }
+      const focusInfo = function () {
+        if (button.classList.contains("is-empty")) return;
         showCardInfo(index);
-      });
+      };
 
-      button.addEventListener("focus", function () {
-        if (button.classList.contains("is-empty")) {
-          return;
-        }
-        showCardInfo(index);
-      });
-
-      button.addEventListener("click", function () {
-        if (button.classList.contains("is-empty")) {
-          return;
-        }
-        showCardInfo(index);
-      });
+      button.addEventListener("mouseenter", focusInfo);
+      button.addEventListener("focus", focusInfo);
+      button.addEventListener("click", focusInfo);
     });
   }
+
   function removeHandCardByIndex(index) {
-    if (index < 0 || index >= hand.length) {
-      return false;
-    }
+    if (index < 0 || index >= hand.length) return false;
 
     hand.splice(index, 1);
 
@@ -650,17 +574,13 @@
     }
 
     const index = hand.findIndex((entry) => entry.name === name);
-    if (index === -1) {
-      return false;
-    }
+    if (index === -1) return false;
 
     return removeHandCardByIndex(index);
   }
 
   function renderHand() {
-    if (!handSlots.length) {
-      return;
-    }
+    if (!handSlots.length) return;
 
     handSlots.forEach((button, index) => {
       const entry = hand[index];
@@ -713,44 +633,12 @@
     return changed;
   }
 
-  function removeHandCardByIndex(index) {
-    if (index < 0 || index >= hand.length) {
-      return false;
-    }
-
-    hand.splice(index, 1);
-    return true;
-  }
-
-  function removeHandCardByName(name, preferredIndex) {
-    if (
-      Number.isInteger(preferredIndex) &&
-      preferredIndex >= 0 &&
-      preferredIndex < hand.length &&
-      hand[preferredIndex] &&
-      hand[preferredIndex].name === name
-    ) {
-      return removeHandCardByIndex(preferredIndex);
-    }
-
-    const index = hand.findIndex((entry) => entry.name === name);
-    if (index === -1) {
-      return false;
-    }
-
-    return removeHandCardByIndex(index);
-  }
-
   function applyEffect(effect) {
-    if (!isObject(effect)) {
-      return;
-    }
+    if (!isObject(effect)) return;
 
     for (const [key, value] of Object.entries(effect)) {
       const n = Number(value);
-      if (!Number.isFinite(n)) {
-        continue;
-      }
+      if (!Number.isFinite(n)) continue;
 
       if (key === "HP") stats.HP += Math.floor(n);
       if (key === "MP") stats.MP += Math.floor(n);
@@ -758,27 +646,12 @@
       if (key === "Gold") stats.Gold += Math.floor(n);
     }
 
-    syncStatsToDom();
-    saveStats();
-  }
-
-  function normalizeActionCost(value) {
-    if (value === "void") {
-      return 0;
-    }
-
-    const n = Number(value);
-    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 1;
+    syncStatsToDom(true);
   }
 
   function applyNormalAction(cardState, action) {
-    if (!Number.isFinite(cardState.remaining)) {
-      return;
-    }
-
-    if (action.cost > cardState.remaining) {
-      return;
-    }
+    if (!Number.isFinite(cardState.remaining)) return;
+    if (action.cost > cardState.remaining) return;
 
     if (isObject(action.detail) && action.detail.effect) {
       applyEffect(action.detail.effect);
@@ -831,9 +704,7 @@
 
     if (isObject(result)) {
       for (const [key, value] of Object.entries(result)) {
-        if (value === true) {
-          keys.add(key);
-        }
+        if (value === true) keys.add(key);
         if (
           typeof value === "string" ||
           typeof value === "number" ||
@@ -848,18 +719,14 @@
   }
 
   function handleReaction(cardState, cardData, result) {
-    if (!cardData || !isObject(cardData.reaction)) {
-      return false;
-    }
+    if (!cardData || !isObject(cardData.reaction)) return false;
 
     const outcomes = extractOutcomeKeys(result);
     let changed = false;
 
     for (const outcome of outcomes) {
       const ops = cardData.reaction[outcome];
-      if (!isObject(ops)) {
-        continue;
-      }
+      if (!isObject(ops)) continue;
 
       if (ops.delete !== undefined) {
         const target = String(ops.delete);
@@ -904,14 +771,10 @@
 
   async function runAction(cardState, action) {
     const index = hand.indexOf(cardState);
-    if (index === -1) {
-      return;
-    }
+    if (index === -1) return;
 
     const cardData = getCardData(cardState.name);
-    if (!cardData) {
-      return;
-    }
+    if (!cardData) return;
 
     if (action.kind === "normal") {
       applyNormalAction(cardState, action);
@@ -968,10 +831,7 @@
   }
 
   function setLevel(levelKey) {
-    if (!adventureDB[levelKey]) {
-      return false;
-    }
-
+    if (!adventureDB[levelKey]) return false;
     currentLevel = levelKey;
     resetAdventure();
     return true;
@@ -991,7 +851,7 @@
       window.adventureDatabase = adventureDB;
 
       bindHandSlots();
-      loadStats();
+      loadStatsFromCharacter();
 
       const restored = loadState();
 
