@@ -1,3 +1,8 @@
+/*
+  装备栏容量由 ME 决定
+  背包栏容量由 MB 决定
+*/
+
 (function () {
   "use strict";
 
@@ -447,18 +452,85 @@
       .replaceAll("'", "&#039;");
   }
 
+  function isPlainObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
 
-  /*
-    --------------------------------------------------
-    显示卡牌信息
-    --------------------------------------------------
-  */
+  function formatEffectValue(value) {
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    if (Array.isArray(value)) {
+      return value
+        .map(formatEffectValue)
+        .filter(Boolean)
+        .join("、");
+    }
+
+    if (isPlainObject(value)) {
+      const pairs = [];
+
+      for (const [key, child] of Object.entries(value)) {
+        if (key === "描述") continue;
+
+        const text = formatEffectValue(child);
+        if (text) {
+          pairs.push(`${key}:${text}`);
+        }
+      }
+
+      return pairs.length ? `{${pairs.join(", ")}}` : "{}";
+    }
+
+    return String(value);
+  }
+
+  function getCardDescription(card) {
+    if (!isPlainObject(card)) {
+      return "";
+    }
+
+    const directDescription =
+      typeof card["描述"] === "string"
+        ? card["描述"].trim()
+        : "";
+
+    if (directDescription) {
+      return directDescription;
+    }
+
+    const effect = isPlainObject(card["效果"]) ? card["效果"] : null;
+
+    const effectDescription =
+      effect && typeof effect["描述"] === "string"
+        ? effect["描述"].trim()
+        : "";
+
+    return effectDescription;
+  }
+
+  function renderEffectDetails(effect) {
+    if (!isPlainObject(effect)) {
+      return "";
+    }
+
+    const rows = [];
+
+    for (const [key, value] of Object.entries(effect)) {
+      if (key === "描述") continue;
+
+      const text = formatEffectValue(value).trim();
+      if (!text) continue;
+
+      rows.push(`<p><strong>${escapeHtml(key)}：</strong>${escapeHtml(text)}</p>`);
+    }
+
+    return rows.join("");
+  }
 
   function showCardInfo(cardName) {
-    const box =
-      document.querySelector(
-        "#cardinfo-content"
-      );
+    const box = document.querySelector("#cardinfo-content");
 
     if (!box) {
       return;
@@ -468,44 +540,34 @@
       window.setCardInfoActionVisible(false);
     }
 
-    const card =
-      getCardInfo(cardName);
+    const card = getCardInfo(cardName);
 
     if (!card) {
-      box.textContent =
-        cardName;
+      box.textContent = cardName;
       return;
     }
 
-    let html =
-      `<h3>${escapeHtml(cardName)}</h3>`;
+    const debugMode = Number(window.debugmode) === 1;
+    const description = getCardDescription(card);
+
+    let html = `<h3>${escapeHtml(cardName)}</h3>`;
 
     if (card["类型"]) {
-      html +=
-        `<p>类型：${escapeHtml(
-          card["类型"]
-        )}</p>`;
+      html += `<p>类型：${escapeHtml(card["类型"])}</p>`;
     }
 
-    if (debugmode == 1) {
-      if (
-        card["效果"] &&
-        card["效果"]["描述"]
-      ) {
-        html +=
-          `<p>${escapeHtml(
-            card["效果"]["描述"]
-          )}</p>`;
-      }
-    } else {
-      html +=
-        `<p>${escapeHtml(
-          card["描述"]
-        )}</p>`;
+    if (debugMode) {
+      html += renderEffectDetails(card["效果"]);
+    }
+
+    if (description) {
+      html += `<p>${escapeHtml(description)}</p>`;
     }
 
     box.innerHTML = html;
   }
+
+  window.showCardInfo = showCardInfo;
 
 
   /*
@@ -567,12 +629,11 @@
       鼠标悬停
     */
 
-    button.addEventListener(
-      "mouseenter",
-      function () {
-        showCardInfo(cardName);
+    button.addEventListener("mouseenter", function () {
+      if (typeof window.showCardInfo === "function") {
+        window.showCardInfo(cardName);
       }
-    );
+    });
 
 
     /*

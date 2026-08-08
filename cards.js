@@ -121,57 +121,6 @@
     }
   }
 
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function showCardInfo(cardName) {
-    const box = document.querySelector("#cardinfo-content");
-    if (!box) return;
-
-    if (typeof window.setCardInfoActionVisible === "function") {
-      window.setCardInfoActionVisible(false);
-    }
-
-    const card = cardDatabase[cardName];
-
-    if (!card) {
-      box.textContent = cardName;
-      return;
-    }
-
-    const debugMode = Number(window.debugmode) === 1;
-    const normalText =
-      card["描述"] ||
-      (card["效果"] && card["效果"]["描述"]) ||
-      "";
-    const debugText =
-      (card["效果"] && card["效果"]["描述"]) ||
-      normalText;
-
-    let html = `<h3>${escapeHtml(cardName)}</h3>`;
-
-    if (card["类型"]) {
-      html += `<p>类型：${escapeHtml(card["类型"])}</p>`;
-    }
-
-    if (card["角色归属"]) {
-      html += `<p>角色：${escapeHtml(card["角色归属"])}</p>`;
-    }
-
-    const detail = debugMode ? debugText : normalText;
-    if (detail) {
-      html += `<p>${escapeHtml(detail)}</p>`;
-    }
-
-    box.innerHTML = html;
-  }
-
   function createCardSlot(cardName) {
     const button = document.createElement("button");
     const img = document.createElement("img");
@@ -188,7 +137,9 @@
     button.appendChild(img);
 
     button.addEventListener("mouseenter", function () {
-      showCardInfo(cardName);
+      if (typeof window.showCardInfo === "function") {
+        window.showCardInfo(cardName);
+      }
     });
 
     button.addEventListener("click", function () {

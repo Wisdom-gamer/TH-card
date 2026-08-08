@@ -1051,13 +1051,14 @@ body {
 
 /* 牌堆计数牌 */
 #adventuredeck {
-  width: 150px;
+  width: min(150px, 100%);
   height: 72px;
+  margin: 0 auto;
 
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-start;
+  align-self: center;
 
   border: 6px solid var(--black);
   background: #808080;
