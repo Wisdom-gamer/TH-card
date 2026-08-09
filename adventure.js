@@ -769,37 +769,62 @@
     clearInfo();
   }
 
-  async function runAction(cardState, action) {
-    const index = hand.indexOf(cardState);
-    if (index === -1) return;
+// adventure.js 里把 runAction 整段替换为下面这版
+async function runAction(cardState, action) {
+  const index = hand.indexOf(cardState);
+  if (index === -1) return;
 
-    const cardData = getCardData(cardState.name);
-    if (!cardData) return;
+  const cardData = getCardData(cardState.name);
+  if (!cardData) return;
 
-    if (action.kind === "normal") {
-      applyNormalAction(cardState, action);
-      syncAfterMutation(index);
-      return;
-    }
+  if (action.kind === "normal") {
+    applyNormalAction(cardState, action);
+    syncAfterMutation(index);
+    return;
+  }
 
-    if (action.kind === "fight") {
-      const fightFn =
-        typeof window.fightstart === "function"
+  if (action.kind === "fight") {
+    const fightFn =
+      typeof window.fightAPI === "function"
+        ? window.fightAPI
+        : typeof window.fightstart === "function"
           ? window.fightstart
-          : window.fight && typeof window.fight.fightstart === "function"
-            ? window.fight.fightstart
-            : null;
+          : null;
 
-      if (!fightFn) {
-        console.warn("fightstart 不存在");
-        return;
+    const adventure = document.getElementById("adventure");
+    const battle = document.querySelector(".game-area");
+
+    function setBattleScene(active) {
+      if (adventure) {
+        adventure.classList.toggle("is-active", !active);
+        adventure.setAttribute("aria-hidden", active ? "true" : "false");
       }
 
-      const result = await Promise.resolve(fightFn(cardData.ID));
-      handleReaction(cardState, cardData, result);
-      syncAfterMutation(index);
+      if (battle) {
+        battle.classList.toggle("is-active", active);
+        battle.setAttribute("aria-hidden", active ? "false" : "true");
+      }
     }
+
+    setBattleScene(true);
+
+    let result = null;
+
+    try {
+      result = await Promise.resolve(fightFn(cardData.ID));
+    } catch (error) {
+      console.error("战斗执行失败", error);
+    } finally {
+      setBattleScene(false);
+    }
+
+    if (result !== null && result !== undefined) {
+      handleReaction(cardState, cardData, result);
+    }
+
+    syncAfterMutation(index);
   }
+}
 
   function activateAdventureScene() {
     const adventure = $("#adventure");
@@ -903,11 +928,13 @@
 
   document.addEventListener("DOMContentLoaded", boot);
 
-  document.addEventListener("th-card:character-selected", function () {
-    if (!activated) {
-      activateAdventureScene();
-    }
-  });
+document.addEventListener("th-card:character-selected", function () {
+  loadStatsFromCharacter();
+
+  if (!activated) {
+    activateAdventureScene();
+  }
+});
 
   window.adventurecardnum = 0;
 })();
