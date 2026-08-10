@@ -1171,3 +1171,151 @@ body {
   overflow: hidden;
   background: #fff;
 }
+/* =========================================================
+   战斗区专用样式
+   只作用于 .game-area，不影响角色选择和冒险模式
+   ========================================================= */
+
+.game-area .player.top,
+.game-area .player.bottom {
+  align-items: center;
+}
+
+/* 战斗区头像容器：整体左移 60px，宽度扩展后容纳卡组/坟场 */
+.game-area .player.top .avatar-container,
+.game-area .player.bottom .avatar-container {
+  width: 220px;
+  margin-left: -60px;
+
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* 头像 + 属性 */
+.game-area .avatar-info {
+  width: 110px;
+  flex: 0 0 110px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 卡组/坟场：40x40，仅显示数字，黑边 2px */
+.game-area .fight-pile {
+  position: relative;
+
+  width: 40px;
+  height: 40px;
+
+  padding: 2px;
+
+  border: 2px solid var(--black);
+  background: #808080;
+
+  color: #fff;
+
+  display: block;
+
+  overflow: hidden;
+
+  line-height: 1;
+  user-select: none;
+}
+
+/*
+  数字：
+  放在框的上半部分。
+  保持原来的白色和 14px 大小。
+*/
+.game-area .fight-pile-number {
+  position: absolute;
+
+  top: 5px;
+  left: 0;
+
+  width: 100%;
+
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
+
+  text-align: center;
+}
+
+/*
+  “卡组 / 坟场”：
+  放在框的下半部分。
+  数字为 14px，因此文字为 7px。
+  文字颜色改为黑色。
+*/
+.game-area .fight-pile-label {
+  position: absolute;
+
+  bottom: 4px;
+  left: 0;
+
+  width: 100%;
+
+  color: #000;
+  font-size: 7px;
+  font-weight: bold;
+  line-height: 1;
+
+  text-align: center;
+}
+
+/* 中间场地：横向 10 张，自动换行，只显示卡牌 */
+#fightsite {
+  grid-column: 1;
+  grid-row: 2;
+
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  padding: 6px;
+
+  display: grid;
+  grid-template-columns: repeat(10, var(--slot-size));
+  grid-auto-rows: var(--slot-size);
+  gap: 8px;
+
+  align-content: center;
+  justify-content: center;
+
+  overflow: auto;
+  border: 0;
+  background: transparent;
+}
+
+#fightsite .fightsite-card {
+  width: var(--slot-size);
+  height: var(--slot-size);
+  padding: 0;
+
+  border: 0;
+  background: transparent;
+
+  display: block;
+  overflow: hidden;
+
+  cursor: default;
+  outline: none;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#fightsite .fightsite-card img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border: 0;
+  pointer-events: none;
+}

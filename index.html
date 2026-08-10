@@ -59,217 +59,195 @@
       需要显示时，可以通过 JavaScript 添加 is-active 类：
       document.querySelector(".game-area").classList.add("is-active");
     -->
-    <div class="game-area">
-      <!-- 敌人区域 -->
-      <div class="player top">
-        <div class="avatar-container">
-          <div class="avatar-inner">
-            <img
-              src="null.png"
-              alt="enemy avatar"
-              class="avatar-img"
-            />
-          </div>
-
-          <div class="stats">
-            <div class="hp">
-              HP:
-              <span
-                id="enemyhp"
-                data-var="enemyhp"
-              ></span>
-            </div>
-
-            <div class="mp">
-              MP:
-              <span
-                id="enemymp"
-                data-var="enemymp"
-              ></span>
-            </div>
-          </div>
+<div class="game-area">
+  <!-- 敌人区域 -->
+  <div class="player top">
+    <div class="avatar-container">
+      <div class="avatar-info">
+        <div class="avatar-inner">
+          <img
+            src="null.png"
+            alt="enemy avatar"
+            class="avatar-img"
+          />
         </div>
 
-        <div class="hand large-hand">
-          <div class="hand-label">卡牌</div>
+        <div class="stats">
+          <div class="hp">
+            HP:
+            <span
+              id="enemyhp"
+              data-var="enemyhp"
+            ></span>
+          </div>
 
-          <div class="slots">
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-1"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-2"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-3"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-4"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-5"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-6"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-7"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-8"
-            >
-              <img src="null.png" alt="card" />
-            </button>
+          <div class="mp">
+            MP:
+            <span
+              id="enemymp"
+              data-var="enemymp"
+            ></span>
           </div>
         </div>
       </div>
 
-      <!-- 结束回合按钮 -->
-      <button
-        class="end-turn"
-        type="button"
-      >
-        结束回合
-      </button>
+<div class="fight-piles">
+  <div
+    class="fight-pile"
+    aria-label="敌人卡组"
+  >
+    <span
+      id="fightenemydecknum"
+      class="fight-pile-number"
+    >0</span>
 
-      <!-- 玩家区域 -->
-      <div class="player bottom">
-        <div class="avatar-container">
-          <div class="avatar-inner">
-            <img
-              src="null.png"
-              alt="player avatar"
-              class="avatar-img"
-            />
-          </div>
+    <span class="fight-pile-label">卡组</span>
+  </div>
 
-          <div class="stats">
-            <div class="hp">
-              HP:
-              <span
-                id="playerhp"
-                data-var="playerhp"
-              ></span>
-            </div>
+  <div
+    class="fight-pile"
+    aria-label="敌人坟场"
+  >
+    <span
+      id="fightenemygravenum"
+      class="fight-pile-number"
+    >0</span>
 
-            <div class="mp">
-              MP:
-              <span
-                id="playermp"
-                data-var="playermp"
-              ></span>
-            </div>
-          </div>
-        </div>
+    <span class="fight-pile-label">坟场</span>
+  </div>
+</div>
+    </div>
 
-        <div class="hand large-hand bottom-hand">
-          <div class="hand-label">卡牌</div>
+    <div class="hand large-hand">
+      <div class="hand-label">卡牌</div>
 
-          <div class="slots">
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b1"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b2"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b3"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b4"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b5"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b6"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b7"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-
-            <button
-              class="card-slot"
-              type="button"
-              aria-label="card-slot-b8"
-            >
-              <img src="null.png" alt="card" />
-            </button>
-          </div>
-        </div>
+      <div class="slots">
+        <button class="card-slot" type="button" aria-label="card-slot-1">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-2">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-3">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-4">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-5">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-6">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-7">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-8">
+          <img src="null.png" alt="card" />
+        </button>
       </div>
     </div>
+  </div>
+
+  <!-- 结束回合按钮 -->
+  <button class="end-turn" type="button">
+    结束回合
+  </button>
+
+  <!-- 场上 -->
+  <div id="fightsite" aria-label="战斗场地"></div>
+
+  <!-- 玩家区域 -->
+  <div class="player bottom">
+    <div class="avatar-container">
+      <div class="avatar-info">
+        <div class="avatar-inner">
+          <img
+            src="null.png"
+            alt="player avatar"
+            class="avatar-img"
+          />
+        </div>
+
+        <div class="stats">
+          <div class="hp">
+            HP:
+            <span
+              id="playerhp"
+              data-var="playerhp"
+            ></span>
+          </div>
+
+          <div class="mp">
+            MP:
+            <span
+              id="playermp"
+              data-var="playermp"
+            ></span>
+          </div>
+        </div>
+      </div>
+
+<div class="fight-piles">
+  <div
+    class="fight-pile"
+    aria-label="玩家卡组"
+  >
+    <span
+      id="fightplayerdecknum"
+      class="fight-pile-number"
+    >0</span>
+
+    <span class="fight-pile-label">卡组</span>
+  </div>
+
+  <div
+    class="fight-pile"
+    aria-label="玩家坟场"
+  >
+    <span
+      id="fightplayergravenum"
+      class="fight-pile-number"
+    >0</span>
+
+    <span class="fight-pile-label">坟场</span>
+  </div>
+</div>
+    </div>
+
+    <div class="hand large-hand bottom-hand">
+      <div class="hand-label">卡牌</div>
+
+      <div class="slots">
+        <button class="card-slot" type="button" aria-label="card-slot-b1">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b2">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b3">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b4">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b5">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b6">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b7">
+          <img src="null.png" alt="card" />
+        </button>
+        <button class="card-slot" type="button" aria-label="card-slot-b8">
+          <img src="null.png" alt="card" />
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
     <!--
       冒险场景 UI。
