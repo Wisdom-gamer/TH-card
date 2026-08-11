@@ -292,7 +292,9 @@
     window.fightsitecardsow = fight.fightsitecardsow;
     window.fightplayergrave = fight.fightplayergrave;
     window.fightenemygrave = fight.fightenemygrave;
-
+    window.fightplayerequip = fight.fightplayerequip;
+    window.fightenemyequip = fight.fightenemyequip;
+    
     window.enemyhp = fight.enemy.HP;
     window.maxenemyhp = fight.enemy.MAXHP;
     window.enemymp = fight.enemy.MP;
@@ -304,6 +306,8 @@
     window.maxplayermp = fight.player.MAXMP;
 
     updateFightPileCounts(fight);
+    renderFightEquip(fight, 1);
+    renderFightEquip(fight, 0);
     updateBattleBars();
   }
 
@@ -414,7 +418,64 @@
 
     updateFightPileCounts(fight);
   }
+function renderFightEquip(
+    fight,
+    owner
+  ) {
+    const box =
+      document.getElementById(
+        owner === 1
+          ? "fightplayerequip"
+          : "fightenemyequip"
+      );
 
+    if (!box) {
+      return;
+    }
+
+    const cards =
+      owner === 1
+        ? fight.fightplayerequip
+        : fight.fightenemyequip;
+
+    const imageResolver =
+      owner === 1
+        ? getPlayerCardImage
+        : getEnemyCardImage;
+
+    box.innerHTML = "";
+
+    cards.forEach(
+      function (cardName) {
+        const slot =
+          document.createElement(
+            "div"
+          );
+
+        const img =
+          document.createElement(
+            "img"
+          );
+
+        slot.className = "bag-slot";
+
+        slot.setAttribute(
+          "aria-label",
+          cardName
+        );
+
+        img.src =
+          imageResolver(
+            cardName
+          );
+
+        img.alt = cardName;
+
+        slot.appendChild(img);
+        box.appendChild(slot);
+      }
+    );
+  }
   /*
     将卡牌移动到场上。
 
@@ -600,35 +661,15 @@
     return shuffle(pool);
   }
 
-  function createBattleState(
-    enemyId
-  ) {
-    const enemyRecord =
-      getAdventureCardById(
-        enemyId
-      );
-
-    const enemyCard =
-      enemyRecord
-        ? enemyRecord.card
-        : {};
-
+  function createBattleState(enemyId) {
+    const enemyRecord = getAdventureCardById(enemyId);
+    const enemyCard = enemyRecord ? enemyRecord.card : {};
     const adventureStats =  getAdventureStats();
 
-    const enemyHP = Math.max(0,toInt(enemyCard.HP, 0)
-      );
+    const enemyHP = Math.max(0,toInt(enemyCard.HP, 0));
+    const enemyMP = Math.max(0,toInt(enemyCard.MP, 0));
 
-    const enemyMP = Math.max(0,toInt(enemyCard.MP, 0)
-      );
-
-    const playerDeck =
-      window.playerDeck &&
-      typeof window.playerDeck.getCards ===
-        "function"
-        ? window.playerDeck
-            .getCards()
-            .slice()
-        : [];
+    const playerDeck = window.playerDeck && typeof window.playerDeck.getCards === "function" ? window.playerDeck .getCards() .slice() : [];
 
     return {
       turn: 1,
@@ -655,10 +696,7 @@
       },
 
       player: {
-        name: String(
-          window.selectedCharacter ||
-          "玩家"
-        ),
+        name: String(window.selectedCharacter || "玩家"),
 
         HP:adventureStats.HP,
         MAXHP:adventureStats.MAXHP,
@@ -666,41 +704,29 @@
         MAXMP:adventureStats.MAXMP
       },
 
-      /*
-        玩家牌组
-      */
+      /* 玩家牌组 */
       playercards:shuffle(playerDeck),
-
-      /*
-        敌人牌组
-      */
+      /* 敌人牌组 */
       enemycards:buildCardPool(enemyCard.cards),
-
-      /*
-        玩家手牌
-      */
+      /* 玩家手牌 */
       playerhand: [],
 
-      /*
-        战斗场地卡牌。
-        两个数组下标一一对应。
-      */
+      /*  战斗场地卡牌。两个数组下标一一对应。  */
       fightsitecards: [],
-
       fightsitecardsow: [],
 
-      /*
-        玩家坟场
-      */
+      /* 玩家坟场 */
       fightplayergrave: [],
-
-      /*
-        敌人坟场
-      */
+      /* 敌人坟场 */    
       fightenemygrave: [],
-
+      
+      /* 玩家装备 */
+      fightplayerequip: [],
+      /* 敌人装备 */
+      fightenemyequip: [],
       resolve: null,
-      ended: false
+      ended: false,
+      carduseLocked: false
     };
   }
 
@@ -743,69 +769,269 @@
       );
     }
 
-    window.fightplayerhand =
-      fight.playerhand;
+    window.fightplayerhand = fight.playerhand;
 
     updateFightPileCounts(fight);
   }
 
-  function renderPlayerHand(
-    fight
+  function renderPlayerHand(fight) {
+    renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,getPlayerCardImage,"玩家");
+  }
+    function getFightCardData(
+    cardName
   ) {
-    renderSlots(
-      ".game-area .player.bottom .slots .card-slot",
-      fight.playerhand,
-      getPlayerCardImage,
-      "玩家"
-    );
+    const database =
+      window.cardDatabase;
+
+    if (!isObject(database)) {
+      return null;
+    }
+
+    return database[cardName] || null;
   }
 
+  function prepareJudgementEffect(effect) {
+    if (effect === null || effect === undefined) {
+      return null;
+    }
+
+    if (!isObject(effect)) {
+      return effect;
+    }
+
+    const nextEffect = {...effect};
+
+    if (Object.prototype.hasOwnProperty.call(nextEffect,"伤害")) {
+      const damage = nextEffect["伤害"];
+      if (!isObject(damage) || damage.value === null || damage.value === undefined || !Number.isFinite(Number(damage.value)) || Number(damage.value) === 0) {
+        delete nextEffect["伤害"];
+      }
+    }
+
+    return Object.keys(nextEffect).length > 0 ? nextEffect : null;
+  }
+
+  function runJudgementStep(step,result) {
+    const effect = prepareJudgementEffect(result.effect);
+    if (effect === null) {
+      return step(result.side,result.type);
+    }
+
+    return step(result.side,result.type,effect);
+  }
+
+  function startsidecounter(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function startsideequip(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function startsidetrait(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function startsidetag(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function nsidetag(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function nsidetrait(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function nsideequip(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function nsidecounter(side,type,effect) {
+    return {side: side,type: type,effect: effect};
+  }
+
+  function setPlayerHandDisabled(fight,disabled) {
+    const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
+
+    slots.forEach(
+      function (button) {
+        if (disabled) {
+          button.disabled = true;
+        } else {
+          button.disabled =
+            button.classList.contains(
+              "is-empty"
+            );
+        }
+      }
+    );
+  }
+  function getFightOutcome(fight) {
+  if (fight.player.HP > 0 && fight.enemy.HP <= 0) {
+    return "win";
+  }
+
+  if (fight.player.HP <= 0) {
+    return "lost";
+  }
+
+  return null;
+}
+
+function finishFight(fight, outcome) {
+  if (!fight || fight.ended) {
+    return outcome;
+  }
+
+  fight.ended = true;
+
+  const endTurnButton = document.querySelector(
+    ".game-area .end-turn"
+  );
+
+  if (endTurnButton) {
+    endTurnButton.disabled = true;
+    endTurnButton.onclick = null;
+  }
+
+  const resolve = fight.resolve;
+  fight.resolve = null;
+
+  if (typeof resolve === "function") {
+    resolve(outcome);
+  }
+
+  return outcome;
+}
+  async function cardeffect(side,type,effect,fight) {
+    const damage = isObject(effect) ? effect["伤害"] : null;
+
+    const value = isObject(damage) ? Number(damage.value) : 0;
+
+    if ( Number.isFinite(value) && value !== 0) {
+      if (side === 1) {
+        fight.enemy.HP = fight.enemy.HP - value;
+      } else {
+        fight.player.HP = fight.player.HP - value;
+      }
+    }
+    exposeBattleGlobals(fight);
+
+    await new Promise(
+      function (resolve) {
+        setTimeout(resolve,1000);
+      }
+    );
+
+    fight.carduseLocked = false;
+
+    setPlayerHandDisabled(fight,false);
+
+    bindPlayerHandActions(fight);
+
+    return {side: side,type: type,effect: effect};
+  }
+
+  async function carduse(side,type,effect,cardName,fight) {
+    fight = fight || window.fight;
+
+    if (!fight || fight.ended) {
+      return null;
+    }
+
+    fight.carduseLocked = true;
+
+    setPlayerHandDisabled(fight,true);
+
+    let result = {
+      side:
+        Number(side) === 1 ? 1 : 0,type: type,effect: effect
+    };
+
+    const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter
+    ];
+
+    for (const step of judgementSteps) {
+      result = runJudgementStep(step,result);
+
+      if (!result) {
+        break;
+      }
+
+      result.effect = prepareJudgementEffect(result.effect);
+
+      if (result.effect === null) {
+        break;
+      }
+    }
+
+    if (result && cardName) {
+      if (result.type === "装备卡") {
+        const equip = result.side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+
+        equip.push(cardName);
+
+        renderFightEquip(fight,result.side);
+      } else {
+        movetosite(fight,cardName,result.side);
+      }
+    }
+
+    exposeBattleGlobals(fight);
+
+    if (!result) {
+      return null;
+    }
+
+    const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight);
+    const outcome = getFightOutcome(fight);
+    if (outcome) {
+      return finishFight(fight, outcome);
+    }
+
+    return cardeffectResult;
+  }
+  
   /*
     fightmain 中负责绑定
     玩家手牌点击行为。
 
     鼠标点击 = 使用卡牌。
   */
-  function bindPlayerHandActions(
-    fight
-  ) {
-    const slots =
-      Array.from(
-        document.querySelectorAll(
-          ".game-area .player.bottom .slots .card-slot"
-        )
-      );
+  function bindPlayerHandActions(fight) {
+    const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
 
     slots.forEach(
       function (button) {
-        button.onclick =
-          function () {
-            if (
-              !window.fight ||
-              window.fight !== fight ||
-              fight.ended
-            ) {
+        if (fight.carduseLocked) {
+          button.disabled = true;
+          button.onclick = null;
+          return;
+        }
+
+        button.onclick = async function () {
+            if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked) {
               return;
             }
-
-            const index =Number(button.dataset.index);
-
-            const cardName = fight.playerhand[index];
+            const index = Number(button.dataset.index);
+            const cardName =fight.playerhand[
+                index
+              ];
 
             if (!cardName) {
               return;
             }
 
+            const card = getFightCardData(cardName);
+            const type = card ? card["类型"] : null;
+            const effect = card ? card["效果"] : null;
+
             /*
               从玩家手牌删除。
             */
             fight.playerhand.splice(index,1);
-
-            /*
-              移动到场上。
-              玩家所有者 = 1。
-            */
-            movetosite(fight,cardName,1);
 
             /*
               重新显示玩家手牌。
@@ -818,6 +1044,12 @@
             bindPlayerHandActions(fight);
 
             exposeBattleGlobals(fight);
+
+            /*
+              使用卡牌：
+              1 = 玩家
+            */
+            await carduse(1,type,effect,cardName,fight);
           };
       }
     );
@@ -924,7 +1156,7 @@
             fightmain 只有在
             战斗结束时才返回 win/lost。
           */
-          if (
+              if (
             outcome === "win" ||
             outcome === "lost"
           ) {
@@ -1015,4 +1247,6 @@ window.fightAPI = fightAPI;
 window.fightmain = fightmain;
 window.fightenemyaction = fightenemyaction;
 window.movetosite = movetosite;
+window.carduse = carduse;
+window.cardeffect = cardeffect;
 })();
