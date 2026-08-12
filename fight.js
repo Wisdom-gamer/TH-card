@@ -811,45 +811,112 @@ function renderFightEquip(
     return Object.keys(nextEffect).length > 0 ? nextEffect : null;
   }
 
-  function runJudgementStep(step,result) {
+    function runJudgementStep(step,result,fight) {
     const effect = prepareJudgementEffect(result.effect);
     if (effect === null) {
-      return step(result.side,result.type);
+      return step(result.side,result.type,effect,result.tag,fight);
     }
 
-    return step(result.side,result.type,effect);
+    return step(result.side,result.type,effect,result.tag,fight);
   }
 
-  function startsidecounter(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function equipRuleMatch(rule,tag) {
+    const rules = String(rule ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
+    const tags = String(tag ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
+    return rules.some(function (value) { return tags.includes(value); });
   }
 
-  function startsideequip(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function startsidecounter(side,type,effect,tag) {
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
-  function startsidetrait(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function startsideequip(side,type,effect,tag,fight) {
+    const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+
+    for (
+      let index = 0;
+      index < equips.length;
+      index += 1
+    ) {
+      const card = getFightCardData(equips[index]);
+      const cardEffect = card ? card["效果"] : null;
+
+      if (
+        !isObject(cardEffect) ||
+        isObject(cardEffect["防御"]) ||
+        !equipRuleMatch(cardEffect["rule"],tag)
+      ) {
+        continue;
+      }
+
+      effect = cardEffect;
+      break;
+    }
+
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
-  function startsidetag(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function startsidetrait(side,type,effect,tag) {
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
-  function nsidetag(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function startsidetag(side,type,effect,tag) {
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
-  function nsidetrait(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function nsidetag(side,type,effect,tag) {
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
-  function nsideequip(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function nsidetrait(side,type,effect,tag) {
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
-  function nsidecounter(side,type,effect) {
-    return {side: side,type: type,effect: effect};
+  function nsideequip(side,type,effect,tag,fight) {
+    const equips = side === 1 ? fight.fightenemyequip : fight.fightplayerequip;
+
+    for (
+      let index = 0;
+      index < equips.length;
+      index += 1
+    ) {
+      const card = getFightCardData(equips[index]);
+      const cardEffect = card ? card["效果"] : null;
+
+      if (
+        !isObject(cardEffect) ||
+        !equipRuleMatch(cardEffect["rule"],tag)
+      ) {
+        continue;
+      }
+
+      const defense = cardEffect["防御"];
+      const damage = isObject(effect) ? effect["伤害"] : null;
+
+      if (
+        !isObject(defense) ||
+        !isObject(damage)
+      ) {
+        continue;
+      }
+
+      const defenseValue = Number(defense.value);
+      const damageValue = Number(damage.value);
+
+      if (
+        Number.isFinite(defenseValue) &&
+        Number.isFinite(damageValue)
+      ) {
+        effect = {...effect};
+        effect["伤害"] = {...damage,value:Math.max(0,damageValue-defenseValue)};
+      }
+    }
+
+    return {side:side,type:type,effect:effect,tag:tag};
+  }
+
+  function nsidecounter(side,type,effect,tag) {
+    return {side:side,type:type,effect:effect,tag:tag};
   }
 
   function setPlayerHandDisabled(fight,disabled) {
@@ -934,7 +1001,7 @@ function finishFight(fight, outcome) {
     return {side: side,type: type,effect: effect};
   }
 
-  async function carduse(side,type,effect,cardName,fight) {
+  async function carduse(side,type,effect,tag,cardName,fight) {
     fight = fight || window.fight;
 
     if (!fight || fight.ended) {
@@ -945,16 +1012,13 @@ function finishFight(fight, outcome) {
 
     setPlayerHandDisabled(fight,true);
 
-    let result = {
-      side:
-        Number(side) === 1 ? 1 : 0,type: type,effect: effect
-    };
+    let result = {side:Number(side) === 1 ? 1 : 0,type: type,effect: effect,tag: tag};
 
     const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter
     ];
 
     for (const step of judgementSteps) {
-      result = runJudgementStep(step,result);
+      result = runJudgementStep(step,result,fight);
 
       if (!result) {
         break;
@@ -1027,45 +1091,54 @@ function finishFight(fight, outcome) {
             const card = getFightCardData(cardName);
             const type = card ? card["类型"] : null;
             const effect = card ? card["效果"] : null;
-
-            /*
-              从玩家手牌删除。
-            */
+            const tagValue = card ? String(card["tag"] ?? "").trim() : "";
+            const tag = tagValue === "" ? "handcard" : tagValue;
+            /* 从玩家手牌删除 */
             fight.playerhand.splice(index,1);
 
-            /*
-              重新显示玩家手牌。
-            */
+            /* 重新显示玩家手牌 */
             renderPlayerHand(fight);
 
-            /*
-              重新绑定点击事件。
-            */
+            /* 重新绑定点击事件 */
             bindPlayerHandActions(fight);
 
             exposeBattleGlobals(fight);
 
-            /*
-              使用卡牌：
-              1 = 玩家
-            */
-            await carduse(1,type,effect,cardName,fight);
+            /* 使用卡牌：1 = 玩家 */
+            await carduse(1,type,effect,tag,cardName,fight);
           };
       }
     );
   }
 
-  function fightenemyaction() {
+  async function fightenemyaction() {
+    const fight = window.fight;
+    const turnStartResult = await carduse(0,"event","event","turnstart",null,fight);
+
+    if (turnStartResult === "win" || turnStartResult === "lost") {
+      return turnStartResult;
+    }
+
+    const turnEndResult = await carduse(0,"event","event","turnend",null,fight);
+
+    if (turnEndResult === "win" || turnEndResult === "lost") {
+      return turnEndResult;
+    }
+
     return "end";
   }
 
-  function fightmain() {
+  async function fightmain() {
     const fight = window.fight;
 
     if (!fight || fight.ended) {
       return;
     }
+    const turnStartResult = await carduse(1,"event","event","turnstart",null,fight);
 
+    if (turnStartResult === "win" || turnStartResult === "lost") {
+      return turnStartResult;
+    }
     /*
       发卡
       第1回合：3张
@@ -1097,15 +1170,20 @@ function finishFight(fight, outcome) {
     if (endTurnButton) {
       endTurnButton.disabled = false;
 
-      endTurnButton.onclick = function () {
+      endTurnButton.onclick = async function () {
           if (!window.fight || window.fight !== fight || fight.ended) {
             return;
           }
+          endTurnButton.disabled = true;
+          const turnEndResult = await carduse(1,"event","event","turnend",null,fight);
 
+          if (turnEndResult === "win" || turnEndResult === "lost") {
+            return;
+          }
           /*
             敌人行动
           */
-          const result = fightenemyaction();
+          const result = await fightenemyaction();
 
           /*
             只有返回 end
@@ -1136,21 +1214,14 @@ function finishFight(fight, outcome) {
           /*
             执行下一回合。
           */
-          const outcome = fightmain();
+          const outcome = await fightmain();
 
           /*
             fightmain 只有在
             战斗结束时才返回 win/lost。
           */
-              if (outcome === "win" || outcome === "lost") {
-            fight.ended = true;
-            endTurnButton.disabled = true;
-            endTurnButton.onclick = null;
-            const resolve = fight.resolve;
-            fight.resolve = null;
-            if (typeof resolve === "function") {
-              resolve(outcome);
-            }
+          if (outcome === "win" || outcome === "lost") {
+            finishFight(fight,outcome);
           }
         };
     }
@@ -1193,22 +1264,11 @@ function finishFight(fight, outcome) {
       function (resolve) {
         fight.resolve = resolve;
 
-        const outcome = fightmain();
-
-        /*
-          只有 fightmain
-          返回 win/lost
-          才完成 Promise。
-        */
-        if (outcome === "win" || outcome === "lost") {
-          fight.ended = true;
-
-          fight.resolve = null;
-
-          resolve(
-            outcome
-          );
-        }
+        fightmain().then(function (outcome) {
+          if (outcome === "win" || outcome === "lost") {
+            finishFight(fight,outcome);
+          }
+        });
       }
     );
   }
