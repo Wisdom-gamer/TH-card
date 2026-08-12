@@ -1142,18 +1142,13 @@ function finishFight(fight, outcome) {
             fightmain 只有在
             战斗结束时才返回 win/lost。
           */
-              if (
-            outcome === "win" ||
-            outcome === "lost"
-          ) {
+              if (outcome === "win" || outcome === "lost") {
             fight.ended = true;
             endTurnButton.disabled = true;
             endTurnButton.onclick = null;
             const resolve = fight.resolve;
             fight.resolve = null;
-            if (
-              typeof resolve === "function"
-            ) {
+            if (typeof resolve === "function") {
               resolve(outcome);
             }
           }
@@ -1167,10 +1162,7 @@ function finishFight(fight, outcome) {
       且敌人 HP <= 0：
       胜利
     */
-    if (
-      fight.player.HP > 0 &&
-      fight.enemy.HP <= 0
-    ) {
+    if (fight.player.HP > 0 && fight.enemy.HP <= 0) {
       return "win";
     }
 
@@ -1178,9 +1170,7 @@ function finishFight(fight, outcome) {
       玩家 HP <= 0：
       失败
     */
-    if (
-      fight.player.HP <= 0
-    ) {
+    if (fight.player.HP <= 0) {
       return "lost";
     }
 
@@ -1210,10 +1200,7 @@ function finishFight(fight, outcome) {
           返回 win/lost
           才完成 Promise。
         */
-        if (
-          outcome === "win" ||
-          outcome === "lost"
-        ) {
+        if (outcome === "win" || outcome === "lost") {
           fight.ended = true;
 
           fight.resolve = null;
