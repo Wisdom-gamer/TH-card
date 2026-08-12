@@ -1078,41 +1078,27 @@ function finishFight(fight, outcome) {
     */
     renderPlayerHand(fight);
 
-    /*
-      绑定玩家手牌点击。
-      鼠标点击即视为使用。
-    */
+    /* 绑定玩家手牌点击。鼠标点击即视为使用。 */
     bindPlayerHandActions(fight);
 
-    /*
-      显示敌人前3张牌
-    */
+    /* 显示敌人前3张牌  */
     renderEnemyHand(fight);
 
     /*
-      显示场上卡牌
-    */
+      显示场上卡牌 */
     renderFightSite(fight);
 
-    /*
-      更新双方 HP / MP
-      以及牌库 / 坟场数量。
-    */
+    /* 更新双方 HP / MP 以及牌库 / 坟场数量。*/
     exposeBattleGlobals(fight);
 
-    /*
-      玩家结束回合
-    */
-    const endTurnButton = document.querySelector(
-        ".game-area .end-turn"
-      );
+    /* 玩家结束回合 */
+    const endTurnButton = document.querySelector(".game-area .end-turn");
 
     if (endTurnButton) {
       endTurnButton.disabled = false;
 
       endTurnButton.onclick = function () {
-          if (!window.fight || window.fight !== fight || fight.ended
-          ) {
+          if (!window.fight || window.fight !== fight || fight.ended) {
             return;
           }
 
