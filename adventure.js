@@ -244,7 +244,7 @@
 
   function normalizeRemaining(value) {
     if (value === null || value === undefined) return null;
-    if (value === "void") return 0;
+    if (value === "void") return null;
     const n = Number(value);
     return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
   }
@@ -272,15 +272,9 @@
     const name = String(entry.name || entry.card || "").trim();
     if (!name) return null;
 
-    const remaining =
-      entry.remaining === undefined
-        ? getDefaultRemaining(name)
-        : normalizeRemaining(entry.remaining);
+    const remaining = entry.remaining === undefined ? getDefaultRemaining(name) : normalizeRemaining(entry.remaining);
 
-    return {
-      name,
-      remaining: remaining === null ? getDefaultRemaining(name) : remaining
-    };
+    return {name,remaining: remaining === null ? getDefaultRemaining(name) : remaining};
   }
 
   function buildCardsFromGroup(groupData) {

@@ -6,10 +6,10 @@
         "effect":{
           "HP":10
           },
-        "actionnum":1,
+        "actionnum":1
       },
       "离开":{
-        "actionnum":"void"
+        "actionnum":2
       }
     },
     "display":"喝水可以获得10HP",
