@@ -901,7 +901,7 @@ function renderFightEquip(
       }
 
       // 如果装备不是被动伤害（例如某些会替换效果的装备），保留原逻辑：覆盖 effect 并停止（与原实现保持兼容）
-      if (isObject(cardEffect) && !isObject(cardEffect["防御"])) {
+      if (isObject(cardEffect) && !isObject(cardEffect["伤害修改"])) {
         effect = cardEffect;
         // match original behavior: stop at first overriding equip
         break;
@@ -957,7 +957,7 @@ async function nsideequip(side,type,effect,tag,fight,register,stepIndex) {
         continue;
       }
 
-      const defense = cardEffect["防御"];
+      const defense = cardEffect["伤害修改"];
       // Recompute damage based on current effect (so reductions are cumulative)
       const damage = isObject(effect) ? effect["伤害"] : null;
 
