@@ -719,7 +719,7 @@ function renderFightEquip(
       fightplayergrave: [],
       /* 敌人坟场 */    
       fightenemygrave: [],
-      
+
       /* 玩家装备 */
       fightplayerequip: [],
       /* 敌人装备 */
@@ -811,13 +811,23 @@ function renderFightEquip(
     return Object.keys(nextEffect).length > 0 ? nextEffect : null;
   }
 
-    function runJudgementStep(step,result,fight) {
+    async function runJudgementStep(step,result,fight,register,stepIndex) {
     const effect = prepareJudgementEffect(result.effect);
     if (effect === null) {
-      return step(result.side,result.type,effect,result.tag,fight);
+      // ensure returned register fixed to -1
+      const ret = {side:result.side,type:result.type,effect:effect,tag:result.tag,register:-1};
+      return ret;
     }
 
-    return step(result.side,result.type,effect,result.tag,fight);
+    // pass current register to step; step may be async and may trigger nested calls
+    const stepResult = await step(result.side,result.type,effect,result.tag,fight,typeof register === "number" ? register : -1,typeof stepIndex === "number"? stepIndex:0);
+
+    // ensure register fixed to -1 on return per requirement
+    if (stepResult && typeof stepResult === "object") {
+      stepResult.register = -1;
+    }
+
+    return stepResult;
   }
 
   function equipRuleMatch(rule,tag) {
@@ -826,71 +836,129 @@ function renderFightEquip(
     return rules.some(function (value) { return tags.includes(value); });
   }
 
-  function startsidecounter(side,type,effect,tag) {
-    return {side:side,type:type,effect:effect,tag:tag};
+  function sideruleMatches(siderule,incomingSide,equipOwnerSide) {
+    const rule = String(siderule ?? "").trim();
+    if (!rule || rule === "") return true;
+    if (rule === "self") {
+      return Number(incomingSide) === Number(equipOwnerSide);
+    }
+    if (rule === "other") {
+      return Number(incomingSide) !== Number(equipOwnerSide);
+    }
+    // default: no restriction
+    return true;
   }
 
-  function startsideequip(side,type,effect,tag,fight) {
-    const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+  async function startsidecounter(side,type,effect,tag,fight,register,stepIndex) {
+    // register unused here; always return with register -1
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
+  }
 
+  async function startsideequip(side,type,effect,tag,fight,register,stepIndex) {
+    // side: incoming effect side
+    // iterate equips that are on the same side as the incoming side (owner side)
+    const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+    const ownerSide = side === 1 ? 1 : 0;
+
+    // allow multiple passive effects to trigger; do not override incoming effect
     for (
       let index = 0;
       index < equips.length;
       index += 1
     ) {
-      const card = getFightCardData(equips[index]);
+      const cardName = equips[index];
+      const card = getFightCardData(cardName);
       const cardEffect = card ? card["效果"] : null;
+      const cardTagVal = card ? String(card["tag"] ?? "").trim() : "";
+      const cardSiderule = card ? String(card["siderule"] ?? "").trim() : "";
 
       if (
         !isObject(cardEffect) ||
-        isObject(cardEffect["防御"]) ||
         !equipRuleMatch(cardEffect["rule"],tag)
       ) {
         continue;
       }
 
-      effect = cardEffect;
-      break;
+      // check siderule against incoming side and equip owner side
+      if (!sideruleMatches(cardSiderule, side, ownerSide)) {
+        continue;
+      }
+
+      // 被动伤害触发：启动新的调用（嵌套），从当前步骤位置开始，register 传当前装备在数组中的位置
+      if (Object.prototype.hasOwnProperty.call(cardEffect,"被动伤害")) {
+        const passive = cardEffect["被动伤害"];
+        if (isObject(passive) && Number.isFinite(Number(passive.value)) && Number(passive.value) !== 0) {
+          // build effect object for nested call: treat like a damage effect
+          const nestedEffect = { "伤害": { value: Number(passive.value), type: passive.type ?? passive.type } };
+          const nestedTag = cardTagVal === "" ? "equip" : cardTagVal;
+          // register passed is current equip index
+          // startStepIndex: use stepIndex to begin nested judgement from this same function position
+          await carduse(ownerSide, "装备卡", nestedEffect, nestedTag, null, fight, index, stepIndex);
+          // after nested call, continue to check next equips
+        }
+        // continue without replacing original effect
+        continue;
+      }
+
+      // 如果装备不是被动伤害（例如某些会替换效果的装备），保留原逻辑：覆盖 effect 并停止（与原实现保持兼容）
+      if (isObject(cardEffect) && !isObject(cardEffect["防御"])) {
+        effect = cardEffect;
+        // match original behavior: stop at first overriding equip
+        break;
+      }
     }
 
-    return {side:side,type:type,effect:effect,tag:tag};
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
-  function startsidetrait(side,type,effect,tag) {
-    return {side:side,type:type,effect:effect,tag:tag};
+  async function startsidetrait(side,type,effect,tag,fight,register,stepIndex) {
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
-  function startsidetag(side,type,effect,tag) {
-    return {side:side,type:type,effect:effect,tag:tag};
+  async function startsidetag(side,type,effect,tag,fight,register,stepIndex) {
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
-  function nsidetag(side,type,effect,tag) {
-    return {side:side,type:type,effect:effect,tag:tag};
+  async function nsidetag(side,type,effect,tag,fight,register,stepIndex) {
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
-  function nsidetrait(side,type,effect,tag) {
-    return {side:side,type:type,effect:effect,tag:tag};
+  async function nsidetrait(side,type,effect,tag,fight,register,stepIndex) {
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
-  function nsideequip(side,type,effect,tag,fight) {
+async function nsideequip(side,type,effect,tag,fight,register,stepIndex) {
+    // nsideequip: check equips on the opposite side (owner side is opposite)
     const equips = side === 1 ? fight.fightenemyequip : fight.fightplayerequip;
+    const ownerSide = side === 1 ? 0 : 1;
+
+    // If register provided (>=0), start from that index; otherwise start at 0
+    const startIndex = (typeof register === "number" && register >= 0) ? register : 0;
 
     for (
-      let index = 0;
+      let index = startIndex;
       index < equips.length;
       index += 1
     ) {
       const card = getFightCardData(equips[index]);
       const cardEffect = card ? card["效果"] : null;
+      const cardTagVal = card ? String(card["tag"] ?? "").trim() : "";
+      const cardSiderule = card ? String(card["siderule"] ?? "").trim() : "";
 
       if (
         !isObject(cardEffect) ||
         !equipRuleMatch(cardEffect["rule"],tag)
       ) {
+        continue;
+      }
+
+      // siderule check: the equip's siderule determines whether it triggers for this incoming side
+      if (!sideruleMatches(cardSiderule, side, ownerSide)) {
         continue;
       }
 
       const defense = cardEffect["防御"];
+      // Recompute damage based on current effect (so reductions are cumulative)
       const damage = isObject(effect) ? effect["伤害"] : null;
 
       if (
@@ -907,16 +975,23 @@ function renderFightEquip(
         Number.isFinite(defenseValue) &&
         Number.isFinite(damageValue)
       ) {
+        // apply reduction cumulatively
         effect = {...effect};
         effect["伤害"] = {...damage,value:Math.max(0,damageValue-defenseValue)};
+        // if damage reduced to 0, we can stop early as no further effects matter
+        const newDamage = effect && isObject(effect["伤害"]) ? Number(effect["伤害"].value) : 0;
+        if (newDamage <= 0) {
+          break;
+        }
+        // otherwise continue to next equip (so reductions accumulate)
       }
     }
 
-    return {side:side,type:type,effect:effect,tag:tag};
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
-  function nsidecounter(side,type,effect,tag) {
-    return {side:side,type:type,effect:effect,tag:tag};
+  async function nsidecounter(side,type,effect,tag,fight,register,stepIndex) {
+    return {side:side,type:type,effect:effect,tag:tag,register:-1};
   }
 
   function setPlayerHandDisabled(fight,disabled) {
@@ -1001,7 +1076,7 @@ function finishFight(fight, outcome) {
     return {side: side,type: type,effect: effect};
   }
 
-  async function carduse(side,type,effect,tag,cardName,fight) {
+  async function carduse(side,type,effect,tag,cardName,fight,register = -1, startStep = 0) {
     fight = fight || window.fight;
 
     if (!fight || fight.ended) {
@@ -1017,8 +1092,13 @@ function finishFight(fight, outcome) {
     const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter
     ];
 
-    for (const step of judgementSteps) {
-      result = runJudgementStep(step,result,fight);
+    // currentRegister flows along steps; when passed, increment between steps (per要求 register在传入后固定+1)
+    let currentRegister = typeof register === "number" ? register : -1;
+
+    for (let i = startStep; i < judgementSteps.length; i += 1) {
+      const step = judgementSteps[i];
+
+      result = await runJudgementStep(step,result,fight,currentRegister,i);
 
       if (!result) {
         break;
@@ -1029,6 +1109,14 @@ function finishFight(fight, outcome) {
       if (result.effect === null) {
         break;
       }
+
+      // if register was passed (>=0), increase it for the next step per你的要求
+      if (currentRegister >= 0) {
+        currentRegister += 1;
+      }
+
+      // ensure we don't propagate register outwards (functions should return register:-1)
+      result.register = -1;
     }
 
     if (result && cardName) {
@@ -1046,14 +1134,17 @@ function finishFight(fight, outcome) {
     exposeBattleGlobals(fight);
 
     if (!result) {
+      // unlock if nothing to apply
+      fight.carduseLocked = false;
+      setPlayerHandDisabled(fight,false);
+      bindPlayerHandActions(fight);
       return null;
     }
 
     const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight);
-    const outcome = getFightOutcome(fight);
-    if (outcome) {
-      return finishFight(fight, outcome);
-    }
+
+    // NOTE: 按要求，胜负判定不在这里进行（只在手牌动作完成、player/enemy turnstart 完成时进行）。
+    // 返回 cardeffectResult 给调用者，由调用者负责在需要的时刻检查战局并结束战斗。
 
     return cardeffectResult;
   }
@@ -1105,7 +1196,13 @@ function finishFight(fight, outcome) {
             exposeBattleGlobals(fight);
 
             /* 使用卡牌：1 = 玩家 */
-            await carduse(1,type,effect,tag,cardName,fight);
+            const res = await carduse(1,type,effect,tag,cardName,fight);
+
+            // 在手牌动作完成后才做胜负判定（按你的要求）
+            const outcome = getFightOutcome(fight);
+            if (outcome === "win" || outcome === "lost") {
+              finishFight(fight,outcome);
+            }
           };
       }
     );
@@ -1135,6 +1232,12 @@ function finishFight(fight, outcome) {
       return;
     }
     const turnStartResult = await carduse(1,"event","event","turnstart",null,fight);
+
+    // 在玩家回合开始的 turnstart 事件完成后进行胜负判定（按你的要求）
+    const outcomeAfterTurnstart = getFightOutcome(fight);
+    if (outcomeAfterTurnstart === "win" || outcomeAfterTurnstart === "lost") {
+      return finishFight(fight,outcomeAfterTurnstart);
+    }
 
     if (turnStartResult === "win" || turnStartResult === "lost") {
       return turnStartResult;
