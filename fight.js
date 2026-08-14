@@ -1049,11 +1049,9 @@ function finishFight(fight, outcome) {
 
   return outcome;
 }
-  async function cardeffect(side,type,effect,fight) {
+async function cardeffect(side,type,effect,fight) {
     const damage = isObject(effect) ? effect["伤害"] : null;
-
     const value = isObject(damage) ? Number(damage.value) : 0;
-
     if ( Number.isFinite(value) && value !== 0) {
       if (side === 1) {
         fight.enemy.HP = fight.enemy.HP - value;
@@ -1061,22 +1059,28 @@ function finishFight(fight, outcome) {
         fight.player.HP = fight.player.HP - value;
       }
     }
+    const drawCard = isObject(effect) ? effect["抽卡"] : null;
+    const drawValue = isObject(drawCard) ? Number(drawCard.value) : 0;
+    if (Number.isFinite(drawValue) && drawValue > 0) {
+      if (side === 1) {
+        drawPlayerCards(drawValue);
+        renderPlayerHand(fight);
+      } else {
+        drawEnemyCards(drawValue);
+        renderEnemyHand(fight);
+      }
+    }
     exposeBattleGlobals(fight);
-
     await new Promise(
       function (resolve) {
         setTimeout(resolve,1000);
       }
     );
-
     fight.carduseLocked = false;
-
     setPlayerHandDisabled(fight,false);
-
     bindPlayerHandActions(fight);
-
     return {side: side,type: type,effect: effect};
-  }
+}
 
   async function carduse(side,type,effect,tag,cardName,fight,register = -1, startStep = 0) {
     fight = fight || window.fight;
