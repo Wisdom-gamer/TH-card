@@ -12,8 +12,8 @@
 
     return Number.isFinite(number) ? Math.floor(number) : fallback;
   }
-  
-    function parseFightCard(cardEntry) {
+
+  function parseFightCard(cardEntry) {
     const text = String(cardEntry ?? "");
     const separatorIndex = text.indexOf(";");
     if (separatorIndex === -1) {
@@ -41,7 +41,7 @@
   function fightCardHasSideType(cardEntry,sidetype) {
     return parseFightCard(cardEntry).sidetype.includes(String(sidetype ?? ""));
   }
-  
+
   function shuffle(list) {
     for (
       let index = list.length - 1;
@@ -322,7 +322,11 @@
     window.fightenemygrave = fight.fightenemygrave;
     window.fightplayerequip = fight.fightplayerequip;
     window.fightenemyequip = fight.fightenemyequip;
-    
+
+    // 新增：在全局也暴露标签数组（用于调试/外部访问）
+    window.fightplayerfighttags = fight.playerfighttags;
+    window.fightenemyfighttags = fight.enemyfighttags;
+
     window.enemyhp = fight.enemy.HP;
     window.maxenemyhp = fight.enemy.MAXHP;
     window.enemymp = fight.enemy.MP;
@@ -336,6 +340,8 @@
     updateFightPileCounts(fight);
     renderFightEquip(fight, 1);
     renderFightEquip(fight, 0);
+    // render tags UI
+    renderFightTags(fight);
     updateBattleBars();
   }
 
@@ -492,6 +498,25 @@ function renderFightEquip(
       }
     );
   }
+
+  // ---------- 新增：tags 数据缓存与读取 ----------
+  let tagsDatabase = null;
+  async function loadTagsDatabase() {
+    if (tagsDatabase !== null) return tagsDatabase;
+    try {
+      const resp = await fetch("tags.json", { cache: "no-store" });
+      if (!resp.ok) {
+        tagsDatabase = {};
+        return tagsDatabase;
+      }
+      tagsDatabase = await resp.json();
+    } catch (e) {
+      tagsDatabase = {};
+    }
+    return tagsDatabase;
+  }
+  // ---------- end tags loader ----------
+
   /*
     将卡牌移动到场上。
 
@@ -725,6 +750,9 @@ function renderFightEquip(
       fightplayerequip: [],
       /* 敌人装备 */
       fightenemyequip: [],
+      /* 新增：玩家与敌人的标签数组，二维格式 [ [name,count], ... ] */
+      playerfighttags: [],
+      enemyfighttags: [],
       resolve: null,
       ended: false,
       carduseLocked: false
@@ -835,6 +863,79 @@ function renderFightEquip(
     return true;
   }
 
+  // ---------- 新增：标签数组操作 & 渲染工具 ----------
+  function getTagListForSide(fight, side) {
+    return side === 1 ? fight.playerfighttags : fight.enemyfighttags;
+  }
+
+  function findTagIndex(list, name) {
+    for (let i = 0; i < list.length; i += 1) {
+      if (String(list[i][0]) === String(name)) return i;
+    }
+    return -1;
+  }
+
+  function modifyTagCount(fight, side, name, delta) {
+    if (!fight) return;
+    const list = getTagListForSide(fight, side);
+    const idx = findTagIndex(list, name);
+    if (idx === -1) {
+      if (delta > 0) {
+        list.push([String(name), Math.floor(delta)]);
+      }
+    } else {
+      list[idx][1] = Number(list[idx][1]) + Number(delta);
+      if (!Number.isFinite(Number(list[idx][1])) || list[idx][1] <= 0) {
+        list.splice(idx, 1);
+      } else {
+        // ensure integer
+        list[idx][1] = Math.floor(list[idx][1]);
+      }
+    }
+    // 更新 UI
+    renderFightTags(fight);
+  }
+
+  function getTagCount(fight, side, name) {
+    const list = getTagListForSide(fight, side);
+    const idx = findTagIndex(list, name);
+    return idx === -1 ? 0 : Number(list[idx][1]);
+  }
+
+  // 渲染标签到 DOM：player bottom 显示 playerfighttags，player top 显示 enemyfighttags
+  function renderFightTags(fight) {
+    if (!fight) return;
+    const playBox = document.getElementById("playertags");
+    const enemyBox = document.getElementById("enemytags");
+    if (playBox) {
+      playBox.innerHTML = "";
+      (fight.playerfighttags || []).forEach(function (entry) {
+        const name = String(entry[0] ?? "");
+        const count = Number(entry[1] ?? 0);
+        for (let i = 0; i < Math.max(0, count); i += 1) {
+          const img = document.createElement("img");
+          img.src = `images/tags/${name}.png`;
+          img.alt = name;
+          playBox.appendChild(img);
+        }
+      });
+    }
+    if (enemyBox) {
+      enemyBox.innerHTML = "";
+      (fight.enemyfighttags || []).forEach(function (entry) {
+        const name = String(entry[0] ?? "");
+        const count = Number(entry[1] ?? 0);
+        for (let i = 0; i < Math.max(0, count); i += 1) {
+          const img = document.createElement("img");
+          img.src = `images/tags/${name}.png`;
+          img.alt = name;
+          enemyBox.appendChild(img);
+        }
+      });
+    }
+  }
+  // ---------- end 标签工具 ----------
+
   async function startsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -917,13 +1018,135 @@ function renderFightEquip(
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
+  // ---------- 修改：startsidetag 实现（根据标签触发规则修改 effect） ----------
   async function startsidetag(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    // side: incoming effect side; here we check tags that are on the same side as incoming side (owner side)
+    const ownerSide = side === 1 ? 1 : 0;
+    const tagList = getTagListForSide(fight, ownerSide);
+    if (!tagList || tagList.length === 0) {
+      return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
+    }
+
+    const tagDefs = await loadTagsDatabase();
+
+    // iterate tag groups
+    for (let i = 0; i < tagList.length; i += 1) {
+      const entry = tagList[i];
+      const tagName = String(entry[0] ?? "");
+      const tagCount = Number(entry[1] ?? 0);
+      if (!tagName || tagCount <= 0) continue;
+
+      const def = tagDefs[tagName];
+      if (!isObject(def)) continue;
+      // rule / siderule check
+      if (!equipRuleMatch(def.rule, tag)) continue;
+      if (!sideruleMatches(def.siderule, side, ownerSide)) continue;
+
+      // apply damage modification if defined
+      const defEffect = def["效果"] || {};
+      if (isObject(defEffect) && isObject(defEffect["伤害修改"]) && isObject(effect) && isObject(effect["伤害"])) {
+        const dmgMod = defEffect["伤害修改"];
+        // currently support mode "onefull"
+        const mode = String(dmgMod.mode ?? "").trim();
+        let finalValue = 0;
+        if (mode === "onefull") {
+          finalValue = Number(dmgMod.value_mode || 0) * Number(tagCount || 0);
+        } else {
+          finalValue = Number(dmgMod.value_mode || 0);
+        }
+        // consider type matching if provided
+        const reqType = String(dmgMod.type ?? "").trim();
+        const incomingType = String(effect["伤害"].type ?? "").trim();
+        if (!reqType || reqType === incomingType) {
+          // here we interpret finalValue as additive to damage:
+          // positive finalValue -> 增伤; negative finalValue -> 减伤
+          const cur = Number(effect["伤害"].value);
+          if (Number.isFinite(cur) && Number.isFinite(finalValue)) {
+            effect = {...effect};
+            effect["伤害"] = {...effect["伤害"], value: Math.max(0, Math.floor(cur + finalValue))};
+          }
+        }
+      }
+
+      // if tag's effect contains 标记 删除规则 -> apply deletion(s)
+      if (isObject(defEffect) && isObject(defEffect["标记"])) {
+        for (const [tagKey, tagCfg] of Object.entries(defEffect["标记"])) {
+          const deleteCount = isObject(tagCfg) ? toInt(tagCfg.delete ?? 0, 0) : toInt(tagCfg ?? 0, 0);
+          const sideProp = isObject(tagCfg) ? String(tagCfg.side ?? "") : "";
+          // sideProp 'self' -> applies to the ownerSide; otherwise apply to other side
+          const targetSide = sideProp === "self" ? ownerSide : (1 - ownerSide);
+          if (deleteCount > 0) {
+            modifyTagCount(fight, targetSide, tagKey, -Math.abs(deleteCount));
+          }
+        }
+      }
+    }
+
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
+  // ---------- end startsidetag ----------
 
   async function nsidetag(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    // nsidetag: check tags on the opposite side (owner is opposite of incoming side)
+    const ownerSide = side === 1 ? 0 : 1;
+    const tagList = getTagListForSide(fight, ownerSide);
+    if (!tagList || tagList.length === 0) {
+      return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
+    }
+
+    const tagDefs = await loadTagsDatabase();
+
+    for (let i = 0; i < tagList.length; i += 1) {
+      const entry = tagList[i];
+      const tagName = String(entry[0] ?? "");
+      const tagCount = Number(entry[1] ?? 0);
+      if (!tagName || tagCount <= 0) continue;
+
+      const def = tagDefs[tagName];
+      if (!isObject(def)) continue;
+      // rule / siderule check (note: equip owner side is ownerSide)
+      if (!equipRuleMatch(def.rule, tag)) continue;
+      if (!sideruleMatches(def.siderule, side, ownerSide)) continue;
+
+      const defEffect = def["效果"] || {};
+      if (isObject(defEffect) && isObject(defEffect["伤害修改"]) && isObject(effect) && isObject(effect["伤害"])) {
+        const dmgMod = defEffect["伤害修改"];
+        const mode = String(dmgMod.mode ?? "").trim();
+        let finalValue = 0;
+        if (mode === "onefull") {
+          finalValue = Number(dmgMod.value_mode || 0) * Number(tagCount || 0);
+        } else {
+          finalValue = Number(dmgMod.value_mode || 0);
+        }
+        const reqType = String(dmgMod.type ?? "").trim();
+        const incomingType = String(effect["伤害"].type ?? "").trim();
+        if (!reqType || reqType === incomingType) {
+          const cur = Number(effect["伤害"].value);
+          if (Number.isFinite(cur) && Number.isFinite(finalValue)) {
+            // finalValue is additive: positive -> add, negative -> subtract
+            effect = {...effect};
+            effect["伤害"] = {...effect["伤害"], value: Math.max(0, Math.floor(cur + finalValue))};
+          }
+        }
+      }
+
+      // process deletion rules in tag definition
+      if (isObject(defEffect) && isObject(defEffect["标记"])) {
+        for (const [tagKey, tagCfg] of Object.entries(defEffect["标记"])) {
+          const deleteCount = isObject(tagCfg) ? toInt(tagCfg.delete ?? 0, 0) : toInt(tagCfg ?? 0, 0);
+          const sideProp = isObject(tagCfg) ? String(tagCfg.side ?? "") : "";
+          // sideProp 'self' -> applies to the ownerSide; otherwise apply to other side
+          const targetSide = sideProp === "self" ? ownerSide : (1 - ownerSide);
+          if (deleteCount > 0) {
+            modifyTagCount(fight, targetSide, tagKey, -Math.abs(deleteCount));
+          }
+        }
+      }
+    }
+
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
+  // ---------- end nsidetag ----------
 
   async function nsidetrait(side,type,effect,tag,sidetype,fight,register,stepIndex) {
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
@@ -1113,6 +1336,27 @@ async function cardeffect(side,type,effect,fight) {
     renderPlayerHand(fight);
     exposeBattleGlobals(fight);
   }
+
+  // ---------- 新增：处理 effect 中的 标记 添加/删除 ----------
+  const tagsEffect = isObject(effect) ? effect["标记"] : null;
+  if (isObject(tagsEffect)) {
+    for (const [tagName, cfg] of Object.entries(tagsEffect)) {
+      const add = isObject(cfg) ? toInt(cfg.add ?? 0, 0) : toInt(cfg ?? 0, 0);
+      const del = isObject(cfg) ? toInt(cfg.delete ?? 0, 0) : 0;
+      const sideProp = isObject(cfg) ? String(cfg.side ?? "") : "";
+      // sideProp === 'self' -> applies to the triggering side; otherwise opposite
+      const targetSideForAdd = sideProp === "self" ? side : (1 - side);
+      if (add > 0) {
+        modifyTagCount(fight, targetSideForAdd, tagName, Math.abs(add));
+      }
+      if (del > 0) {
+        const targetSideForDel = sideProp === "self" ? side : (1 - side);
+        modifyTagCount(fight, targetSideForDel, tagName, -Math.abs(del));
+      }
+    }
+  }
+  // ---------- end 标记处理 ----------
+
   const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
   slots.forEach(function (button) {
     const index = Number(button.dataset.index);
@@ -1201,7 +1445,7 @@ async function cardeffect(side,type,effect,fight) {
 
     return cardeffectResult;
   }
-  
+
   /*
     fightmain 中负责绑定
     玩家手牌点击行为。

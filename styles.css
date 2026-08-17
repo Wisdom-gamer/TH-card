@@ -1388,3 +1388,61 @@ body {
   border: 0;
   pointer-events: none;
 }
+.player .player-tags-left {
+  width: 35px;
+  flex: 0 0 35px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.player .player-tags-left img {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+/* 覆盖：让 avatar-container 不再向左覆盖标签区域，avatar 放在标签右侧 */
+.game-area .player.top .avatar-container,
+.game-area .player.bottom .avatar-container {
+  width: 220px;
+  margin-left: 0; /* 覆盖之前的 -60px */
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  z-index: 1; /* 保证 avatar 在标签之下 */
+}
+
+/* 修复并增强：标签区固定宽 35px，从下向上排列，超出显示竖向滚动条 */
+.player .player-tags-left {
+  width: 35px;
+  flex: 0 0 35px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* 从底部开始堆叠 */
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  box-sizing: border-box;
+  overflow-y: auto; /* 空间不够时出现滚动条 */
+  overflow-x: hidden;
+  /* 使标签区高度与 avatar 大体对齐（使用 avatar 大小变量），如需精确可适当调整数值 */
+  height: calc(var(--avatar-size) + 48px);
+  margin-right: 6px; /* 与 avatar 之间的小间隙 */
+  z-index: 2; /* 标签置于 avatar 之上，便于可见 */
+}
+
+/* 图标尺寸保持 30x30，不影响 */
+.player .player-tags-left img {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
