@@ -1,0 +1,36 @@
+{
+  "护甲":{
+    "效果":{
+    "伤害修改":{
+      "value_mode":-1,
+      "mode":"onefull"
+      },
+      "标记":{
+        "护甲":{
+          "side":"self",
+        "delete":1
+        }
+      }
+    },
+    "rule":"handcard;item;equip",
+    "siderule":"other",
+    "描述":""
+  },
+  "力量":{
+    "效果":{
+    "伤害修改":{
+      "value_mode":1,
+      "mode":"onefull",
+      "type":"普通"
+      },
+      "标记":{
+        "力量":{
+          "side":"self",
+        "delete":1
+        }
+      }
+    },
+    "rule":"handcard;item;equip",
+    "siderule":"self"
+  }
+}
