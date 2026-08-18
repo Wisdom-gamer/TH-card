@@ -1430,8 +1430,6 @@ body {
   gap: 6px;
   padding: 4px 2px;
   box-sizing: border-box;
-  overflow-y: auto; /* 空间不够时出现滚动条 */
-  overflow-x: hidden;
   /* 使标签区高度与 avatar 大体对齐（使用 avatar 大小变量），如需精确可适当调整数值 */
   height: calc(var(--avatar-size) + 48px);
   margin-right: 6px; /* 与 avatar 之间的小间隙 */
@@ -1463,17 +1461,17 @@ body {
   position: absolute;
   right: 0px;
   bottom: 0px;
-  width: 6px;
-  height: 8px;
-  line-height: 8px;
-  font-size: 8px;
-  color: #fff;
-  background: rgba(0,0,0,0.85);
+  width: auto;
+  height: auto;
+  line-height: 1;
+  font-size: 16px;
+  color: #000;
+  background: none;
   text-align: center;
-  border-radius: 2px;
-  padding: 0 2px;
+  border-radius: 0;
+  padding: 0;
   box-sizing: border-box;
-  transform: translate(50%, 20%); /* 微调到图标右下外侧（如果需更精确可调整） */
+  transform: translate(50%, 20%);
   z-index: 10;
   pointer-events: none;
 }

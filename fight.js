@@ -1576,7 +1576,7 @@ async function cardeffect(side,type,effect,fight) {
       const type = card ? card["类型"] : null;
       const effect = card ? card["效果"] : null;
       const tagValue = card ? String(card["tag"] ?? "").trim() : "";
-      const tag = tagValue === "" ? "handcard" : tagValue;
+      const tag = tagValue;
       fight.playerhand.splice(index,1);
       renderPlayerHand(fight);
       bindPlayerHandActions(fight);

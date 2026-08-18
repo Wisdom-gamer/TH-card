@@ -12,7 +12,7 @@
         }
       }
     },
-    "rule":"handcard;item;equip",
+    "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"other",
     "描述":""
   },
@@ -30,7 +30,7 @@
         }
       }
     },
-    "rule":"handcard;item;equip",
+    "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"self"
   }
 }

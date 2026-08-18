@@ -6,7 +6,8 @@
       "value":2,
 	    "type":"普通"
     },
-    "描述":"造成2普通伤害"
+    "描述":"造成2普通伤害",
+    "tag":"handcard;handcarddamage"
   }
   },
   "测试卡牌2":{
@@ -30,7 +31,8 @@
     "value":1,
     "type":"普通"
     },
-    "描述":"从卡组抽取2张卡，造成1点普通伤害"
+    "描述":"从卡组抽取2张卡，造成1点普通伤害",
+    "tag":"handcard;handcarddamage;handcardaddcard"
   }
   },
   "测试卡牌4":{
@@ -70,7 +72,7 @@
       "value":1,
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
-	  "rule":"handcard;item;equip", /* 触发规则 */
+	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
     "siderule":"other", /* 触发回合规则 */
     "描述":"受到的伤害-1"
   },
@@ -83,7 +85,7 @@
       "value":-1,
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
-	  "rule":"handcard;item;equip", /* 触发规则 */
+	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
     "siderule":"self", /* 触发回合规则 */
     "描述":"造成的伤害+1"
   },
@@ -100,7 +102,7 @@
     "siderule":"self", /* 触发回合规则 */
     "描述":"在回合开始时对敌方造成2普通伤害"
   },
-	  "tag":"equip" /* 触发器检测 */
+	  "tag":"equip;equipdamage" /* 触发器检测 */
   },
   "测试装备3":{
   "类型":"装备卡",
@@ -113,6 +115,6 @@
     "siderule":"self", /* 触发回合规则 */
     "描述":"在回合开始时对敌方造成4普通伤害"
   },
-	  "tag":"equip" /* 触发器检测 */
+	  "tag":"equip;equipdamage" /* 触发器检测 */
   }
 }
