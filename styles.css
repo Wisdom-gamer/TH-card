@@ -1446,3 +1446,98 @@ body {
   object-fit: contain;
   pointer-events: none;
 }
+/* 标签图标包装与计数徽章 */
+.player .player-tags-left .tag-wrapper,
+.player .player-tags-left .tag-wrapper img {
+  position: relative;
+  display: inline-block;
+}
+.player .player-tags-left .tag-wrapper {
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+}
+
+/* 计数徽章：右下角，8px 高，6px 宽 */
+.player .player-tags-left .tag-badge {
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  width: 6px;
+  height: 8px;
+  line-height: 8px;
+  font-size: 8px;
+  color: #fff;
+  background: rgba(0,0,0,0.85);
+  text-align: center;
+  border-radius: 2px;
+  padding: 0 2px;
+  box-sizing: border-box;
+  transform: translate(50%, 20%); /* 微调到图标右下外侧（如果需更精确可调整） */
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 战斗界面背包：沿用冒险界面背包样式，并放在手牌右侧，间距 5px，等高伸展 */
+#fightenemybag,
+#fightplayerbag {
+  width: 60px;
+  min-width: 60px;
+  padding: 24px 5px 5px 5px;
+  display: grid;
+  grid-template-columns: var(--bag-slot-size);
+  grid-auto-rows: var(--bag-slot-size);
+  align-content: start;
+  gap: 5px;
+  overflow: auto;
+  background: #f3f3f3;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* 战斗背包标题（与 #bagitem 风格一致） */
+#fightenemybag::before,
+#fightplayerbag::before {
+  content: "背包";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.2;
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 放在手牌右侧时给出 5px 间隔并与手牌等高 */
+.player .hand.large-hand + #fightenemybag,
+.player .hand.large-hand + #fightplayerbag {
+  margin-left: 5px;
+  align-self: stretch;
+}
+
+/* 背包内的卡片尺寸与通用 .bag-slot 保持一致（已经在原样式中定义 .bag-slot） */
+#fightenemybag .bag-slot,
+#fightplayerbag .bag-slot {
+  width: var(--bag-slot-size);
+  height: var(--bag-slot-size);
+  padding: 0;
+  border: 2px solid #2e2e2e;
+  border-radius: 3px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(215,215,215,0.95));
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  color: #111;
+  cursor: pointer;
+  outline: none;
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,0.8), inset -2px -2px 0 rgba(0,0,0,0.2);
+}

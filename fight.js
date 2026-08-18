@@ -448,12 +448,7 @@ function renderFightEquip(
     fight,
     owner
   ) {
-    const box =
-      document.getElementById(
-        owner === 1
-          ? "fightplayerequip"
-          : "fightenemyequip"
-      );
+    const box = document.getElementById(owner === 1 ? "fightplayerequip" : "fightenemyequip");
 
     if (!box) {
       return;
@@ -904,38 +899,134 @@ function renderFightEquip(
 
   // 渲染标签到 DOM：player bottom 显示 playerfighttags，player top 显示 enemyfighttags
   function renderFightTags(fight) {
-    if (!fight) return;
-    const playBox = document.getElementById("playertags");
-    const enemyBox = document.getElementById("enemytags");
-    if (playBox) {
-      playBox.innerHTML = "";
-      (fight.playerfighttags || []).forEach(function (entry) {
-        const name = String(entry[0] ?? "");
-        const count = Number(entry[1] ?? 0);
-        for (let i = 0; i < Math.max(0, count); i += 1) {
-          const img = document.createElement("img");
-          img.src = `images/tags/${name}.png`;
-          img.alt = name;
-          playBox.appendChild(img);
-        }
-      });
-    }
-    if (enemyBox) {
-      enemyBox.innerHTML = "";
-      (fight.enemyfighttags || []).forEach(function (entry) {
-        const name = String(entry[0] ?? "");
-        const count = Number(entry[1] ?? 0);
-        for (let i = 0; i < Math.max(0, count); i += 1) {
-          const img = document.createElement("img");
-          img.src = `images/tags/${name}.png`;
-          img.alt = name;
-          enemyBox.appendChild(img);
-        }
-      });
-    }
+  if (!fight) return;
+  const playBox = document.getElementById("playertags");
+  const enemyBox = document.getElementById("enemytags");
+  if (playBox) {
+    playBox.innerHTML = "";
+    (fight.playerfighttags || []).forEach(function (entry) {
+      const name = String(entry[0] ?? "");
+      const count = Number(entry[1] ?? 0);
+      if (!name) return;
+      // 每种标记只渲染一个图标，并在右下角显示数值徽章
+      const wrapper = document.createElement("span");
+      wrapper.className = "tag-wrapper";
+      wrapper.setAttribute("role", "img");
+      wrapper.setAttribute("aria-label", `${name} ×${count}`);
+      const img = document.createElement("img");
+      img.src = `images/tags/${name}.png`;
+      img.alt = name;
+      wrapper.appendChild(img);
+      const badge = document.createElement("span");
+      badge.className = "tag-badge";
+      badge.textContent = String(Math.max(0, count));
+      wrapper.appendChild(badge);
+      playBox.appendChild(wrapper);
+    });
   }
+  if (enemyBox) {
+    enemyBox.innerHTML = "";
+    (fight.enemyfighttags || []).forEach(function (entry) {
+      const name = String(entry[0] ?? "");
+      const count = Number(entry[1] ?? 0);
+      if (!name) return;
+      const wrapper = document.createElement("span");
+      wrapper.className = "tag-wrapper";
+      wrapper.setAttribute("role", "img");
+      wrapper.setAttribute("aria-label", `${name} ×${count}`);
+      const img = document.createElement("img");
+      img.src = `images/tags/${name}.png`;
+      img.alt = name;
+      wrapper.appendChild(img);
+      const badge = document.createElement("span");
+      badge.className = "tag-badge";
+      badge.textContent = String(Math.max(0, count));
+      wrapper.appendChild(badge);
+      enemyBox.appendChild(wrapper);
+    });
+  }
+}
   // ---------- end 标签工具 ----------
+// 渲染战斗界面背包与装备（简单渲染，复用 .bag-slot 结构）
+function renderFightBags() {
+  // 玩家背包（道具）
+  const playerBagEl = document.getElementById("fightplayerbag");
+  if (playerBagEl) {
+    playerBagEl.innerHTML = "";
+    (window.fightplayerbag || []).forEach(function (cardName) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bag-slot";
+      btn.dataset.card = cardName;
+      btn.setAttribute("aria-label", cardName);
+      const img = document.createElement("img");
+      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.alt = cardName;
+      btn.appendChild(img);
+      btn.addEventListener("mouseenter", function () {
+        if (typeof window.showCardInfo === "function") window.showCardInfo(cardName);
+      });
+      playerBagEl.appendChild(btn);
+    });
+  }
 
+  // 玩家装备（战斗专用 equip 区）
+  const playerEquipEl = document.getElementById("fightplayerequip");
+  if (playerEquipEl) {
+    playerEquipEl.innerHTML = "";
+    (window.fightplayerequip || []).forEach(function (cardName) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bag-slot";
+      btn.dataset.card = cardName;
+      btn.setAttribute("aria-label", cardName);
+      const img = document.createElement("img");
+      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.alt = cardName;
+      btn.appendChild(img);
+      btn.addEventListener("mouseenter", function () {
+        if (typeof window.showCardInfo === "function") window.showCardInfo(cardName);
+      });
+      playerEquipEl.appendChild(btn);
+    });
+  }
+
+  // 敌人背包（展示占位，暂不从存档读取）
+  const enemyBagEl = document.getElementById("fightenemybag");
+  if (enemyBagEl) {
+    enemyBagEl.innerHTML = "";
+    (window.fightenemybag || []).forEach(function (cardName) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bag-slot";
+      btn.dataset.card = cardName;
+      btn.setAttribute("aria-label", cardName);
+      const img = document.createElement("img");
+      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.alt = cardName;
+      btn.appendChild(img);
+      enemyBagEl.appendChild(btn);
+    });
+  }
+
+  // 敌人装备（战斗专用 equip 区），保持为空或按数组渲染
+  const enemyEquipEl = document.getElementById("fightenemyequip");
+  if (enemyEquipEl) {
+    enemyEquipEl.innerHTML = "";
+    (window.fightenemyequip || []).forEach(function (cardName) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bag-slot";
+      btn.dataset.card = cardName;
+      btn.setAttribute("aria-label", cardName);
+      const img = document.createElement("img");
+      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.alt = cardName;
+      btn.appendChild(img);
+      enemyEquipEl.appendChild(btn);
+    });
+  }
+}
   async function startsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1656,7 +1747,19 @@ async function fightenemyactioncard(fight) {
 
   function fightAPI(enemyId) {
     const fight = createBattleState(enemyId);
+    /* 处理背包和装备 */
+       window.fightplayerbag = adventurebagitem;
+       fight.fightplayerbag = window.fightplayerbag;
+       window.fightplayerequip = window.adventureequip;
+       fight.fightplayerequip = window.fightplayerequip;
 
+// 敌人背包与装备置空（战斗开始前清理）
+window.fightenemybag = [];
+window.fightenemyequip = [];
+
+// 渲染战斗界面相关 UI（标签与背包）
+renderFightTags(window.currentFight);
+renderFightBags();
     window.fight = fight;
 
     fight.turn = 1;
