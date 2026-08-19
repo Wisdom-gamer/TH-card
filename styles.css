@@ -1544,89 +1544,87 @@ body {
     战斗技能区域
     ========================================================= */
 
-/* 修改：战斗区手牌右侧的背包和技能容器 */
-.player .hand.large-hand {
+.ability-area {
+  width: 72px;
+  min-width: 72px;
+  height: 72px;
+  min-height: 72px;
+
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+  align-items: center;
+  justify-content: center;
 
-/* 新增：背包和技能的容器（右侧竖直排列） */
-.player > #fightenemybag,
-.player > #fightenemyability,
-.player > #fightplayerbag,
-.player > #fightplayerability {
-  width: 60px;
-  flex: 0 0 auto;
-}
-
-/* 敌人区域：技能在背包下方 5px */
-.player.top > #fightenemybag {
-  padding: 24px 5px 5px 5px;
-  display: grid;
-  grid-template-columns: var(--bag-slot-size);
-  grid-auto-rows: var(--bag-slot-size);
-  align-content: start;
-  gap: 5px;
-  overflow: auto;
-  background: #f3f3f3;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-  box-sizing: border-box;
   position: relative;
-  margin-bottom: 5px;
+
+  flex-shrink: 0;
 }
 
-.player.top > #fightenemybag::before {
-  content: "背包";
+.ability-area[hidden] {
+  display: none;
+}
+
+.fight-ability-button {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+
+  position: relative;
+
+  border: 3px solid var(--black);
+  border-radius: 8px;
+
+  background: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  cursor: pointer;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.fight-ability-button:hover:not(:disabled),
+.fight-ability-button:focus-visible:not(:disabled) {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-color);
+}
+
+.fight-ability-button:disabled {
+  cursor: default;
+}
+
+.fight-ability-image {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+.ability-cooldown {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+
   position: absolute;
-  top: 5px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 4px;
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1.2;
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 3px;
-  white-space: nowrap;
-  z-index: 10;
+  right: 3px;
+  bottom: 3px;
+
+  border: 2px solid var(--black);
+  border-radius: 999px;
+
+  background: #fff;
+
+  color: #111;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+
   pointer-events: none;
 }
-
-/* 玩家区域：技能在背包上方 5px */
-.player.bottom > #fightplayerbag {
-  padding: 24px 5px 5px 5px;
-  display: grid;
-  grid-template-columns: var(--bag-slot-size);
-  grid-auto-rows: var(--bag-slot-size);
-  align-content: start;
-  gap: 5px;
-  overflow: auto;
-  background: #f3f3f3;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-  box-sizing: border-box;
-  position: relative;
-  margin-top: 5px;
-}
-
-.player.bottom > #fightplayerbag::before {
-  content: "背包";
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 4px;
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1.2;
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 3px;
-  white-space: nowrap;
-  z-index: 10;
-  pointer-events: none;
-}
-
-/* 移
-
