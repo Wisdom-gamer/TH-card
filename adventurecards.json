@@ -9,7 +9,7 @@
         "actionnum":1
       },
       "离开":{
-        "actionnum":2
+        "actionnum":"void"
       }
     },
     "display":"喝水可以获得10HP",
@@ -24,6 +24,10 @@
       "测试卡牌1":10,
       "测试卡牌2":5
       },
+    "ability":{
+      "name":"测试卡牌3",
+      "turn":1
+    },
     "reaction":{
       "win":{
         "delete":"测试敌人1"
