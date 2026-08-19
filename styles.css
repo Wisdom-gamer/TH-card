@@ -1539,3 +1539,94 @@ body {
   outline: none;
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.8), inset -2px -2px 0 rgba(0,0,0,0.2);
 }
+
+/* =========================================================
+    战斗技能区域
+    ========================================================= */
+
+/* 修改：战斗区手牌右侧的背包和技能容器 */
+.player .hand.large-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 新增：背包和技能的容器（右侧竖直排列） */
+.player > #fightenemybag,
+.player > #fightenemyability,
+.player > #fightplayerbag,
+.player > #fightplayerability {
+  width: 60px;
+  flex: 0 0 auto;
+}
+
+/* 敌人区域：技能在背包下方 5px */
+.player.top > #fightenemybag {
+  padding: 24px 5px 5px 5px;
+  display: grid;
+  grid-template-columns: var(--bag-slot-size);
+  grid-auto-rows: var(--bag-slot-size);
+  align-content: start;
+  gap: 5px;
+  overflow: auto;
+  background: #f3f3f3;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  box-sizing: border-box;
+  position: relative;
+  margin-bottom: 5px;
+}
+
+.player.top > #fightenemybag::before {
+  content: "背包";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.2;
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 玩家区域：技能在背包上方 5px */
+.player.bottom > #fightplayerbag {
+  padding: 24px 5px 5px 5px;
+  display: grid;
+  grid-template-columns: var(--bag-slot-size);
+  grid-auto-rows: var(--bag-slot-size);
+  align-content: start;
+  gap: 5px;
+  overflow: auto;
+  background: #f3f3f3;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  box-sizing: border-box;
+  position: relative;
+  margin-top: 5px;
+}
+
+.player.bottom > #fightplayerbag::before {
+  content: "背包";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.2;
+  color: #222;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 移
+
