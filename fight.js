@@ -332,9 +332,7 @@
     window.maxplayermp = fight.player.MAXMP;
     
 window.fightplayerability = fight.playerability;
-window.fightplayerabilityturn = fight.playerabilityturn;
 window.fightenemyability = fight.enemyability;
-window.fightenemyabilityturn = fight.enemyabilityturn;
 
     updateFightPileCounts(fight);
     renderFightEquip(fight, 1);
@@ -701,10 +699,8 @@ function renderFightEquip(
         MAXMP: enemyMP
       },
 
-      playerability: pc && pc.ability ? {name: String(pc.ability.name || ""), turn: toInt(pc.ability.turn, 0)} : null,
-      playerabilityturn: 0,
-      enemyability: enemyCard.ability ? {name: String(enemyCard.ability.name || ""), turn: toInt(enemyCard.ability.turn, 0)} : null,
-      enemyabilityturn: 0,
+      playerability: pc && pc.ability ? [[String(pc.ability.name || ""), toInt(pc.ability.turn, 0), 0]] : [],
+      enemyability: enemyCard.ability ? [[String(enemyCard.ability.name || ""), toInt(enemyCard.ability.turn, 0), 0]] : [],
 
       player: {
         name: String(window.selectedCharacter || "玩家"),
@@ -781,80 +777,90 @@ function renderFightEquip(
     renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,getPlayerCardImage,"玩家");
   }
   function renderAbilityButton(fight, owner) {
-  const ability = owner === 1 ? fight.playerability : fight.enemyability;
-  const abilityturn = owner === 1 ? fight.playerabilityturn : fight.enemyabilityturn;
+  const abilities = owner === 1 ? fight.playerability : fight.enemyability;
   const containerId = owner === 1 ? "fightplayerability" : "fightenemyability";
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = "";
-  if (!ability || !String(ability.name ?? "").trim()) return;
+  if (!Array.isArray(abilities) || abilities.length === 0) return;
 
-  const cardName = String(ability.name).trim();
-  const card = getFightCardData(cardName);
-  if (!card) return;
+  abilities.forEach(function (entry, idx) {
+    const cardName = String(entry[0] ?? "").trim();
+    const total = Number(entry[1] ?? 0);
+    const remaining = Number(entry[2] ?? 0);
+    if (!cardName) return;
+    const card = getFightCardData(cardName);
+    if (!card) return;
 
-  const imageResolver = owner === 1 ? getPlayerCardImage : getEnemyCardImage;
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.dataset.ability = "true";
-  btn.dataset.owner = String(owner);
-  btn.setAttribute("aria-label", cardName + (abilityturn > 0 ? `（冷却${abilityturn}回合）` : ""));
+    const imageResolver = owner === 1 ? getPlayerCardImage : getEnemyCardImage;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.ability = "true";
+    btn.dataset.owner = String(owner);
+    btn.dataset.abilityIndex = String(idx);
+    btn.setAttribute("aria-label", cardName + (remaining > 0 ? `（冷却${remaining}回合）` : ""));
 
-  const img = document.createElement("img");
-  img.src = imageResolver(cardName);
-  img.alt = cardName;
-  btn.appendChild(img);
+    const img = document.createElement("img");
+    img.src = imageResolver(cardName);
+    img.alt = cardName;
+    btn.appendChild(img);
 
-  if (abilityturn > 0) {
-    const badge = document.createElement("div");
-    badge.className = "ability-cooldown";
-    badge.textContent = String(abilityturn);
-    btn.appendChild(badge);
-  }
-
-  container.appendChild(btn);
-
-  if (owner !== 1) {
-    btn.disabled = true;
-    return;
-  }
-
-  const effect = card["效果"];
-  const mpCost = isObject(effect) ? Number(effect["MP"] ?? 0) : 0;
-
-  btn.disabled = fight.carduseLocked || abilityturn > 0 || !effect || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
-  btn.onclick = async function () {
-    if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked || fight.playerabilityturn > 0) return;
-    if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) return;
-
-    fight.carduseLocked = true;
-
-    if (Number.isFinite(mpCost) && mpCost > 0) {
-      fight.player.MP -= mpCost;
+    if (remaining > 0) {
+      const badge = document.createElement("div");
+      badge.className = "ability-cooldown";
+      badge.textContent = String(remaining);
+      btn.appendChild(badge);
     }
 
-    try {
-      const type = card["类型"] ?? "技能卡";
-      const tagValue = String(card["tag"] ?? "").trim();
+    container.appendChild(btn);
 
-      await carduse(1,type,effect,tagValue,null,fight,["ability"]);
+    if (owner !== 1) {
+      btn.disabled = true;
+      return;
+    }
 
-      fight.playerabilityturn = Math.max(0,toInt(ability.turn,0));
+    const effect = card["效果"];
+    const mpCost = isObject(effect) ? Number(effect["MP"] ?? 0) : 0;
 
-      const outcome = getFightOutcome(fight);
-      if (outcome === "win" || outcome === "lost") {
-        finishFight(fight,outcome);
-        return;
+    btn.disabled = fight.carduseLocked || remaining > 0 || !effect || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
+    btn.onclick = async function () {
+      // re-read entry by index in case abilities array mutated
+      const abilityEntry = (Array.isArray(fight.playerability) && fight.playerability[idx]) ? fight.playerability[idx] : entry;
+      const abilityRemaining = Number(abilityEntry[2] ?? 0);
+      if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked || abilityRemaining > 0) return;
+      if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) return;
+
+      fight.carduseLocked = true;
+
+      if (Number.isFinite(mpCost) && mpCost > 0) {
+        fight.player.MP -= mpCost;
       }
-    } finally {
-      fight.carduseLocked = false;
-      exposeBattleGlobals(fight);
-      renderAbilityButton(fight,1);
-      renderAbilityButton(fight,0);
-      setPlayerHandDisabled(fight,false);
-      bindPlayerHandActions(fight);
-    }
-  };
+
+      try {
+        const type = card["类型"] ?? "技能卡";
+        const tagValue = String(card["tag"] ?? "").trim();
+
+        await carduse(1,type,effect,tagValue,null,fight,["ability"]);
+
+        // set remaining cooldown to total
+        const totalVal = toInt(abilityEntry[1], 0);
+        abilityEntry[2] = Math.max(0, totalVal);
+
+        const outcome = getFightOutcome(fight);
+        if (outcome === "win" || outcome === "lost") {
+          finishFight(fight,outcome);
+          return;
+        }
+      } finally {
+        fight.carduseLocked = false;
+        exposeBattleGlobals(fight);
+        renderAbilityButton(fight,1);
+        renderAbilityButton(fight,0);
+        setPlayerHandDisabled(fight,false);
+        bindPlayerHandActions(fight);
+      }
+    };
+  });
 }
     function getFightCardData(cardName) {
     const database = window.cardDatabase;
@@ -1013,7 +1019,7 @@ function renderFightEquip(
   }
 }
   // ---------- end 标签工具 ----------
-// 渲染战斗界面背包与装备（简单渲染，复用 .bag-slot 结构）
+ // 渲染战斗界面背包与装备（简单渲染，复用 .bag-slot 结构）
 function renderFightBags() {
   // 玩家背包（道具）
   const playerBagEl = document.getElementById("fightplayerbag");
@@ -1697,40 +1703,57 @@ async function fightenemyactioncard(fight) {
      if (turnStartResult === "win" || turnStartResult === "lost") {
        return turnStartResult;
      }
-     if (fight.enemyability && fight.enemyability.name && fight.enemyabilityturn === 0) {
-       const abilityCard = getFightCardData(fight.enemyability.name);
-       if (abilityCard) {
-         const mpCost = isObject(abilityCard["效果"]) ? Number(abilityCard["效果"]["MP"] || 0) : 0;
-         if (!Number.isFinite(mpCost) || mpCost <= 0 || fight.enemy.MP >= mpCost) {
-           if (Number.isFinite(mpCost) && mpCost > 0) {
-             fight.enemy.MP -= mpCost;
+     // 敌方能力：查找第一个可用（remaining === 0）的能力并使用
+     if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
+       for (let i = 0; i < fight.enemyability.length; i += 1) {
+         const entry = fight.enemyability[i];
+         const name = String(entry[0] ?? "").trim();
+         const total = toInt(entry[1], 0);
+         const remaining = Number(entry[2] ?? 0);
+         if (name && remaining === 0) {
+           const abilityCard = getFightCardData(name);
+           if (abilityCard) {
+             const mpCost = isObject(abilityCard["效果"]) ? Number(abilityCard["效果"]["MP"] || 0) : 0;
+             if (!Number.isFinite(mpCost) || mpCost <= 0 || fight.enemy.MP >= mpCost) {
+               if (Number.isFinite(mpCost) && mpCost > 0) {
+                 fight.enemy.MP -= mpCost;
+               }
+               const effect = abilityCard ? abilityCard["效果"] : null;
+               const type = abilityCard ? abilityCard["类型"] : null;
+               const tagValue = abilityCard ? String(abilityCard["tag"] ?? "").trim() : "";
+               await carduse(0, type, effect, tagValue, null, fight, ["ability"]);
+               // set remaining cooldown to total
+               entry[2] = Math.max(0, total);
+               await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+               break; // 使用一次后退出循环（按原逻辑只用一次）
+             }
            }
-           const effect = abilityCard ? abilityCard["效果"] : null;
-           const type = abilityCard ? abilityCard["类型"] : null;
-           const tagValue = abilityCard ? String(abilityCard["tag"] ?? "").trim() : "";
-           await carduse(0, type, effect, tagValue, null, fight, ["ability"]);
-           fight.enemyabilityturn = fight.enemyability.turn;
-           await new Promise(function (resolve) { setTimeout(resolve, 1000); });
-      }
+         }
+       }
      }
-    }
-    await fightenemyactioncard(fight);
-    if (fight.enemy.MP < fight.enemy.MAXMP) {
-    fight.enemy.MP = fight.enemy.MAXMP;
-    }
-    const turnEndResult = await carduse(0,"event","event","turnend",null,fight);
-    if (fight.enemyabilityturn > 0) {
-     fight.enemyabilityturn -= 1;
+     await fightenemyactioncard(fight);
+     if (fight.enemy.MP < fight.enemy.MAXMP) {
+     fight.enemy.MP = fight.enemy.MAXMP;
+     }
+     const turnEndResult = await carduse(0,"event","event","turnend",null,fight);
+     // 敌方：所有能力剩余冷却减 1（如果有）
+     if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
+       for (let i = 0; i < fight.enemyability.length; i += 1) {
+         const entry = fight.enemyability[i];
+         if (Number.isFinite(entry[2]) && entry[2] > 0) {
+           entry[2] = Math.max(0, entry[2] - 1);
+         }
+       }
+     }
+
+     if (turnEndResult === "win" || turnEndResult === "lost") {
+       return turnEndResult;
+     }
+     drawEnemyCards(2);
+     renderEnemyHand(fight);
+
+     return "end";
    }
-
-    if (turnEndResult === "win" || turnEndResult === "lost") {
-      return turnEndResult;
-    }
-    drawEnemyCards(2);
-    renderEnemyHand(fight);
-
-    return "end";
-  }
 
   async function fightmain() {
     const fight = window.fight;
@@ -1788,8 +1811,14 @@ async function fightenemyactioncard(fight) {
   const turnEndResult = await carduse(1,"event","event","turnend",null,fight);
   renderAbilityButton(fight,1);
   renderAbilityButton(fight,0);
-  if (fight.playerabilityturn > 0) {
-    fight.playerabilityturn -= 1;
+  // 玩家能力：所有能力的剩余冷却减 1
+  if (Array.isArray(fight.playerability) && fight.playerability.length > 0) {
+    for (let i = 0; i < fight.playerability.length; i += 1) {
+      const entry = fight.playerability[i];
+      if (Number.isFinite(entry[2]) && entry[2] > 0) {
+        entry[2] = Math.max(0, entry[2] - 1);
+      }
+    }
   }
   if (fight.player.MP < fight.player.MAXMP) {
     fight.player.MP = fight.player.MAXMP;
@@ -1845,13 +1874,13 @@ async function fightenemyactioncard(fight) {
        window.fightplayerequip = window.adventureequip;
        fight.fightplayerequip = window.fightplayerequip;
 
-// 敌人背包与装备置空（战斗开始前清理）
-window.fightenemybag = [];
-window.fightenemyequip = [];
+ // 敌人背包与装备置空（战斗开始前清理）
+ window.fightenemybag = [];
+ window.fightenemyequip = [];
 
-// 渲染战斗界面相关 UI（标签与背包）
-renderFightTags(window.currentFight);
-renderFightBags();
+ // 渲染战斗界面相关 UI（标签与背包）
+ renderFightTags(window.currentFight);
+ renderFightBags();
     window.fight = fight;
 
     fight.turn = 1;
