@@ -205,9 +205,7 @@
         ? database[cardName]
         : null;
 
-    return card && card["图片"]
-      ? card["图片"]
-      : "null.png";
+    return card && card["图片"];
   }
 
   function getEnemyCardImage(cardName) {
@@ -219,9 +217,7 @@
         ? database[cardName]
         : null;
 
-    return card && card.ID
-      ? `images/adventure/${card.ID}.png`
-      : "null.png";
+    return card && `images/adventure/${card.ID}.png`;
   }
 
   function renderSlots(
@@ -285,10 +281,8 @@
             `${labelPrefix}空卡位${index + 1}`
           );
 
-          if (img) {
             img.src = "null.png";
             img.alt = "empty card";
-          }
         }
       }
     );
@@ -809,9 +803,6 @@ function renderFightEquip(
   const img = document.createElement("img");
   img.src = imageResolver(cardName);
   img.alt = cardName;
-  img.onerror = function () {
-    img.src = "null.png";
-  };
   btn.appendChild(img);
 
   if (abilityturn > 0) {
@@ -1035,7 +1026,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
@@ -1056,7 +1047,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
@@ -1077,7 +1068,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
       btn.appendChild(img);
       enemyBagEl.appendChild(btn);
@@ -1095,7 +1086,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = (window.cardDatabase && window.cardDatabase[cardName] && window.cardDatabase[cardName]["图片"]) ? window.cardDatabase[cardName]["图片"] : "null.png";
+      img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
       btn.appendChild(img);
       enemyEquipEl.appendChild(btn);
