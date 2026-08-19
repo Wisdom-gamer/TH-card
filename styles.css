@@ -1628,3 +1628,88 @@ body {
 
   pointer-events: none;
 }
+.fight-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;              /* 背包与技能间距 5px */
+  width: 60px;
+  flex: 0 0 auto;
+  align-self: stretch;   /* 与手牌等高（保留之前行为） */
+  margin-left: 5px;      /* 保持与手牌的 5px 间隔（原样式的行为） */
+}
+
+/* 敌人（顶部）保持默认顺序：bag 在上，ability 在下（不需要额外规则） */
+
+/* 玩家（底部）希望 ability 在 bag 上方：使用 column-reverse */
+.player .fight-side-stack.player-side-bottom {
+  flex-direction: column-reverse;
+}
+/* 新增：.fight-side-stack 与子项布局，保证与手牌等高并让背包填满可用高度 */
+.player .hand.large-hand + .fight-side-stack {
+  margin-left: 5px;         /* 与手牌水平间隙，保留原行为 */
+  align-self: stretch;      /* 使容器与手牌等高 */
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 60px;
+  flex: 0 0 auto;
+  min-height: 0;            /* 必需：让 flex 子项的 overflow 与伸缩按预期工作 */
+}
+
+/* 默认：在容器内竖直排列（敌人保持 bag 在上 ability 在下） */
+.fight-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+/* 背包占用父容器剩余高度，保留原有的 grid 与 padding（重要：保留原视觉） */
+.fight-side-stack > #fightenemybag,
+.fight-side-stack > #fightplayerbag {
+  /* 保留原来的背包样式（如果 styles.css 已经定义过，可把重复项删去） */
+  padding: 24px 5px 5px 5px;
+  display: grid;
+  grid-template-columns: var(--bag-slot-size);
+  grid-auto-rows: var(--bag-slot-size);
+  align-content: start;
+  gap: 5px;
+  overflow: auto;
+  background: #f3f3f3;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  box-sizing: border-box;
+  position: relative;
+  width: 60px;
+  min-height: 0;
+
+  /* 关键：让背包在父容器中拉伸，占满可用高度 */
+  flex: 1 1 auto;
+}
+
+/* 能力区保持固定高度（不拉伸）*/
+.fight-side-stack > .ability-area {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0; /* 可根据需求调整内边距 */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 底部玩家：反转列方向以实现 ability 在 bag 上方（如果你之前使用 column-reverse，这里保留） */
+.player .fight-side-stack.player-side-bottom {
+  flex-direction: column-reverse;
+}
+
+/* 确保背包标题 ::before 仍相对于背包内部定位 */
+.fight-side-stack > #fightenemybag::before,
+.fight-side-stack > #fightplayerbag::before {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
+}
