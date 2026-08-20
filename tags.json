@@ -32,5 +32,22 @@
     },
     "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"self"
+  },
+  "虚弱":{
+    "效果":{
+    "伤害修改":{
+      "value_mode":-1,
+      "mode":"onefull",
+      "type":"普通"
+      },
+      "标记":{
+        "虚弱":{
+          "side":"self",
+        "delete":1
+        }
+      }
+    },
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"self"
   }
 }
