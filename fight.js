@@ -423,14 +423,7 @@ window.fightenemyability = fight.enemyability;
           1 = 玩家
           0 = 敌人
         */
-        img.src =
-          owner === 1
-            ? getPlayerCardImage(
-                cardName
-              )
-            : getEnemyCardImage(
-                cardName
-              );
+        img.src = owner === 1 ? getPlayerCardImage(cardName) : getEnemyCardImage(cardName);
 
         img.alt = cardName;
 
@@ -516,7 +509,8 @@ function renderFightEquip(
       1 = 玩家
       0 = 敌人
   */
-  function movetosite(fight,cardName,owner,sidetype) {
+  function movetosite(fight,cardName,owner,sidetype,loops) {
+    if(loops != 1) return false;
     if (!fight || !cardName) {
       return false;
     }
@@ -1413,9 +1407,7 @@ function renderFightBags() {
           return;
         }
 
-        button.disabled =
-          fight.carduseLocked ||
-          (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
+        button.disabled = fight.carduseLocked || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
       }
     );
   }
@@ -1543,28 +1535,37 @@ async function cardeffect(side,type,effect,fight) {
 }
 
   async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1, startStep = 0) {
-    fight = fight || window.fight;
+  fight = fight || window.fight;
 
-    if (!fight || fight.ended) {
-      return null;
-    }
+  if (!fight || fight.ended) {
+    return null;
+  }
 
-    fight.carduseLocked = true;
+  // 读取 loop 次数（默认为 1），允许 effect 为 null/非对象
+  const loopCount = isObject(effect) ? Math.max(1, toInt(effect.loop, 1)) : 1;
 
-    setPlayerHandDisabled(fight,true);
+  // 将 loop 字段视为控制参数，不要让后续判定误读（可选：保留原对象但不影响逻辑）
+  // 注意：不深拷贝 effect，因为有些判定/装备希望基于战局状态在每次循环重新计算 effect。
+  fight.carduseLocked = true;
+  setPlayerHandDisabled(fight, true);
 
+  let lastCardEffectResult = null;
+
+  // judgement steps 顺序保持不变（按现有实现）
+  const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter];
+
+  // currentRegister flows along steps; DO NOT auto-increment here.
+  let initialRegister = typeof register === "number" ? register : -1;
+
+  // 执行一次完整的判定 + 生效流程（供循环内部调用）
+  async function doSingleIteration(iterIndex) {
+    // 每次迭代都从初始 register（由调用者传入）开始扫描（各 step 内部用 register+1 语义）
+    let currentRegister = initialRegister;
+    // 每次使用时，使用原始传入的 effect（注意：步骤可能修改返回的 effect）
     let result = {side:Number(side) === 1 ? 1 : 0,type: type,effect: effect,tag: tag,sidetype:sidetype};
-
-    const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter
-    ];
-
-    // currentRegister flows along steps; DO NOT auto-increment here.
-    // register 的 +1 语义在各 step 内实现（即 step 收到 register 时应当使用 register+1 作为扫描起点）
-    let currentRegister = typeof register === "number" ? register : -1;
 
     for (let i = startStep; i < judgementSteps.length; i += 1) {
       const step = judgementSteps[i];
-
       result = await runJudgementStep(step,result,fight,currentRegister,i);
 
       if (!result) {
@@ -1577,39 +1578,62 @@ async function cardeffect(side,type,effect,fight) {
         break;
       }
 
-      // ensure we don't propagate register outwards (functions should return register:-1)
+      // 确保 register 不被外放（step 应该返回 register:-1）
       result.register = -1;
     }
 
+    if (!result) {
+      return null;
+    }
+
+    // 在把卡片移到场上 / 装备时，只有最后一次循环才真正添加
+    const isLast = iterIndex === loopCount - 1;
+
     if (result && cardName) {
       if (result.type === "装备卡") {
-        const equip = result.side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
-
-        equip.push(createFightCardEntry(cardName,result.sidetype));
-
-        renderFightEquip(fight,result.side);
+        if (isLast) {
+          const equip = result.side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+          equip.push(createFightCardEntry(cardName,result.sidetype));
+          renderFightEquip(fight,result.side);
+        }
       } else {
-        movetosite(fight,cardName,result.side,result.sidetype);
+        // movetosite 接受 loops 参数：只有当 loopsParam === 1 时会真正放到场上（你的判定）
+        const loopsParam = isLast ? 1 : 0;
+        movetosite(fight,cardName,result.side,result.sidetype,loopsParam);
       }
     }
 
     exposeBattleGlobals(fight);
 
-    if (!result) {
-      // unlock if nothing to apply
-      fight.carduseLocked = false;
-      setPlayerHandDisabled(fight,false);
-      bindPlayerHandActions(fight);
+    // 如果 result.effect === null，则不执行 cardeffect（已在上面处理）
+    if (result.effect === null) {
       return null;
     }
 
+    // 执行卡牌效果（伤害/抽卡/标记等）
     const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight);
-
-    // NOTE: 按要求，胜负判定不在这里进行（只在手牌动作完成、player/enemy turnstart 完成时进行）。
-    // 返回 cardeffectResult 给调用者，由调用者负责在需要的时刻检查战局并结束战斗。
 
     return cardeffectResult;
   }
+
+  // 顺序执行 loopCount 次（中间可能由于判定使 effect 为空而中断）
+  for (let iter = 0; iter < loopCount; iter += 1) {
+    if (!fight || fight.ended) break;
+    // 每次迭代都重新运行一次完整的判定+生效流程
+    const res = await doSingleIteration(iter);
+    lastCardEffectResult = res;
+
+  }
+
+  // 解锁与恢复 UI 状态
+  fight.carduseLocked = false;
+  setPlayerHandDisabled(fight,false);
+  renderAbilityButton(fight,1);
+  renderAbilityButton(fight,0);
+  bindPlayerHandActions(fight);
+
+  return lastCardEffectResult;
+}
 
   /*
     fightmain 中负责绑定

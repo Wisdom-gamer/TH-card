@@ -67,6 +67,18 @@
   },
     "tag":"handcard;handcardaddtagself"
   },
+  "测试卡牌6":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":2,
+	    "type":"普通"
+    },
+    "描述":"造成2普通伤害，重复3次",
+	  "loop":3
+  },
+    "tag":"handcard;handcarddamage"
+  },
   "测试装备1":{
   "类型":"装备卡",
   "效果":{
@@ -119,4 +131,10 @@
   },
 	  "tag":"equip;equipdamage" /* 触发器检测 */
   }
+  
+  
+  
+  
+  
+  
 }
