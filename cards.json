@@ -45,9 +45,9 @@
         "sidetype":"temp"
     }
     },
-    "MP":2,
     "描述":"将2张基本卡牌1*加入手牌"
   },
+    "MP":2,
     "tag":"handcard;handcardaddcard"
   },
   "测试卡牌5":{
@@ -63,9 +63,9 @@
         "side":"self"
     }
     },
-    "MP":2,
     "描述":"为自身增加1护甲和1力量"
   },
+    "MP":2,
     "tag":"handcard;handcardaddtagself"
   },
   "测试卡牌6":{
@@ -142,9 +142,9 @@
       "value":4,
 	  "type":"普通"	  
     },
-    "MP":1,
     "描述":"造成4普通伤害"
   },
+    "MP":1,
 	  "tag":"handcard;handcarddamage"
   },
   "札弹2":{
@@ -155,9 +155,9 @@
 	  "type":"普通"
     },
 	  "loop":2,
-    "MP":2,
     "描述":"造成4普通伤害，重复2次"
   },
+    "MP":2,
 	  "tag":"handcard;handcarddamage"
   },
   "札弹3":{

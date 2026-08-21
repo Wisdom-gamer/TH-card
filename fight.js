@@ -814,7 +814,7 @@ function renderFightEquip(
     }
 
     const effect = card["效果"];
-    const mpCost = isObject(effect) ? Number(effect["MP"] ?? 0) : 0;
+    const mpCost = Number(card["MP"] ?? 0);
 
     btn.disabled = fight.carduseLocked || remaining > 0 || !effect || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
     btn.onclick = async function () {
@@ -1094,284 +1094,95 @@ function renderFightBags() {
   }
 }
   async function startsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    if (false) await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,null,side,1);
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
-
-  async function startsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex) {
-    // side: incoming effect side
-    // iterate equips that are on the same side as the incoming side (owner side)
+    async function startsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex) {
     const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
     const ownerSide = side === 1 ? 1 : 0;
-
-    // If register provided, per你的语义在进入此函数时 register 应该 +1 并从该位置开始检查（跳过触发源）
     const startIndex = (typeof register === "number" && register >= 0) ? (register + 1) : 0;
-
-    for (
-      let index = startIndex;
-      index < equips.length;
-      index += 1
-    ) {
+    for (let index = startIndex;index < equips.length;index += 1) {
       const cardName = equips[index];
       const card = getFightCardData(cardName);
       const cardEffect = card ? card["效果"] : null;
-      const cardTagVal = card ? String(card["tag"] ?? "").trim() : "";
       const cardSiderule = card ? String(card["siderule"] ?? "").trim() : "";
-
-      if (
-        !isObject(cardEffect) ||
-        !equipRuleMatch(cardEffect["rule"],tag)
-      ) {
-        continue;
-      }
-
-      // check siderule against incoming side and equip owner side
-      if (!sideruleMatches(cardSiderule, side, ownerSide)) {
-        continue;
-      }
-
-      // 被动伤害触发（装备中恰好含 "被动伤害" 字段）：
-      if (Object.prototype.hasOwnProperty.call(cardEffect,"被动伤害")) {
-        const passive = cardEffect["被动伤害"];
-        if (isObject(passive) && Number.isFinite(Number(passive.value)) && Number(passive.value) !== 0) {
-          // build effect object for nested call: treat like a damage effect
-          const nestedEffect = { "伤害": { value: Number(passive.value), type: passive.type } };
-          const nestedTag = cardTagVal === "" ? "equip" : cardTagVal;
-          // register passed is current equip index (触发源的位置)
-          // startStepIndex: use stepIndex to begin nested judgement from this same function position
-          await carduse(ownerSide, "装备卡", nestedEffect, nestedTag, null, fight, index, stepIndex);
-        }
-        continue;
-      }
-
-      // 伤害修改类（严格匹配 "伤害修改"）: 修改当前 effect 的伤害值（可以增减）
-      if (Object.prototype.hasOwnProperty.call(cardEffect,"伤害修改")) {
-        const modifier = cardEffect["伤害修改"];
-        if (isObject(modifier) && isObject(effect) && isObject(effect["伤害"])) {
-          const modValue = Number(modifier.value);
-          const damageValue = Number(effect["伤害"].value);
-          if (Number.isFinite(modValue) && Number.isFinite(damageValue)) {
-            // 新语义：正数降低伤害，负数增加伤害 => newDamage = damage - modValue
-            const newDamage = Math.max(0, Math.floor(damageValue - modValue));
-            effect = {...effect};
-            effect["伤害"] = {...effect["伤害"], value: newDamage};
-            // continue to next equip so multiple modifiers accumulate
-            continue;
-          }
-        }
-      }
-
-      // 如果装备不是被动伤害或伤害修改（例如覆盖性效果），保留原逻辑：覆盖 effect 并停止（与原实现保持兼容）
-      if (isObject(cardEffect) && !Object.prototype.hasOwnProperty.call(cardEffect,"伤害修改") && !Object.prototype.hasOwnProperty.call(cardEffect,"被动伤害")) {
-        effect = cardEffect;
-        // match original behavior: stop at first overriding equip
-        break;
-      }
+      if (!isObject(cardEffect) || !equipRuleMatch(cardEffect["rule"],tag)) continue;
+      if (!sideruleMatches(cardSiderule,side,ownerSide)) continue;
+      const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,ownerSide,1);
+      effect = result.effect;
     }
-
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
   async function startsidetrait(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    if (false) await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,null,side,1);
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
-  // ---------- 修改：startsidetag 实现（根据标签触发规则修改 effect） ----------
   async function startsidetag(side,type,effect,tag,sidetype,fight,register,stepIndex) {
-    // side: incoming effect side; here we check tags that are on the same side as incoming side (owner side)
     const ownerSide = side === 1 ? 1 : 0;
-    const tagList = getTagListForSide(fight, ownerSide);
-    if (!tagList || tagList.length === 0) {
-      return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
-    }
-
+    const tagList = getTagListForSide(fight,ownerSide);
+    if (!tagList || tagList.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
     const tagDefs = await loadTagsDatabase();
-
-    // iterate tag groups
-    for (let i = 0; i < tagList.length; i += 1) {
-      const entry = tagList[i];
+    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
+    for (let index = startIndex;index < tagList.length;index += 1) {
+      const entry = tagList[index];
       const tagName = String(entry[0] ?? "");
       const tagCount = Number(entry[1] ?? 0);
       if (!tagName || tagCount <= 0) continue;
-
       const def = tagDefs[tagName];
-      if (!isObject(def)) continue;
-      // rule / siderule check
-      if (!equipRuleMatch(def.rule, tag)) continue;
-      if (!sideruleMatches(def.siderule, side, ownerSide)) continue;
-
-      // apply damage modification if defined
-      const defEffect = def["效果"] || {};
-      if (isObject(defEffect) && isObject(defEffect["伤害修改"]) && isObject(effect) && isObject(effect["伤害"])) {
-        const dmgMod = defEffect["伤害修改"];
-        // currently support mode "onefull"
-        const mode = String(dmgMod.mode ?? "").trim();
-        let finalValue = 0;
-        if (mode === "onefull") {
-          finalValue = Number(dmgMod.value_mode || 0) * Number(tagCount || 0);
-        } else {
-          finalValue = Number(dmgMod.value_mode || 0);
-        }
-        // consider type matching if provided
-        const reqType = String(dmgMod.type ?? "").trim();
-        const incomingType = String(effect["伤害"].type ?? "").trim();
-        if (!reqType || reqType === incomingType) {
-          // here we interpret finalValue as additive to damage:
-          // positive finalValue -> 增伤; negative finalValue -> 减伤
-          const cur = Number(effect["伤害"].value);
-          if (Number.isFinite(cur) && Number.isFinite(finalValue)) {
-            effect = {...effect};
-            effect["伤害"] = {...effect["伤害"], value: Math.max(0, Math.floor(cur + finalValue))};
-          }
-        }
-      }
-
-      // if tag's effect contains 标记 删除规则 -> apply deletion(s)
-      if (isObject(defEffect) && isObject(defEffect["标记"])) {
-        for (const [tagKey, tagCfg] of Object.entries(defEffect["标记"])) {
-          const deleteCount = isObject(tagCfg) ? toInt(tagCfg.delete ?? 0, 0) : toInt(tagCfg ?? 0, 0);
-          const sideProp = isObject(tagCfg) ? String(tagCfg.side ?? "") : "";
-          // sideProp 'self' -> applies to the ownerSide; otherwise apply to other side
-          const targetSide = sideProp === "self" ? ownerSide : (1 - ownerSide);
-          if (deleteCount > 0) {
-            modifyTagCount(fight, targetSide, tagKey, -Math.abs(deleteCount));
-          }
-        }
-      }
+      if (!isObject(def) || !equipRuleMatch(def.rule,tag) || !sideruleMatches(def.siderule,side,ownerSide)) continue;
+      const defEffect = isObject(def["效果"]) ? def["效果"] : null;
+      const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,defEffect,ownerSide,tagCount);
+      effect = result.effect;
     }
-
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
-  // ---------- end startsidetag ----------
-
+  
   async function nsidetag(side,type,effect,tag,sidetype,fight,register,stepIndex) {
-    // nsidetag: check tags on the opposite side (owner is opposite of incoming side)
     const ownerSide = side === 1 ? 0 : 1;
-    const tagList = getTagListForSide(fight, ownerSide);
-    if (!tagList || tagList.length === 0) {
-      return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
-    }
-
+    const tagList = getTagListForSide(fight,ownerSide);
+    if (!tagList || tagList.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
     const tagDefs = await loadTagsDatabase();
-
-    for (let i = 0; i < tagList.length; i += 1) {
-      const entry = tagList[i];
+    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
+    for (let index = startIndex;index < tagList.length;index += 1) {
+      const entry = tagList[index];
       const tagName = String(entry[0] ?? "");
       const tagCount = Number(entry[1] ?? 0);
       if (!tagName || tagCount <= 0) continue;
-
       const def = tagDefs[tagName];
-      if (!isObject(def)) continue;
-      // rule / siderule check (note: equip owner side is ownerSide)
-      if (!equipRuleMatch(def.rule, tag)) continue;
-      if (!sideruleMatches(def.siderule, side, ownerSide)) continue;
-
-      const defEffect = def["效果"] || {};
-      if (isObject(defEffect) && isObject(defEffect["伤害修改"]) && isObject(effect) && isObject(effect["伤害"])) {
-        const dmgMod = defEffect["伤害修改"];
-        const mode = String(dmgMod.mode ?? "").trim();
-        let finalValue = 0;
-        if (mode === "onefull") {
-          finalValue = Number(dmgMod.value_mode || 0) * Number(tagCount || 0);
-        } else {
-          finalValue = Number(dmgMod.value_mode || 0);
-        }
-        const reqType = String(dmgMod.type ?? "").trim();
-        const incomingType = String(effect["伤害"].type ?? "").trim();
-        if (!reqType || reqType === incomingType) {
-          const cur = Number(effect["伤害"].value);
-          if (Number.isFinite(cur) && Number.isFinite(finalValue)) {
-            // finalValue is additive: positive -> add, negative -> subtract
-            effect = {...effect};
-            effect["伤害"] = {...effect["伤害"], value: Math.max(0, Math.floor(cur + finalValue))};
-          }
-        }
-      }
-
-      // process deletion rules in tag definition
-      if (isObject(defEffect) && isObject(defEffect["标记"])) {
-        for (const [tagKey, tagCfg] of Object.entries(defEffect["标记"])) {
-          const deleteCount = isObject(tagCfg) ? toInt(tagCfg.delete ?? 0, 0) : toInt(tagCfg ?? 0, 0);
-          const sideProp = isObject(tagCfg) ? String(tagCfg.side ?? "") : "";
-          // sideProp 'self' -> applies to the ownerSide; otherwise apply to other side
-          const targetSide = sideProp === "self" ? ownerSide : (1 - ownerSide);
-          if (deleteCount > 0) {
-            modifyTagCount(fight, targetSide, tagKey, -Math.abs(deleteCount));
-          }
-        }
-      }
+      if (!isObject(def) || !equipRuleMatch(def.rule,tag) || !sideruleMatches(def.siderule,side,ownerSide)) continue;
+      const defEffect = isObject(def["效果"]) ? def["效果"] : null;
+      const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,defEffect,ownerSide,tagCount);
+      effect = result.effect;
     }
-
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
-  // ---------- end nsidetag ----------
 
   async function nsidetrait(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    if (false) await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,null,1 - side,1);
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
- async function nsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex) {
-    // nsideequip: check equips on the opposite side (owner side is opposite)
+  async function nsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex) {
     const equips = side === 1 ? fight.fightenemyequip : fight.fightplayerequip;
     const ownerSide = side === 1 ? 0 : 1;
-
-    // 对方装备始终从 0 开始逐一检测（register 表示来源方位置，不作为对方起点）
-    for (
-      let index = 0;
-      index < equips.length;
-      index += 1
-    ) {
-      const card = getFightCardData(equips[index]);
+    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
+    for (let index = startIndex;index < equips.length;index += 1) {
+      const cardName = equips[index];
+      const card = getFightCardData(cardName);
       const cardEffect = card ? card["效果"] : null;
-      const cardTagVal = card ? String(card["tag"] ?? "").trim() : "";
       const cardSiderule = card ? String(card["siderule"] ?? "").trim() : "";
-
-      if (
-        !isObject(cardEffect) ||
-        !equipRuleMatch(cardEffect["rule"],tag)
-      ) {
-        continue;
-      }
-
-      // siderule check: the equip's siderule determines whether it triggers for this incoming side
-      if (!sideruleMatches(cardSiderule, side, ownerSide)) {
-        continue;
-      }
-
-      // 严格匹配 "伤害修改"
-      if (!Object.prototype.hasOwnProperty.call(cardEffect,"伤害修改")) {
-        continue;
-      }
-
-      const modifier = cardEffect["伤害修改"];
-      const damage = isObject(effect) ? effect["伤害"] : null;
-
-      if (!isObject(modifier) || !isObject(damage)) {
-        continue;
-      }
-
-      const modValue = Number(modifier.value);
-      const damageValue = Number(damage.value);
-
-      if (
-        Number.isFinite(modValue) &&
-        Number.isFinite(damageValue)
-      ) {
-        // 新语义：正数降低伤害，负数增加伤害 => newDamage = damage - modValue
-        effect = {...effect};
-        effect["伤害"] = {...damage, value: Math.max(0, Math.floor(damageValue - modValue))};
-        // if damage reduced to 0, we can stop early as no further effects matter
-        const newDamage = effect && isObject(effect["伤害"]) ? Number(effect["伤害"].value) : 0;
-        if (newDamage <= 0) {
-          break;
-        }
-        // otherwise continue to next equip (so modifications accumulate)
-      }
+      if (!isObject(cardEffect) || !equipRuleMatch(cardEffect["rule"],tag)) continue;
+      if (!sideruleMatches(cardSiderule,side,ownerSide)) continue;
+      const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,ownerSide,1);
+      effect = result.effect;
     }
-
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
   async function nsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    if (false) await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,null,1 - side,1);
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
@@ -1395,7 +1206,7 @@ function renderFightBags() {
 
         const card = getFightCardData(cardName);
         const effect = card ? card["效果"] : null;
-        const mpCost = isObject(effect) ? Number(effect["MP"] ?? 0) : 0;
+        const mpCost = Number(card["MP"] ?? 0);
 
         button.disabled =
           Number.isFinite(mpCost) &&
@@ -1413,7 +1224,7 @@ function renderFightBags() {
         const cardName = parseFightCard(cardEntry).name;
         const card = getFightCardData(cardName);
         const effect = card ? card["效果"] : null;
-        const mpCost = isObject(effect) ? Number(effect["MP"]) : 0;
+        const mpCost = Number(effect["MP"] ?? 0);
 
         if (!cardName) {
           button.disabled = true;
@@ -1461,6 +1272,73 @@ function finishFight(fight, outcome) {
 
   return outcome;
 }
+  async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount) {
+    let nextEffect = effect;
+    const source = isObject(sourceEffect) ? sourceEffect : {};
+    const count = Number.isFinite(Number(sourceCount)) ? Number(sourceCount) : 1;
+    const effectSide = Number(ownerSide) === 1 ? 1 : 0;
+    const damageModifier = source["伤害修改"];
+    if (isObject(damageModifier) && isObject(nextEffect) && isObject(nextEffect["伤害"])) {
+      const mode = String(damageModifier.mode ?? "").trim();
+      const modifierValue = Number(damageModifier.value_mode ?? damageModifier.value);
+      const finalValue = mode === "onefull" ? modifierValue * count : modifierValue;
+      const damage = nextEffect["伤害"];
+      const damageValue = Number(damage.value);
+      const damageType = String(damage.type ?? "").trim();
+      const requiredType = String(damageModifier.type ?? "").trim();
+      if ((!requiredType || requiredType === damageType) && Number.isFinite(finalValue) && Number.isFinite(damageValue)) {
+        // 伤害修改
+        const modifierMode = mode === "onefull" || Object.prototype.hasOwnProperty.call(damageModifier,"value_mode") ? "add" : "subtract";
+        const newDamage = modifierMode === "add" ? damageValue + finalValue : damageValue - finalValue;
+        nextEffect = {...nextEffect};
+        nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(newDamage))};
+      }
+    }
+    if (isObject(source["标记"])) {
+      // 增减标记
+      for (const [tagName,tagConfig] of Object.entries(source["标记"])) {
+        const config = isObject(tagConfig) ? tagConfig : {value:tagConfig};
+        const targetSide = String(config.side ?? "") === "self" ? effectSide : (1 - effectSide);
+        const addValue = toInt(config.value ?? config.add ?? 0,0);
+        const deleteValue = toInt(config.delete ?? 0,0);
+        if (addValue !== 0) modifyTagCount(fight,targetSide,tagName,addValue);
+        if (deleteValue !== 0) modifyTagCount(fight,targetSide,tagName,-Math.abs(deleteValue));
+      }
+    }
+      // 抽卡和将某个卡x个加入手牌转移到cardeffect执行
+/*    if (isObject(source["抽卡"])) {
+      const drawValue = Number(source["抽卡"].value);
+      if (Number.isFinite(drawValue) && drawValue > 0) {
+        if (effectSide === 1) {
+          drawPlayerCards(Math.floor(drawValue));
+          renderPlayerHand(fight);
+        } else {
+          drawEnemyCards(Math.floor(drawValue));
+          renderEnemyHand(fight);
+        }
+      }
+    }
+    if (isObject(source["获取卡"])) {
+      const hand = effectSide === 1 ? fight.playerhand : fight.enemyhand;
+      for (const [cardName,cardConfig] of Object.entries(source["获取卡"])) {
+        const cardCount = isObject(cardConfig) ? Number(cardConfig.value) : Number(cardConfig);
+        const cardSideType = isObject(cardConfig) ? String(cardConfig.sidetype ?? "") : "";
+        if (!Number.isFinite(cardCount) || cardCount <= 0) continue;
+        for (let i = 0;i < Math.floor(cardCount);i += 1) hand.push(createFightCardEntry(cardName,cardSideType === "" ? [] : cardSideType.split("|").map(function (value) { return value.trim(); }).filter(Boolean)));
+      }
+      if (effectSide === 1) renderPlayerHand(fight); else renderEnemyHand(fight);
+    }*/
+    if (isObject(source["被动伤害"])) {
+      // 被动伤害
+      const passive = source["被动伤害"];
+      const value = Number(passive.value);
+      if (Number.isFinite(value) && value !== 0) {
+        const nestedEffect = {"伤害":{value:value,type:passive.type}};
+        await carduse(effectSide,type,nestedEffect,tag,sidetype,fight,register,stepIndex);
+      }
+    }
+    return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
+  }
 async function cardeffect(side,type,effect,fight) {
   /* 攻击伤害 */
   const damage = isObject(effect) ? effect["伤害"] : null;
@@ -1655,7 +1533,7 @@ async function cardeffect(side,type,effect,fight) {
     const cardName = parsedCard.name;
     const card = getFightCardData(cardName);
     const effect = card ? card["效果"] : null;
-    const mpCost = isObject(effect) ? Number(effect["MP"] ?? 0) : 0;
+    const mpCost = Number(card["MP"] ?? 0);
     const mpDisabled = Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost;
     button.disabled = button.classList.contains("is-empty") || mpDisabled;
     button.onclick = async function () {
@@ -1675,7 +1553,7 @@ async function cardeffect(side,type,effect,fight) {
       const effect = card ? card["效果"] : null;
       const tagValue = card ? String(card["tag"] ?? "").trim() : "";
       const tag = tagValue;
-      const mpCost = isObject(effect) ? Number(effect["MP"] ?? 0) : 0;
+      const mpCost = Number(card["MP"] ?? 0);
       if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
         setPlayerHandDisabled(fight,false);
         return;
@@ -1741,7 +1619,7 @@ async function fightenemyactioncard(fight) {
          if (name && remaining === 0) {
            const abilityCard = getFightCardData(name);
            if (abilityCard) {
-             const mpCost = isObject(abilityCard["效果"]) ? Number(abilityCard["效果"]["MP"] || 0) : 0;
+             const mpCost = Number(abilityCard["MP"] ?? 0);
              if (!Number.isFinite(mpCost) || mpCost <= 0 || fight.enemy.MP >= mpCost) {
                if (Number.isFinite(mpCost) && mpCost > 0) {
                  fight.enemy.MP -= mpCost;
