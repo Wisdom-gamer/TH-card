@@ -5,9 +5,9 @@
     "伤害":{
       "value":2,
 	    "type":"普通"
-    },
-    "描述":"造成2普通伤害"
+    }
   },
+    "描述":"造成2普通伤害",
     "tag":"handcard;handcarddamage"
   },
   "测试卡牌2":{
@@ -16,9 +16,9 @@
     "伤害":{
     "value":4,
 	  "type":"普通"
-    },
-    "描述":"造成4普通伤害"
+    }
   },
+    "描述":"造成4普通伤害",
 	  "tag":"item;handcarddamage" /* 触发器检测 */
   },
   "测试卡牌3":{
@@ -30,9 +30,9 @@
     "伤害":{
     "value":1,
     "type":"普通"
-    },
-    "描述":"从卡组抽取2张卡，造成1点普通伤害"
+    }
   },
+    "描述":"从卡组抽取2张卡，造成1点普通伤害",
     "MP":2,
     "tag":"handcard;handcarddamage;handcardaddcard"
   },
@@ -44,9 +44,9 @@
         "value":2,
         "sidetype":"temp"
     }
-    },
-    "描述":"将2张基本卡牌1*加入手牌"
+    }
   },
+    "描述":"将2张基本卡牌1*加入手牌",
     "MP":2,
     "tag":"handcard;handcardaddcard"
   },
@@ -62,9 +62,9 @@
         "add":1,
         "side":"self"
     }
-    },
-    "描述":"为自身增加1护甲和1力量"
+    }
   },
+    "描述":"为自身增加1护甲和1力量",
     "MP":2,
     "tag":"handcard;handcardaddtagself"
   },
@@ -75,9 +75,9 @@
       "value":2,
 	    "type":"普通"
     },
-    "描述":"造成2普通伤害，重复3次",
 	  "loop":3
   },
+    "描述":"造成2普通伤害，重复3次",
     "tag":"handcard;handcarddamage"
   },
   "测试装备1":{
@@ -88,9 +88,9 @@
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
 	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
-    "siderule":"other", /* 触发回合规则 */
-    "描述":"受到的伤害-1"
+    "siderule":"other" /* 触发回合规则 */
   },
+    "描述":"受到的伤害-1",
 	  "tag":"equip" /* 触发器检测 */
   },
   "测试装备11":{
@@ -101,9 +101,9 @@
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
 	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
-    "siderule":"self", /* 触发回合规则 */
-    "描述":"造成的伤害+1"
+    "siderule":"self" /* 触发回合规则 */
   },
+    "描述":"造成的伤害+1",
 	  "tag":"equip" /* 触发器检测 */
   },
   "测试装备2":{
@@ -114,9 +114,9 @@
 	  "type":"普通"	  
     },
     "rule":"turnstart", /* 触发规则 */
-    "siderule":"self", /* 触发回合规则 */
-    "描述":"在回合开始时对敌方造成2普通伤害"
+    "siderule":"self" /* 触发回合规则 */
   },
+    "描述":"在回合开始时对敌方造成2普通伤害",
 	  "tag":"equip;equipdamage" /* 触发器检测 */
   },
   "测试装备3":{
@@ -127,9 +127,9 @@
 	  "type":"普通"	  
     },
     "rule":"turnstart", /* 触发规则 */
-    "siderule":"self", /* 触发回合规则 */
-    "描述":"在回合开始时对敌方造成4普通伤害"
+    "siderule":"self" /* 触发回合规则 */
   },
+    "描述":"在回合开始时对敌方造成4普通伤害",
 	  "tag":"equip;equipdamage" /* 触发器检测 */
   },
   /* 正式内容 */
@@ -141,9 +141,9 @@
     "伤害":{
       "value":4,
 	  "type":"普通"	  
-    },
-    "描述":"造成4普通伤害"
+    }
   },
+    "描述":"造成4普通伤害",
     "MP":1,
 	  "tag":"handcard;handcarddamage"
   },
@@ -154,9 +154,9 @@
       "value":4,
 	  "type":"普通"
     },
-	  "loop":2,
-    "描述":"造成4普通伤害，重复2次"
+	  "loop":2
   },
+    "描述":"造成4普通伤害，重复2次",
     "MP":2,
 	  "tag":"handcard;handcarddamage"
   },
@@ -167,10 +167,10 @@
       "value":4,
 	  "type":"普通"
     },
-	  "loop":4,
-    "MP":4,
-    "描述":"造成4普通伤害，重复4次"
+	  "loop":4
   },
+    "描述":"造成4普通伤害，重复4次",
+    "MP":4,
 	  "tag":"handcard;handcarddamage"
   },
   "升天脚":{
@@ -201,13 +201,17 @@
     "标记":{
       "弱化":{
         "add":1,
-        "side":"self"
+        "side":"other"
+        },
+      "弱化控制":{
+        "add":1,
+        "side":"other"
         }
-      },
-    "描述":"造成4普通伤害，对方获得弱化1"
+      }      
   },
+    "描述":"造成4普通伤害，对方获得弱化1",
     "MP":1,
-    "tag":"handcard;handcarddamage;handcardaddtagenemy"
+    "tag":"handcard;handcarddamage;handcardaddtagother"
   },
   /* 游魂 */
   
@@ -217,11 +221,67 @@
     "伤害":{
       "value":6,
 	    "type":"混沌"
-    },
-    "描述":"造成2混沌伤害"
+    }
   },
+    "描述":"造成2混沌伤害",
     "MP":2,
     "tag":"handcard;handcarddamage"
+  },
+  /* 露米娅 */
+  
+  "黑暗":{ /* 技能 */
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "黑暗":{
+      "add":2,
+	    "side":"other"
+    }
+    }
+  },
+    "MP":1,
+    "tag":"handcard;handcardaddtagother"
+  },
+  "偷袭":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value_read":"2 '+' <self.tag.黑暗>"
+      }
+  },
+    "MP":1,
+    "描述":"造成2+自身黑暗层数的伤害",
+    "tag":"handcard;handcarddamage;handcarddeletetagself"
+  },
+  "夜雀":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "黑暗":{
+      "add":2,
+	    "side":"all" /* 同时给予双方 */
+    }
+    }
+  },
+    "MP":2,
+    "tag":"handcard;handcardaddtagother;handcardaddtagself"
+  },
+  "月亮光":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "黑暗":{
+      "delete":65535,
+	    "side":"self" 
+	    }
+    },
+    "伤害":{
+      "value":8
+      }
+  },
+    "MP":2,
+    "描述":"驱散自身所有黑暗，然后造成8点伤害",
+    "tag":"handcard;handcarddamage;handcarddeletetagself"
   },
   
   /* General */
@@ -232,9 +292,9 @@
     "伤害":{
       "value":2,
 	    "type":"普通"
-    },
-    "描述":"造成2普通伤害"
+    }
   },
+    "描述":"造成2普通伤害",
     "tag":"handcard;handcarddamage"
   }
   

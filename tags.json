@@ -33,21 +33,51 @@
     "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"self"
   },
-  "虚弱":{
+  "弱化":{
     "效果":{
     "伤害修改":{
       "value_mode":-1,
       "mode":"onefull",
       "type":"普通"
-      },
+      }
+    },
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"self"
+  },
+  "弱化控制":{
+    "效果":{
       "标记":{
-        "虚弱":{
+        "弱化":{
+          "side":"self",
+        "delete":65535 /* 删除标记 */
+        },
+        "弱化控制":{
+          "side":"self",
+        "delete":65535 /* 删除标记 */
+        }
+      }
+    },
+    "rule":"turnend",
+    "hide":"true",
+    "siderule":"self"
+  },
+  "黑暗":{
+    "效果":{
+      "伤害修改":{
+        "random":0.5,
+        "value_new":0 /* 移除伤害 */
+        },
+      "标记":{
+        "黑暗":{
           "side":"self",
         "delete":1
         }
       }
     },
-    "rule":"handcarddamage;itemdamage;equipdamage",
-    "siderule":"self"
+    "rule":"turnend",
+    "hide":"true",
+    "siderule":"self",
+    "描述":"有50%概率无法造成伤害"
   }
+  
 }

@@ -949,11 +949,9 @@ function renderFightEquip(
       if (!Number.isFinite(Number(list[idx][1])) || list[idx][1] <= 0) {
         list.splice(idx, 1);
       } else {
-        // ensure integer
         list[idx][1] = Math.floor(list[idx][1]);
       }
     }
-    // 更新 UI
     renderFightTags(fight);
   }
 
@@ -1300,7 +1298,7 @@ function finishFight(fight, outcome) {
         const config = isObject(tagConfig) ? tagConfig : {value:tagConfig};
         const targetSide = String(config.side ?? "") === "self" ? effectSide : (1 - effectSide);
         const addValue = toInt(config.value ?? config.add ?? 0,0);
-        const deleteValue = toInt(config.delete ?? 0,0);
+        const deleteValue = toInt(config.delete ?? 0, 0);
         if (addValue !== 0) modifyTagCount(fight,targetSide,tagName,addValue);
         if (deleteValue !== 0) modifyTagCount(fight,targetSide,tagName,-Math.abs(deleteValue));
       }
