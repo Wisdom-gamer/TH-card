@@ -246,7 +246,7 @@
   "类型":"基本卡",
   "效果":{
     "伤害":{
-      "value_read":"2 '+' <self.tag.黑暗>"
+      "value_read":"2 + <self.tags.黑暗>"
       }
   },
     "MP":1,
