@@ -814,7 +814,7 @@ function renderFightEquip(
     }
 
     const effect = card["效果"];
-    const mpCost = Number(card["MP"] ?? 0);
+    const mpCost = card ? Number(card["MP"] ?? 0) : 0;
 
     btn.disabled = fight.carduseLocked || remaining > 0 || !effect || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
     btn.onclick = async function () {
@@ -1204,7 +1204,7 @@ function renderFightBags() {
 
         const card = getFightCardData(cardName);
         const effect = card ? card["效果"] : null;
-        const mpCost = Number(card["MP"] ?? 0);
+        const mpCost = card ? Number(card["MP"] ?? 0) : 0;
 
         button.disabled =
           Number.isFinite(mpCost) &&
@@ -1531,7 +1531,7 @@ async function cardeffect(side,type,effect,fight) {
     const cardName = parsedCard.name;
     const card = getFightCardData(cardName);
     const effect = card ? card["效果"] : null;
-    const mpCost = Number(card["MP"] ?? 0);
+    const mpCost = card ? Number(card["MP"] ?? 0) : 0;
     const mpDisabled = Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost;
     button.disabled = button.classList.contains("is-empty") || mpDisabled;
     button.onclick = async function () {
@@ -1551,7 +1551,7 @@ async function cardeffect(side,type,effect,fight) {
       const effect = card ? card["效果"] : null;
       const tagValue = card ? String(card["tag"] ?? "").trim() : "";
       const tag = tagValue;
-      const mpCost = Number(card["MP"] ?? 0);
+      const mpCost = card ? Number(card["MP"] ?? 0) : 0;
       if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
         setPlayerHandDisabled(fight,false);
         return;
