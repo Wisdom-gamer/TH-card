@@ -74,10 +74,13 @@
         }
       }
     },
-    "rule":"turnend",
-    "hide":"true",
+    "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"self",
     "描述":"有50%概率无法造成伤害"
+  },
+  "额外回合":{
+    "ID":"moreturn",
+    "描述":"额外回合"
   }
   
 }

@@ -1437,7 +1437,7 @@ async function cardeffect(side,type,effect,fight) {
   const tagsEffect = isObject(effect) ? effect["标记"] : null;
   if (isObject(tagsEffect)) {
     for (const [tagName, cfg] of Object.entries(tagsEffect)) {
-      const add = isObject(cfg) ? toInt(cfg.add ?? 0, 0) : toInt(cfg ?? 0, 0);
+      const add = isObject(cfg) ? cfg.value ? toInt(cfg.value ?? 0, 0) : toInt(cfg.add ?? 0, 0) : toInt(cfg ?? 0, 0);
       const del = isObject(cfg) ? toInt(cfg.delete ?? 0, 0) : 0;
       const sideProp = isObject(cfg) ? String(cfg.side ?? "") : "";
       if (sideProp === "all") {
