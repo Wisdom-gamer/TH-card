@@ -570,19 +570,10 @@ function renderFightEquip(
     则把对应坟场全部加入牌组，
     然后清空坟场。
   */
-  function recycleGraveIfDeckEmpty(
-    fight,
-    owner
-  ) {
-    const deck =
-      owner === 1
-        ? fight.playercards
-        : fight.enemycards;
+  function recycleGraveIfDeckEmpty(fight,owner) {
+    const deck = owner === 1 ? fight.playercards : fight.enemycards;
 
-    const grave =
-      owner === 1
-        ? fight.fightplayergrave
-        : fight.fightenemygrave;
+    const grave = owner === 1 ? fight.fightplayergrave : fight.fightenemygrave;
 
     if (
       deck.length !== 0 ||
@@ -600,18 +591,10 @@ function renderFightEquip(
     玩家牌库 / 敌人牌库
     都在回合结束时检查。
   */
-  function recycleGraves(
-    fight
-  ) {
-    recycleGraveIfDeckEmpty(
-      fight,
-      1
-    );
+  function recycleGraves(fight) {
+    recycleGraveIfDeckEmpty(fight,1);
 
-    recycleGraveIfDeckEmpty(
-      fight,
-      0
-    );
+    recycleGraveIfDeckEmpty(fight,0);
 
     updateFightPileCounts(fight);
   }
@@ -633,32 +616,14 @@ function renderFightEquip(
     } else if (
       isObject(source)
     ) {
-      for (
-        const [
-          cardName,
-          count
-        ]
-        of Object.entries(source)
-      ) {
-        if (
-          cardName === "type" ||
-          cardName === "trpe" ||
-          cardName === "maxnumber"
-        ) {
+      for (const [cardName,count] of Object.entries(source)) {
+        if (cardName === "type" || cardName === "maxnumber") {
           continue;
         }
 
-        const amount =
-          Math.max(
-            0,
-            toInt(count, 0)
-          );
+        const amount =Math.max(0,toInt(count, 0));
 
-        for (
-          let index = 0;
-          index < amount;
-          index += 1
-        ) {
+        for (let index = 0;index < amount;index += 1) {
           pool.push(cardName);
         }
       }
@@ -864,8 +829,23 @@ function renderFightEquip(
     }
     return database[cardName] || null;
   }
-
-  function prepareJudgementEffect(effect) {
+function parseValueRead(expression, fight, side) {
+  if (typeof expression !== "string") return Number(expression);
+  let result = String(expression).trim();
+  const tagPattern = /<(self|other)\.tags\.([^>]+)>/g;
+  result = result.replace(tagPattern, function (match, owner, tagName) {
+    const targetSide = owner === "self" ? side : (1 - side);
+    const count = getTagCount(fight, targetSide, tagName);
+    return String(count);
+  });
+  try {
+    const calculated = Function('"use strict"; return (' + result + ')')();
+    return Number.isFinite(calculated) ? calculated : Number(expression);
+  } catch (e) {
+    return Number(expression);
+  }
+}
+    function prepareJudgementEffect(effect) {
     if (effect === null || effect === undefined) {
       return null;
     }
@@ -878,7 +858,7 @@ function renderFightEquip(
 
     if (Object.prototype.hasOwnProperty.call(nextEffect,"伤害")) {
       const damage = nextEffect["伤害"];
-      if (!isObject(damage) || damage.value === null || damage.value === undefined || !Number.isFinite(Number(damage.value)) || Number(damage.value) === 0) {
+      if (!isObject(damage) || (damage.value === null || damage.value === undefined) && !Object.prototype.hasOwnProperty.call(damage,"value_read") || Object.prototype.hasOwnProperty.call(damage,"value") && !Number.isFinite(Number(damage.value)) || Object.prototype.hasOwnProperty.call(damage,"value") && Number(damage.value) === 0) {
         delete nextEffect["伤害"];
       }
     }
@@ -972,6 +952,9 @@ function renderFightEquip(
       const name = String(entry[0] ?? "");
       const count = Number(entry[1] ?? 0);
       if (!name) return;
+      const tagDef = tagsDatabase && isObject(tagsDatabase[name]) ? tagsDatabase[name] : null;
+      const hidden = tagDef && (tagDef.hide === true || String(tagDef.hide ?? "").trim().toLowerCase() === "true");
+      if (hidden) return;
       // 每种标记只渲染一个图标，并在右下角显示数值徽章
       const wrapper = document.createElement("span");
       wrapper.className = "tag-wrapper";
@@ -994,6 +977,9 @@ function renderFightEquip(
       const name = String(entry[0] ?? "");
       const count = Number(entry[1] ?? 0);
       if (!name) return;
+      const tagDef = tagsDatabase && isObject(tagsDatabase[name]) ? tagsDatabase[name] : null;
+      const hidden = tagDef && (tagDef.hide === true || String(tagDef.hide ?? "").trim().toLowerCase() === "true");
+      if (hidden) return;
       const wrapper = document.createElement("span");
       wrapper.className = "tag-wrapper";
       wrapper.setAttribute("role", "img");
@@ -1270,78 +1256,145 @@ function finishFight(fight, outcome) {
 
   return outcome;
 }
-  async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount) {
-    let nextEffect = effect;
-    const source = isObject(sourceEffect) ? sourceEffect : {};
-    const count = Number.isFinite(Number(sourceCount)) ? Number(sourceCount) : 1;
-    const effectSide = Number(ownerSide) === 1 ? 1 : 0;
-    const damageModifier = source["伤害修改"];
-    if (isObject(damageModifier) && isObject(nextEffect) && isObject(nextEffect["伤害"])) {
-      const mode = String(damageModifier.mode ?? "").trim();
-      const modifierValue = Number(damageModifier.value_mode ?? damageModifier.value);
-      const finalValue = mode === "onefull" ? modifierValue * count : modifierValue;
+  function getEffectReadValue(path,side,fight) {
+    const currentSide = Number(side) === 1 ? 1 : 0;
+    const otherSide = 1 - currentSide;
+    const selfState = currentSide === 1 ? fight.player : fight.enemy;
+    const otherState = otherSide === 1 ? fight.player : fight.enemy;
+    const selfTags = currentSide === 1 ? fight.playerfighttags : fight.enemyfighttags;
+    const otherTags = otherSide === 1 ? fight.playerfighttags : fight.enemyfighttags;
+    const text = String(path ?? "").trim();
+    const match = text.match(/^(self|other)\.([^.]+)(?:\.(.+))?$/);
+    if (!match) return NaN;
+    const target = match[1] === "self" ? selfState : otherState;
+    const tags = match[1] === "self" ? selfTags : otherTags;
+    const key = match[2];
+    const rest = match[3] ?? "";
+    if (key === "tags") {
+      if (!rest) return NaN;
+      const tagName = rest;
+      return getTagCount(fight,match[1] === "self" ? currentSide : otherSide,tagName);
+    }
+    if (!Object.prototype.hasOwnProperty.call(target,key)) return NaN;
+    let value = target[key];
+    if (rest) {
+      for (const part of rest.split(".")) {
+        if (value === null || value === undefined) return NaN;
+        value = value[part];
+      }
+    }
+    return Number(value);
+  }
+
+  function evaluateEffectValueRead(expression,side,fight) {
+    const text = String(expression ?? "").trim();
+    const replaced = text.replace(/<([^<>]+)>/g,function (_,path) {
+      const value = getEffectReadValue(path,side,fight);
+      return Number.isFinite(value) ? String(value) : "NaN";
+    });
+    if (!/^[0-9+\-*/().\sNaN]+$/.test(replaced)) return NaN;
+    try {
+      const value = Function(`"use strict";return (${replaced});`)();
+      return Number.isFinite(Number(value)) ? Number(value) : NaN;
+    } catch (error) {
+      return NaN;
+    }
+  }
+
+  function resolveEffectValue(config,side,fight) {
+    if (!isObject(config)) return NaN;
+    if (Object.prototype.hasOwnProperty.call(config,"value_read")) {
+      return evaluateEffectValueRead(config.value_read,side,fight);
+    }
+    return Number(config.value);
+  }
+async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount) {
+  let nextEffect = effect;
+  const source = isObject(sourceEffect) ? sourceEffect : {};
+  const count = Number.isFinite(Number(sourceCount)) ? Number(sourceCount) : 1;
+  const effectSide = Number(ownerSide) === 1 ? 1 : 0;
+  const damageModifier = source["伤害修改"];
+  if (isObject(damageModifier) && isObject(nextEffect) && isObject(nextEffect["伤害"])) {
+    const random = Number(damageModifier.random);
+    if (Number.isFinite(random) && random > 0 && Math.random() > random) {
+      // 不执行此效果
+    } else {
       const damage = nextEffect["伤害"];
-      const damageValue = Number(damage.value);
       const damageType = String(damage.type ?? "").trim();
       const requiredType = String(damageModifier.type ?? "").trim();
-      if ((!requiredType || requiredType === damageType) && Number.isFinite(finalValue) && Number.isFinite(damageValue)) {
-        // 伤害修改
-        const modifierMode = mode === "onefull" || Object.prototype.hasOwnProperty.call(damageModifier,"value_mode") ? "add" : "subtract";
-        const newDamage = modifierMode === "add" ? damageValue + finalValue : damageValue - finalValue;
+      if (!requiredType || requiredType === damageType) {
         nextEffect = {...nextEffect};
-        nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(newDamage))};
-      }
-    }
-    if (isObject(source["标记"])) {
-      // 增减标记
-      for (const [tagName,tagConfig] of Object.entries(source["标记"])) {
-        const config = isObject(tagConfig) ? tagConfig : {value:tagConfig};
-        const targetSide = String(config.side ?? "") === "self" ? effectSide : (1 - effectSide);
-        const addValue = toInt(config.value ?? config.add ?? 0,0);
-        const deleteValue = toInt(config.delete ?? 0, 0);
-        if (addValue !== 0) modifyTagCount(fight,targetSide,tagName,addValue);
-        if (deleteValue !== 0) modifyTagCount(fight,targetSide,tagName,-Math.abs(deleteValue));
-      }
-    }
-      // 抽卡和将某个卡x个加入手牌转移到cardeffect执行
-/*    if (isObject(source["抽卡"])) {
-      const drawValue = Number(source["抽卡"].value);
-      if (Number.isFinite(drawValue) && drawValue > 0) {
-        if (effectSide === 1) {
-          drawPlayerCards(Math.floor(drawValue));
-          renderPlayerHand(fight);
+        if (Object.prototype.hasOwnProperty.call(damageModifier, "value_new")) {
+          const newValue = Number(damageModifier.value_new);
+          if (Number.isFinite(newValue)) {
+            nextEffect["伤害"] = {...damage, value: Math.max(0, Math.floor(newValue))};
+          }
+        } else if (Object.prototype.hasOwnProperty.call(damageModifier, "value_read")) {
+          const readValue = parseValueRead(damageModifier.value_read, fight, side);
+          if (Number.isFinite(readValue)) {
+            nextEffect["伤害"] = {...damage, value: Math.max(0, Math.floor(readValue))};
+          }
         } else {
-          drawEnemyCards(Math.floor(drawValue));
-          renderEnemyHand(fight);
+          const mode = String(damageModifier.mode ?? "").trim();
+          const modifierValue = Number(damageModifier.value_mode ?? damageModifier.value);
+          const finalValue = mode === "onefull" ? modifierValue * count : modifierValue;
+          const damageValue = Number(damage.value);
+          if (Number.isFinite(finalValue) && Number.isFinite(damageValue)) {
+            const modifierMode = mode === "onefull" || Object.prototype.hasOwnProperty.call(damageModifier,"value_mode") ? "add" : "subtract";
+            const newDamage = modifierMode === "add" ? damageValue + finalValue : damageValue - finalValue;
+            nextEffect["伤害"] = {...damage, value: Math.max(0, Math.floor(newDamage))};
+          }
         }
       }
     }
-    if (isObject(source["获取卡"])) {
-      const hand = effectSide === 1 ? fight.playerhand : fight.enemyhand;
-      for (const [cardName,cardConfig] of Object.entries(source["获取卡"])) {
-        const cardCount = isObject(cardConfig) ? Number(cardConfig.value) : Number(cardConfig);
-        const cardSideType = isObject(cardConfig) ? String(cardConfig.sidetype ?? "") : "";
-        if (!Number.isFinite(cardCount) || cardCount <= 0) continue;
-        for (let i = 0;i < Math.floor(cardCount);i += 1) hand.push(createFightCardEntry(cardName,cardSideType === "" ? [] : cardSideType.split("|").map(function (value) { return value.trim(); }).filter(Boolean)));
-      }
-      if (effectSide === 1) renderPlayerHand(fight); else renderEnemyHand(fight);
-    }*/
-    if (isObject(source["被动伤害"])) {
-      // 被动伤害
-      const passive = source["被动伤害"];
-      const value = Number(passive.value);
-      if (Number.isFinite(value) && value !== 0) {
-        const nestedEffect = {"伤害":{value:value,type:passive.type}};
-        await carduse(effectSide,type,nestedEffect,tag,sidetype,fight,register,stepIndex);
+  }
+  if (isObject(nextEffect) && isObject(nextEffect["伤害"]) && Object.prototype.hasOwnProperty.call(nextEffect["伤害"], "value_read")) {
+    const readValue = parseValueRead(nextEffect["伤害"].value_read, fight, side);
+    if (Number.isFinite(readValue)) {
+      nextEffect = {...nextEffect};
+      nextEffect["伤害"] = {...nextEffect["伤害"], value: Math.max(0, Math.floor(readValue))};
+      delete nextEffect["伤害"].value_read;
+    }
+  }
+  if (isObject(source["标记"])) {
+    for (const [tagName,tagConfig] of Object.entries(source["标记"])) {
+      const config = isObject(tagConfig) ? tagConfig : {value:tagConfig};
+      const sideValue = String(config.side ?? "");
+      if (sideValue === "all") {
+        const addValue = toInt(config.value ?? config.add ?? 0, 0);
+        const deleteValue = toInt(config.delete ?? 0, 0);
+        if (addValue !== 0) {
+          modifyTagCount(fight, effectSide, tagName, addValue);
+          modifyTagCount(fight, 1 - effectSide, tagName, addValue);
+        }
+        if (deleteValue !== 0) {
+          modifyTagCount(fight, effectSide, tagName, -Math.abs(deleteValue));
+          modifyTagCount(fight, 1 - effectSide, tagName, -Math.abs(deleteValue));
+        }
+      } else {
+        const targetSide = sideValue === "self" ? effectSide : (1 - effectSide);
+        const addValue = toInt(config.value ?? config.add ?? 0, 0);
+        const deleteValue = toInt(config.delete ?? 0, 0);
+        if (addValue !== 0) modifyTagCount(fight, targetSide, tagName, addValue);
+        if (deleteValue !== 0) modifyTagCount(fight, targetSide, tagName, -Math.abs(deleteValue));
       }
     }
-    return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
   }
+  if (isObject(source["被动伤害"])) {
+    const passive = source["被动伤害"];
+    const value = Number(passive.value);
+    if (Number.isFinite(value) && value !== 0) {
+      const nestedEffect = {"伤害":{value:value,type:passive.type}};
+      await carduse(effectSide,type,nestedEffect,tag,sidetype,fight,register,stepIndex);
+    }
+  }
+  return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
+}
 async function cardeffect(side,type,effect,fight) {
   /* 攻击伤害 */
   const damage = isObject(effect) ? effect["伤害"] : null;
   const value = isObject(damage) ? Number(damage.value) : 0;
-  if ( Number.isFinite(value) && value !== 0) {
+  if (Number.isFinite(value) && value !== 0) {
     if (side === 1) {
       fight.enemy.HP = fight.enemy.HP - value;
     } else {
@@ -1380,28 +1433,34 @@ async function cardeffect(side,type,effect,fight) {
     renderPlayerHand(fight);
     exposeBattleGlobals(fight);
   }
-
-  // ---------- 新增：处理 effect 中的 标记 添加/删除 ----------
+  /* 标记处理 */
   const tagsEffect = isObject(effect) ? effect["标记"] : null;
   if (isObject(tagsEffect)) {
     for (const [tagName, cfg] of Object.entries(tagsEffect)) {
       const add = isObject(cfg) ? toInt(cfg.add ?? 0, 0) : toInt(cfg ?? 0, 0);
       const del = isObject(cfg) ? toInt(cfg.delete ?? 0, 0) : 0;
       const sideProp = isObject(cfg) ? String(cfg.side ?? "") : "";
-      // sideProp === 'self' -> applies to the triggering side; otherwise opposite
-      const targetSideForAdd = sideProp === "self" ? side : (1 - side);
-      if (add > 0) {
-        modifyTagCount(fight, targetSideForAdd, tagName, Math.abs(add));
-      }
-      if (del > 0) {
-        const targetSideForDel = sideProp === "self" ? side : (1 - side);
-        modifyTagCount(fight, targetSideForDel, tagName, -Math.abs(del));
+      if (sideProp === "all") {
+        if (add > 0) {
+          modifyTagCount(fight, side, tagName, Math.abs(add));
+          modifyTagCount(fight, 1 - side, tagName, Math.abs(add));
+        }
+        if (del > 0) {
+          modifyTagCount(fight, side, tagName, -Math.abs(del));
+          modifyTagCount(fight, 1 - side, tagName, -Math.abs(del));
+        }
+      } else {
+        const targetSideForAdd = sideProp === "self" ? side : (1 - side);
+        if (add > 0) {
+          modifyTagCount(fight, targetSideForAdd, tagName, Math.abs(add));
+        }
+        if (del > 0) {
+          const targetSideForDel = sideProp === "self" ? side : (1 - side);
+          modifyTagCount(fight, targetSideForDel, tagName, -Math.abs(del));
+        }
       }
     }
   }
-  // ---------- end 标记处理 ----------
-
-
   fight.carduseLocked = false;
   setPlayerHandDisabled(fight,false);
   renderAbilityButton(fight,1);
@@ -1437,8 +1496,9 @@ async function cardeffect(side,type,effect,fight) {
   async function doSingleIteration(iterIndex) {
     // 每次迭代都从初始 register（由调用者传入）开始扫描（各 step 内部用 register+1 语义）
     let currentRegister = initialRegister;
-    // 每次使用时，使用原始传入的 effect（注意：步骤可能修改返回的 effect）
-    let result = {side:Number(side) === 1 ? 1 : 0,type: type,effect: effect,tag: tag,sidetype:sidetype};
+    const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,effect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1);
+    // 每次使用时，先通过 effectAPI 进行一次基础效果解析，再进入判定链
+    let result = {side:Number(side) === 1 ? 1 : 0,type: type,effect: initialEffectResult.effect,tag: tag,sidetype:sidetype};
 
     for (let i = startStep; i < judgementSteps.length; i += 1) {
       const step = judgementSteps[i];
@@ -1640,6 +1700,7 @@ async function fightenemyactioncard(fight) {
      fight.enemy.MP = fight.enemy.MAXMP;
      }
      const turnEndResult = await carduse(0,"event","event","turnend",null,fight);
+     moveSiteCardsToGrave(fight);
      // 敌方：所有能力剩余冷却减 1（如果有）
      if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
        for (let i = 0; i < fight.enemyability.length; i += 1) {
@@ -1713,6 +1774,7 @@ async function fightenemyactioncard(fight) {
   }
   endTurnButton.disabled = true;
   const turnEndResult = await carduse(1,"event","event","turnend",null,fight);
+  moveSiteCardsToGrave(fight);
   renderAbilityButton(fight,1);
   renderAbilityButton(fight,0);
   // 玩家能力：所有能力的剩余冷却减 1
@@ -1736,7 +1798,7 @@ async function fightenemyactioncard(fight) {
   if (result !== "end") {
     return;
   }
-  moveSiteCardsToGrave(fight);
+  
   recycleGraves(fight);
   fight.turn += 1;
   const outcome = await fightmain();

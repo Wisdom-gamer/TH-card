@@ -1,301 +1,82 @@
 {
-  "测试卡牌1":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":2,
-	    "type":"普通"
-    }
-  },
-    "描述":"造成2普通伤害",
-    "tag":"handcard;handcarddamage"
-  },
-  "测试卡牌2":{
-  "类型":"道具卡",
-  "效果":{
-    "伤害":{
-    "value":4,
-	  "type":"普通"
-    }
-  },
-    "描述":"造成4普通伤害",
-	  "tag":"item;handcarddamage" /* 触发器检测 */
-  },
-  "测试卡牌3":{
-  "类型":"基本卡",
-  "效果":{
-    "抽卡":{
-    "value":2
-    },
-    "伤害":{
-    "value":1,
-    "type":"普通"
-    }
-  },
-    "描述":"从卡组抽取2张卡，造成1点普通伤害",
-    "MP":2,
-    "tag":"handcard;handcarddamage;handcardaddcard"
-  },
-  "测试卡牌4":{
-  "类型":"基本卡",
-  "效果":{
-    "获取卡":{
-    "测试卡牌1":{
-        "value":2,
-        "sidetype":"temp"
-    }
-    }
-  },
-    "描述":"将2张基本卡牌1*加入手牌",
-    "MP":2,
-    "tag":"handcard;handcardaddcard"
-  },
-  "测试卡牌5":{
-  "类型":"基本卡",
-  "效果":{
-    "标记":{
-    "力量":{
-        "add":1,
-        "side":"self"
-    },
-    "护甲":{
-        "add":1,
-        "side":"self"
-    }
-    }
-  },
-    "描述":"为自身增加1护甲和1力量",
-    "MP":2,
-    "tag":"handcard;handcardaddtagself"
-  },
-  "测试卡牌6":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":2,
-	    "type":"普通"
-    },
-	  "loop":3
-  },
-    "描述":"造成2普通伤害，重复3次",
-    "tag":"handcard;handcarddamage"
-  },
-  "测试装备1":{
-  "类型":"装备卡",
-  "效果":{
+  "护甲":{
+    "效果":{
     "伤害修改":{
-      "value":1,
-	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
-    },
-	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
-    "siderule":"other" /* 触发回合规则 */
-  },
-    "描述":"受到的伤害-1",
-	  "tag":"equip" /* 触发器检测 */
-  },
-  "测试装备11":{
-  "类型":"装备卡",
-  "效果":{
-    "伤害修改":{
-      "value":-1,
-	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
-    },
-	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
-    "siderule":"self" /* 触发回合规则 */
-  },
-    "描述":"造成的伤害+1",
-	  "tag":"equip" /* 触发器检测 */
-  },
-  "测试装备2":{
-  "类型":"装备卡",
-  "效果":{
-    "伤害":{
-      "value":2,
-	  "type":"普通"	  
-    },
-    "rule":"turnstart", /* 触发规则 */
-    "siderule":"self" /* 触发回合规则 */
-  },
-    "描述":"在回合开始时对敌方造成2普通伤害",
-	  "tag":"equip;equipdamage" /* 触发器检测 */
-  },
-  "测试装备3":{
-  "类型":"装备卡",
-  "效果":{
-    "伤害":{
-      "value":4,
-	  "type":"普通"	  
-    },
-    "rule":"turnstart", /* 触发规则 */
-    "siderule":"self" /* 触发回合规则 */
-  },
-    "描述":"在回合开始时对敌方造成4普通伤害",
-	  "tag":"equip;equipdamage" /* 触发器检测 */
-  },
-  /* 正式内容 */
-  /* PC */
-  /* 红白 */
-  "札弹":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":4,
-	  "type":"普通"	  
-    }
-  },
-    "描述":"造成4普通伤害",
-    "MP":1,
-	  "tag":"handcard;handcarddamage"
-  },
-  "札弹2":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":4,
-	  "type":"普通"
-    },
-	  "loop":2
-  },
-    "描述":"造成4普通伤害，重复2次",
-    "MP":2,
-	  "tag":"handcard;handcarddamage"
-  },
-  "札弹3":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":4,
-	  "type":"普通"
-    },
-	  "loop":4
-  },
-    "描述":"造成4普通伤害，重复4次",
-    "MP":4,
-	  "tag":"handcard;handcarddamage"
-  },
-  "升天脚":{
-  "类型":"基本卡",
-  "效果":{
-    "抽卡":{
-    "value":1
-    },
-    "标记":{
-    "力量":{
-        "add":1,
-        "side":"self"
-    }
-    },
-    "描述":"抽1张卡，获得1力量"
-  },
-	  "tag":"handcard;handcardaddtagself;handcardaddcard"
-  },
-  /* NPC */
-  /* 毛玉 */
-  "冲撞":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":4,
-	    "type":"普通"
-    },
-    "标记":{
-      "弱化":{
-        "add":1,
-        "side":"other"
-        },
-      "弱化控制":{
-        "add":1,
-        "side":"other"
+      "value_mode":-1,
+      "mode":"onefull"
+      },
+      "标记":{
+        "护甲":{
+          "side":"self",
+        "delete":1
         }
-      }      
-  },
-    "描述":"造成4普通伤害，对方获得弱化1",
-    "MP":1,
-    "tag":"handcard;handcarddamage;handcardaddtagother"
-  },
-  /* 游魂 */
-  
-  "幽火":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":6,
-	    "type":"混沌"
-    }
-  },
-    "描述":"造成2混沌伤害",
-    "MP":2,
-    "tag":"handcard;handcarddamage"
-  },
-  /* 露米娅 */
-  
-  "黑暗":{ /* 技能 */
-  "类型":"基本卡",
-  "效果":{
-    "标记":{
-      "黑暗":{
-      "add":2,
-	    "side":"other"
-    }
-    }
-  },
-    "MP":1,
-    "tag":"handcard;handcardaddtagother"
-  },
-  "偷袭":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value_read":"2 + <self.tags.黑暗>"
       }
-  },
-    "MP":1,
-    "描述":"造成2+自身黑暗层数的伤害",
-    "tag":"handcard;handcarddamage;handcarddeletetagself"
-  },
-  "夜雀":{
-  "类型":"基本卡",
-  "效果":{
-    "标记":{
-      "黑暗":{
-      "add":2,
-	    "side":"all" /* 同时给予双方 */
-    }
-    }
-  },
-    "MP":2,
-    "tag":"handcard;handcardaddtagother;handcardaddtagself"
-  },
-  "月亮光":{
-  "类型":"基本卡",
-  "效果":{
-    "标记":{
-      "黑暗":{
-      "delete":65535,
-	    "side":"self" 
-	    }
     },
-    "伤害":{
-      "value":8
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"other",
+    "描述":""
+  },
+  "力量":{
+    "效果":{
+    "伤害修改":{
+      "value_mode":1,
+      "mode":"onefull",
+      "type":"普通"
+      },
+      "标记":{
+        "力量":{
+          "side":"self",
+        "delete":1
+        }
       }
+    },
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"self"
   },
-    "MP":2,
-    "描述":"驱散自身所有黑暗，然后造成8点伤害",
-    "tag":"handcard;handcarddamage;handcarddeletetagself"
+  "弱化":{
+    "效果":{
+    "伤害修改":{
+      "value_mode":-1,
+      "mode":"onefull",
+      "type":"普通"
+      }
+    },
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"self"
   },
-  
-  /* General */
-  
-  "打击":{
-  "类型":"基本卡",
-  "效果":{
-    "伤害":{
-      "value":2,
-	    "type":"普通"
-    }
+  "弱化控制":{
+    "效果":{
+      "标记":{
+        "弱化":{
+          "side":"self",
+        "delete":65535 /* 删除标记 */
+        },
+        "弱化控制":{
+          "side":"self",
+        "delete":65535 /* 删除标记 */
+        }
+      }
+    },
+    "rule":"turnend",
+    "hide":"true",
+    "siderule":"self"
   },
-    "描述":"造成2普通伤害",
-    "tag":"handcard;handcarddamage"
+  "黑暗":{
+    "效果":{
+      "伤害修改":{
+        "random":0.5,
+        "value_new":0 /* 移除伤害 */
+        },
+      "标记":{
+        "黑暗":{
+          "side":"self",
+        "delete":1
+        }
+      }
+    },
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"self",
+    "描述":"有50%概率无法造成伤害"
   }
   
 }
