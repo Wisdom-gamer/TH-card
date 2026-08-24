@@ -346,44 +346,25 @@ window.fightenemyability = fight.enemyability;
     更新卡组和坟场数量。
   */
   function updateFightPileCounts(fight) {
-    const playerDeck =
-      document.getElementById(
-        "fightplayerdecknum"
-      );
-
-    const playerGrave =
-      document.getElementById(
-        "fightplayergravenum"
-      );
-
-    const enemyDeck =
-      document.getElementById(
-        "fightenemydecknum"
-      );
-
-    const enemyGrave =
-      document.getElementById(
-        "fightenemygravenum"
-      );
+    const playerDeck = document.getElementById("fightplayerdecknum");
+    const playerGrave = document.getElementById("fightplayergravenum");
+    const enemyDeck = document.getElementById("fightenemydecknum");
+    const enemyGrave = document.getElementById("fightenemygravenum");
 
     if (playerDeck) {
-      playerDeck.textContent =
-        String(fight.playercards.length);
+      playerDeck.textContent = String(fight.playercards.length);
     }
 
     if (playerGrave) {
-      playerGrave.textContent =
-        String(fight.fightplayergrave.length);
+      playerGrave.textContent = String(fight.fightplayergrave.length);
     }
 
     if (enemyDeck) {
-      enemyDeck.textContent =
-        String(fight.enemycards.length);
+      enemyDeck.textContent = String(fight.enemycards.length);
     }
 
     if (enemyGrave) {
-      enemyGrave.textContent =
-        String(fight.fightenemygrave.length);
+      enemyGrave.textContent = String(fight.fightenemygrave.length);
     }
   }
 
@@ -486,17 +467,73 @@ function renderFightEquip(
 
   // ---------- 新增：tags 数据缓存与读取 ----------
   let tagsDatabase = null;
+  function stripJsonComments(text) {
+    let result = "";
+    let inString = false;
+    let escaped = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      const current = text[index];
+      const next = text[index + 1];
+
+      if (inString) {
+        result += current;
+
+        if (escaped) {
+          escaped = false;
+        } else if (current === "\\") {
+          escaped = true;
+        } else if (current === "\"") {
+          inString = false;
+        }
+
+        continue;
+      }
+
+      if (current === "\"") {
+        inString = true;
+        result += current;
+        continue;
+      }
+
+      if (current === "/" && next === "/") {
+        while (index < text.length && text[index] !== "\n") index += 1;
+        result += "\n";
+        continue;
+      }
+
+      if (current === "/" && next === "*") {
+        index += 2;
+        while (
+          index < text.length &&
+          !(text[index] === "*" && text[index + 1] === "/")
+        ) {
+          if (text[index] === "\n") result += "\n";
+          index += 1;
+        }
+        index += 1;
+        continue;
+      }
+
+      result += current;
+    }
+
+    return result;
+  }
+
   async function loadTagsDatabase() {
     if (tagsDatabase !== null) return tagsDatabase;
     try {
       const resp = await fetch("tags.json", { cache: "no-store" });
       if (!resp.ok) {
-        tagsDatabase = {};
-        return tagsDatabase;
+        console.error("tags.json加载失败:", resp.status, resp.statusText, resp.url);
+        return {};
       }
-      tagsDatabase = await resp.json();
+      const text = await resp.text();
+      tagsDatabase = JSON.parse(stripJsonComments(text));
     } catch (e) {
-      tagsDatabase = {};
+      console.error("tags.json读取失败:", e);
+      return {};
     }
     return tagsDatabase;
   }
@@ -1113,11 +1150,12 @@ function renderFightBags() {
       const cardName = equips[index];
       const card = getFightCardData(cardName);
       const cardEffect = card ? card["效果"] : null;
-      const cardSiderule = card ? String(card["siderule"] ?? "").trim() : "";
+      const cardSiderule = cardEffect ? String(cardEffect["siderule"] ?? "").trim() : "";
       if (!isObject(cardEffect) || !equipRuleMatch(cardEffect["rule"],tag)) continue;
       if (!sideruleMatches(cardSiderule,side,ownerSide)) continue;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,ownerSide,1);
       effect = result.effect;
+      console.log("startsideequipindex:", index, "effect:", effect);
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1134,12 +1172,15 @@ function renderFightBags() {
     const tagDefs = await loadTagsDatabase();
     const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
     for (let index = startIndex;index < tagList.length;index += 1) {
+//      console.log("startsidetagindex:",side,type,effect,tag,sidetype,fight,register,stepIndex);
       const entry = tagList[index];
       const tagName = String(entry[0] ?? "");
       const tagCount = Number(entry[1] ?? 0);
       if (!tagName || tagCount <= 0) continue;
       const def = tagDefs[tagName];
+      console.log("startsidetagdef:",def);
       if (!isObject(def) || !equipRuleMatch(def.rule,tag) || !sideruleMatches(def.siderule,side,ownerSide)) continue;
+      console.log("startsidetagindex:", index, "effect:", effect);
       const defEffect = isObject(def["效果"]) ? def["效果"] : null;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,defEffect,ownerSide,tagCount);
       effect = result.effect;
@@ -1163,6 +1204,7 @@ function renderFightBags() {
       const defEffect = isObject(def["效果"]) ? def["效果"] : null;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,defEffect,ownerSide,tagCount);
       effect = result.effect;
+      console.log("nsidetagindex:", index, "effect:", effect);
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1185,6 +1227,7 @@ function renderFightBags() {
       if (!sideruleMatches(cardSiderule,side,ownerSide)) continue;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,ownerSide,1);
       effect = result.effect;
+    console.log("nsideequipindex:", index, "effect:", effect);
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1333,10 +1376,39 @@ function finishFight(fight, outcome) {
     return Number(config.value);
   }
 async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount) {
+//  console.log(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount);
   let nextEffect = effect;
   const source = isObject(sourceEffect) ? sourceEffect : {};
+    if (!isObject(nextEffect) && isObject(sourceEffect)) {
+    nextEffect = {...sourceEffect};
+  }
   const count = Number.isFinite(Number(sourceCount)) ? Number(sourceCount) : 1;
   const effectSide = Number(ownerSide) === 1 ? 1 : 0;
+    if (isObject(nextEffect) && isObject(nextEffect["数值修改"])) {
+    nextEffect = {...nextEffect};
+
+    const valueModify = {};
+
+    for (const [path,config] of Object.entries(nextEffect["数值修改"])) {
+      let newPath = String(path ?? "");
+
+      newPath = newPath.replace("<selfside>",side === 1 ? "player" : "enemy");
+      newPath = newPath.replace("<otherside>",side === 1 ? "enemy" : "player");
+
+      const newConfig = isObject(config) ? {...config} : {value:config};
+
+      if (Object.prototype.hasOwnProperty.call(newConfig,"value_read")) {
+        const readValue = parseValueRead(newConfig.value_read,fight,side);
+
+        if (Number.isFinite(readValue)) {
+          newConfig.value = readValue;
+        }
+        delete newConfig.value_read;
+      }
+      valueModify[newPath] = newConfig;
+    }
+    nextEffect["数值修改"] = valueModify;
+  }
   const damageModifier = source["伤害修改"];
   if (isObject(damageModifier) && isObject(nextEffect) && isObject(nextEffect["伤害"])) {
     const random = Number(damageModifier.random);
@@ -1419,6 +1491,44 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
 }
 async function cardeffect(side,type,effect,fight) {
+//  console.log(side,type,effect,fight);
+  /* 数值修改 */
+  const valueModify = isObject(effect) ? effect["数值修改"] : null;
+
+  if (isObject(valueModify)) {
+    for (const [path,config] of Object.entries(valueModify)) {
+      if (!isObject(config)) {
+        continue;
+      }
+
+      const value = Number(config.value);
+      const valueNew = Number(config.value_new);
+
+      const match = String(path).match(/^fight\.(player|enemy)\.(.+)$/);
+
+      if (!match) {
+        continue;
+      }
+
+      const target = match[1] === "player" ? fight.player : fight.enemy;
+
+      const key = match[2];
+
+      if (!Object.prototype.hasOwnProperty.call(target,key)) {
+        continue;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(config,"value_new")) {
+        if (Number.isFinite(valueNew)) {
+          target[key] = valueNew;
+        }
+      } else if (Object.prototype.hasOwnProperty.call(config,"value")) {
+        if (Number.isFinite(value)) {
+          target[key] = Number(target[key]) + value;
+        }
+      }
+    }
+  }
   /* 攻击伤害 */
   const damage = isObject(effect) ? effect["伤害"] : null;
   const value = isObject(damage) ? Number(damage.value) : 0;
@@ -1561,7 +1671,7 @@ async function cardeffect(side,type,effect,fight) {
           renderFightEquip(fight,result.side);
         }
       } else {
-        // movetosite 接受 loops 参数：只有当 loopsParam === 1 时会真正放到场上（你的判定）
+        // movetosite 接受 loops 参数：只有当 loopsParam === 1 时会真正放到场上
         const loopsParam = isLast ? 1 : 0;
         movetosite(fight,cardName,result.side,result.sidetype,loopsParam);
       }
@@ -1580,9 +1690,8 @@ async function cardeffect(side,type,effect,fight) {
     return cardeffectResult;
   }
 
-  // 顺序执行 loopCount 次（中间可能由于判定使 effect 为空而中断）
+  // 顺序执行 loopCount 次
   for (let iter = 0; iter < loopCount; iter += 1) {
-    if (!fight || fight.ended) break;
     // 每次迭代都重新运行一次完整的判定+生效流程
     const res = await doSingleIteration(iter);
     lastCardEffectResult = res;

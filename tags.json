@@ -33,6 +33,22 @@
     "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"self"
   },
+  "冻结":{
+    "效果":{
+    "伤害修改":{
+      "value_mode":-1,
+      "mode":"onefull",
+      "type":"普通"
+      },
+      "标记":{
+        "冻结":{
+          "side":"self",
+        "delete":1
+        }
+    },
+    "rule":"handcarddamage;itemdamage;equipdamage",
+    "siderule":"self"
+  },
   "弱化":{
     "效果":{
     "伤害修改":{

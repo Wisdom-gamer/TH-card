@@ -298,8 +298,27 @@
     "MP":2,
     "描述":"双方获得4冻结",
     "tag":"handcard;handcardaddtagother;handcardaddtagself"
-  }/*,
-  "冰袭方阵":{
+  },
+  "冰冷智慧":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "冻结":{
+      "add":2,
+	    "side":"other"
+    }
+    },
+    "数值修改":{
+      "fight.<selfside>.MP":{ /* 为自己增加 */
+      "value":2
+      }
+    }
+  },
+    "MP":1,
+    "描述":"对方获得2冻结，获得2MP",
+    "tag":"handcard;handcardaddtagother;handcardaddMPself"
+  },
+  /*"冰袭方阵":{
   "类型":"基本卡",
   "效果":{
     "标记":{
@@ -312,7 +331,7 @@
     "MP":3,
     "描述":"双方获得4冻结",
     "tag":"handcard;handcardaddtagother;handcardaddtagself"
-  }*/,
+  },*/
   "完美冻结":{
   "类型":"基本卡",
   "效果":{
