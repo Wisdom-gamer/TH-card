@@ -845,6 +845,16 @@ function parseValueRead(expression, fight, side) {
     return Number(expression);
   }
 }
+function parseValueReadWithOptions(expression, fight, side, maxValue, typeValue) {
+  let value = parseValueRead(expression, fight, side);
+  if (Number.isFinite(value) && Number.isFinite(maxValue)) {
+    value = Math.min(value, maxValue);
+  }
+  if (String(typeValue).trim().toLowerCase() === "int" && Number.isFinite(value)) {
+    value = Math.floor(value);
+  }
+  return value;
+}
     function prepareJudgementEffect(effect) {
     if (effect === null || effect === undefined) {
       return null;
@@ -996,7 +1006,21 @@ function parseValueRead(expression, fight, side) {
     });
   }
 }
+   function findMorereturnTag(fight, side) {
+     const list = getTagListForSide(fight, side);
+     if (!Array.isArray(list)) return -1;
+     for (let i = 0; i < list.length; i += 1) {
+       const entry = list[i];
+       const tagName = String(entry[0] ?? "");
+       if (tagName) {
+         const tagDef = tagsDatabase && isObject(tagsDatabase[tagName]) ? tagsDatabase[tagName] : null;
+         if (tagName === "额外回合" || (tagDef && String(tagDef.ID ?? "") === "moreturn")) return i;
+       }
+     }
+     return -1;
+   }
   // ---------- end 标签工具 ----------
+  
  // 渲染战斗界面背包与装备（简单渲染，复用 .bag-slot 结构）
 function renderFightBags() {
   // 玩家背包（道具）
@@ -1356,30 +1380,34 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
       delete nextEffect["伤害"].value_read;
     }
   }
-  if (isObject(source["标记"])) {
-    for (const [tagName,tagConfig] of Object.entries(source["标记"])) {
-      const config = isObject(tagConfig) ? tagConfig : {value:tagConfig};
-      const sideValue = String(config.side ?? "");
-      if (sideValue === "all") {
-        const addValue = toInt(config.value ?? config.add ?? 0, 0);
-        const deleteValue = toInt(config.delete ?? 0, 0);
-        if (addValue !== 0) {
-          modifyTagCount(fight, effectSide, tagName, addValue);
-          modifyTagCount(fight, 1 - effectSide, tagName, addValue);
-        }
-        if (deleteValue !== 0) {
-          modifyTagCount(fight, effectSide, tagName, -Math.abs(deleteValue));
-          modifyTagCount(fight, 1 - effectSide, tagName, -Math.abs(deleteValue));
-        }
-      } else {
-        const targetSide = sideValue === "self" ? effectSide : (1 - effectSide);
-        const addValue = toInt(config.value ?? config.add ?? 0, 0);
-        const deleteValue = toInt(config.delete ?? 0, 0);
-        if (addValue !== 0) modifyTagCount(fight, targetSide, tagName, addValue);
-        if (deleteValue !== 0) modifyTagCount(fight, targetSide, tagName, -Math.abs(deleteValue));
-      }
-    }
-  }
+   if (isObject(source["标记"])) {
+     for (const [tagName,tagConfig] of Object.entries(source["标记"])) {
+       const config = isObject(tagConfig) ? tagConfig : {value:tagConfig};
+       const sideValue = String(config.side ?? "");
+       let addValue = 0;
+       if (Object.prototype.hasOwnProperty.call(config, "value_read")) {
+         const readVal = parseValueReadWithOptions(config.value_read, fight, side, config.value_readmax, config.value_readtype);
+         addValue = Number.isFinite(readVal) ? Math.floor(readVal) : 0;
+       } else {
+         addValue = toInt(config.value ?? config.add ?? 0, 0);
+       }
+       const deleteValue = toInt(config.delete ?? 0, 0);
+       if (sideValue === "all") {
+         if (addValue !== 0) {
+           modifyTagCount(fight, effectSide, tagName, addValue);
+           modifyTagCount(fight, 1 - effectSide, tagName, addValue);
+         }
+         if (deleteValue !== 0) {
+           modifyTagCount(fight, effectSide, tagName, -Math.abs(deleteValue));
+           modifyTagCount(fight, 1 - effectSide, tagName, -Math.abs(deleteValue));
+         }
+       } else {
+         const targetSide = sideValue === "self" ? effectSide : (1 - effectSide);
+         if (addValue !== 0) modifyTagCount(fight, targetSide, tagName, addValue);
+         if (deleteValue !== 0) modifyTagCount(fight, targetSide, tagName, -Math.abs(deleteValue));
+       }
+     }
+   }
   if (isObject(source["被动伤害"])) {
     const passive = source["被动伤害"];
     const value = Number(passive.value);
@@ -1714,10 +1742,21 @@ async function fightenemyactioncard(fight) {
      if (turnEndResult === "win" || turnEndResult === "lost") {
        return turnEndResult;
      }
-     drawEnemyCards(2);
-     renderEnemyHand(fight);
+      drawEnemyCards(2);
+      renderEnemyHand(fight);
+      const moreturnIdx = findMorereturnTag(fight, 1);
+      if (moreturnIdx !== -1) {
+        modifyTagCount(fight, 1, "额外回合", -1);
+        fight.turn += 1;
+        const turnStartResult = await carduse(1,"event","event","turnstart",null,fight);
+        if (turnStartResult === "win" || turnStartResult === "lost") {
+          return turnStartResult;
+        }
+        exposeBattleGlobals(fight);
+        return "moreturn";
+      }
 
-     return "end";
+      return "end";
    }
 
   async function fightmain() {
@@ -1794,10 +1833,25 @@ async function fightenemyactioncard(fight) {
   if (turnEndResult === "win" || turnEndResult === "lost") {
     return;
   }
-  const result = await fightenemyaction();
-  if (result !== "end") {
-    return;
-  }
+   const moreturnIdx = findMorereturnTag(fight, 1);
+   if (moreturnIdx !== -1) {
+     modifyTagCount(fight, 1, "额外回合", -1);
+     fight.turn += 1;
+     const outcome = await fightmain();
+     if (outcome === "win" || outcome === "lost") {
+       finishFight(fight, outcome);
+     }
+     return;
+   }
+   const result = await fightenemyaction();
+   if (result !== "end" && result !== "moreturn") {
+     return;
+   }
+   if (result === "moreturn") {
+     recycleGraves(fight);
+     bindPlayerHandActions(fight);
+     return;
+   }
   
   recycleGraves(fight);
   fight.turn += 1;
@@ -1878,4 +1932,6 @@ window.fightenemyactioncard = fightenemyactioncard;
 window.movetosite = movetosite;
 window.carduse = carduse;
 window.cardeffect = cardeffect;
+window.modifyTagCount = modifyTagCount;
+window.getTagCount = getTagCount;
 })();

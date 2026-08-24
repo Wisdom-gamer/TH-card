@@ -285,6 +285,34 @@
     "tag":"handcard;handcarddamage;handcarddeletetagself"
   },
   /* 琪露诺 */
+  "冻结":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "冻结":{
+      "add":4,
+	    "side":"all"
+    }
+    }
+  },
+    "MP":2,
+    "描述":"双方获得4冻结",
+    "tag":"handcard;handcardaddtagother;handcardaddtagself"
+  }/*,
+  "冰袭方阵":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "冻结":{
+      "value_read":"<site.>",
+	    "side":"all"
+    }
+    }
+  },
+    "MP":3,
+    "描述":"双方获得4冻结",
+    "tag":"handcard;handcardaddtagother;handcardaddtagself"
+  }*/,
   "完美冻结":{
   "类型":"基本卡",
   "效果":{
@@ -298,12 +326,12 @@
       "value_readmax":1, /* 最高1 */
       "value_readtype":"int", /* 强制取整 */
 	    "side":"other"
-    },
-    
+    }
     }
   },
     "MP":3,
-    "tag":"handcard;handcardaddtagother;handcardaddtagself"
+    "描述":"对方获得1点冰冻标记，那之后，如果对方冰冻标记不低于10，获得1个额外回合",
+    "tag":"handcard;handcardaddtagother"
   },
   
   /* General */
