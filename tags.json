@@ -45,6 +45,7 @@
           "side":"self",
         "delete":1
         }
+      }
     },
     "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"self"
