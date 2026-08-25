@@ -106,7 +106,7 @@
       },
     "reaction":{
       "win":{
-        "delete":"毛"
+        "delete":"毛玉"
         }
     }
   },
@@ -139,6 +139,28 @@
     "reaction":{
       "win":{
         "delete":"露米娅"
+        }
+    }
+  },
+  "琪露诺":{
+    "action":"战斗",
+    "ID":"rLV4enemy1",
+    "HP":30,
+    "MP":4,
+    "cards":{
+      "寒冰箭":4,
+      "冰冷智慧":2,
+      "冷冻":2,
+      "完美冻结":1,
+      "冰袭方阵":1
+      },
+    "ability":{
+      "name":"智慧",
+      "turn":1
+    },
+    "reaction":{
+      "win":{
+        "delete":"琪露诺"
         }
     }
   }

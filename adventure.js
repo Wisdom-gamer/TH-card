@@ -272,15 +272,21 @@
     const name = String(entry.name || entry.card || "").trim();
     if (!name) return null;
 
-    const remaining = entry.remaining === undefined ? getDefaultRemaining(name) : normalizeRemaining(entry.remaining);
+    const remaining =
+      entry.remaining === undefined
+        ? getDefaultRemaining(name)
+        : normalizeRemaining(entry.remaining);
 
-    return {name,remaining: remaining === null ? getDefaultRemaining(name) : remaining};
+    return {
+      name,
+      remaining: remaining === null ? getDefaultRemaining(name) : remaining
+    };
   }
 
   function buildCardsFromGroup(groupData) {
     if (!isObject(groupData)) return [];
 
-    const type = String(groupData.type || groupData.trpe || "always").trim();
+    const type = String(groupData.type || "always").trim();
     const result = [];
 
     if (type === "random") {
@@ -288,7 +294,7 @@
       const pool = [];
 
       for (const [cardName, count] of Object.entries(groupData)) {
-        if (cardName === "type" || cardName === "trpe" || cardName === "maxnumber") continue;
+        if (cardName === "type" || cardName === "maxnumber") continue;
         const n = Math.max(0, toInt(count, 0));
         for (let i = 0; i < n; i += 1) pool.push(cardName);
       }
@@ -299,7 +305,7 @@
     }
 
     for (const [cardName, count] of Object.entries(groupData)) {
-      if (cardName === "type" || cardName === "trpe" || cardName === "maxnumber") continue;
+      if (cardName === "type" || cardName === "maxnumber") continue;
       const n = Math.max(0, toInt(count, 0));
       for (let i = 0; i < n; i += 1) result.push(cardName);
     }
@@ -427,15 +433,9 @@
     for (const [name, detail] of Object.entries(cardData.action)) {
       if (name === "actionnum") continue;
 
-      const cost =
-        isObject(detail) && detail.actionnum !== undefined
-          ? Math.max(0, Math.floor(Number(detail.actionnum) || 0))
-          : 1;
+      const cost = isObject(detail) && detail.actionnum !== undefined ? Math.max(0, Math.floor(Number(detail.actionnum) || 0))  : 1;
 
-      const useCount =
-        cost > 0 && Number.isFinite(totalRemaining)
-          ? Math.floor(totalRemaining / cost)
-          : null;
+      const useCount = cost > 0 && Number.isFinite(totalRemaining) ? Math.floor(totalRemaining / cost) : null;
 
       if (cost === 0 || totalRemaining >= cost) {
         actions.push({
@@ -644,22 +644,26 @@
   }
 
   function applyNormalAction(cardState, action) {
-    if (!Number.isFinite(cardState.remaining)) return;
-    if (action.cost > cardState.remaining) return;
+  if (!Number.isFinite(cardState.remaining)) return;
+  if (action.cost > cardState.remaining) return;
 
+  // 特殊处理：如果 action.detail 中指定 actionnum 为 "void"，则立即使 remaining 为 0
+  if (isObject(action.detail) && action.detail.actionnum === "void") {
+    cardState.remaining = 0;
+  } else {
     if (isObject(action.detail) && action.detail.effect) {
       applyEffect(action.detail.effect);
     }
-
     cardState.remaining = Math.max(0, cardState.remaining - action.cost);
+  }
 
-    if (cardState.remaining === 0) {
-      const index = hand.indexOf(cardState);
-      if (index !== -1) {
-        removeHandCardByIndex(index);
-      }
+  if (cardState.remaining === 0) {
+    const index = hand.indexOf(cardState);
+    if (index !== -1) {
+      removeHandCardByIndex(index);
     }
   }
+}
 
   function extractOutcomeKeys(result) {
     const keys = new Set();

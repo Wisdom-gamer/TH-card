@@ -75,7 +75,9 @@
       "value":2,
 	    "type":"普通"
     },
-	  "loop":3
+	  "loop":{
+	    "value":3
+	    }
   },
     "描述":"造成2普通伤害，重复3次",
     "tag":"handcard;handcarddamage"
@@ -154,7 +156,9 @@
       "value":4,
 	  "type":"普通"
     },
-	  "loop":2
+	  "loop":{
+	    "value":2
+	  }
   },
     "描述":"造成4普通伤害，重复2次",
     "MP":2,
@@ -167,7 +171,9 @@
       "value":4,
 	  "type":"普通"
     },
-	  "loop":4
+	  "loop":{
+	    "value":4
+	  }
   },
     "描述":"造成4普通伤害，重复4次",
     "MP":4,
@@ -285,6 +291,19 @@
     "tag":"handcard;handcarddamage;handcarddeletetagself"
   },
   /* 琪露诺 */
+  "智慧":{
+  "类型":"基本卡",
+  "效果":{
+    "数值修改":{
+      "fight.<selfside>.MAXMP":{ /* 为自己增加 */
+      "value":1
+      }
+    }
+  },
+    "MP":1,
+    "描述":"获得1MP上限",
+    "tag":"handcard;handcardaddtagother;handcardaddtagself"
+  },
   "冻结":{
   "类型":"基本卡",
   "效果":{
@@ -297,7 +316,8 @@
   },
     "MP":2,
     "描述":"双方获得4冻结",
-    "tag":"handcard;handcardaddtagother;handcardaddtagself"
+    "tag":"handcard;handcardaddtagother;handcardaddtagself",
+    "sidetype":"typeIce"
   },
   "冰冷智慧":{
   "类型":"基本卡",
@@ -316,22 +336,32 @@
   },
     "MP":1,
     "描述":"对方获得2冻结，获得2MP",
-    "tag":"handcard;handcardaddtagother;handcardaddMPself"
+    "tag":"handcard;handcardaddtagother;handcardaddMPself",
+    "sidetype":"typeIce"
   },
-  /*"冰袭方阵":{
+  "冰袭方阵":{
   "类型":"基本卡",
   "效果":{
+    "伤害":{
+      "value":4,
+      "type":"冰霜"
+      },
     "标记":{
       "冻结":{
-      "value_read":"<site.>",
-	    "side":"all"
+      "add":"1",
+	    "side":"other"
     }
-    }
-  },
+    },
+    "loop":{
+      "value_js":"readmapsideType",
+      "input":"typeIce;1;int;1"
+      }
+    },
     "MP":3,
-    "描述":"双方获得4冻结",
-    "tag":"handcard;handcardaddtagother;handcardaddtagself"
-  },*/
+    "描述":"造成4*场上的冰属性卡次的冰霜伤害，每次造成伤害时给予对方1冻结",
+    "tag":"handcard;handcardaddtagother;handcardaddtagself",
+    "sidetype":"typeIce"
+  },
   "完美冻结":{
   "类型":"基本卡",
   "效果":{
@@ -350,7 +380,8 @@
   },
     "MP":3,
     "描述":"对方获得1点冰冻标记，那之后，如果对方冰冻标记不低于10，获得1个额外回合",
-    "tag":"handcard;handcardaddtagother"
+    "tag":"handcard;handcardaddtagother",
+    "sidetype":"typeIce"
   },
   
   /* General */

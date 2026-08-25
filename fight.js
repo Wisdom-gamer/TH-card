@@ -742,33 +742,41 @@ function renderFightEquip(
   }
 
   function drawPlayerCards(DCnumber) {
-    const drawCount = DCnumber;
-    for (let index = 0;index < drawCount;index += 1) {
-      const cardEntry = fight.playercards.pop();
-      if (!cardEntry) {
-        break;
-      }
-      fight.playerhand.push(cardEntry);
+  const drawCount = DCnumber;
+  for (let index = 0;index < drawCount;index += 1) {
+    const cardEntry = fight.playercards.pop();
+    if (!cardEntry) {
+      break;
     }
-
-    window.fightplayerhand = fight.playerhand;
-
-    updateFightPileCounts(fight);
+    const cardName = String(cardEntry).trim();
+    const card = getFightCardData(cardName);
+    const sidetypeStr = card && String(card.sidetype || '').trim();
+    const sidetype = sidetypeStr && sidetypeStr !== '' ? sidetypeStr.split(';').map(s => s.trim()).filter(Boolean) : [];
+    fight.playerhand.push(createFightCardEntry(cardName, sidetype));
   }
+
+  window.fightplayerhand = fight.playerhand;
+
+  updateFightPileCounts(fight);
+}
   function drawEnemyCards(DCnumber) {
-    const drawCount = DCnumber;
-    for (let index = 0;index < drawCount;index += 1) {
-      const cardEntry = fight.enemycards.pop();
-      if (!cardEntry) {
-        break;
-      }
-      fight.enemyhand.push(cardEntry);
+  const drawCount = DCnumber;
+  for (let index = 0;index < drawCount;index += 1) {
+    const cardEntry = fight.enemycards.pop();
+    if (!cardEntry) {
+      break;
     }
-
-    window.fightenemyhand = fight.enemyhand;
-
-    updateFightPileCounts(fight);
+    const cardName = String(cardEntry).trim();
+    const card = getFightCardData(cardName);
+    const sidetypeStr = card && String(card.sidetype || '').trim();
+    const sidetype = sidetypeStr && sidetypeStr !== '' ? sidetypeStr.split(';').map(s => s.trim()).filter(Boolean) : [];
+    fight.enemyhand.push(createFightCardEntry(cardName, sidetype));
   }
+
+  window.fightenemyhand = fight.enemyhand;
+
+  updateFightPileCounts(fight);
+}
   function renderPlayerHand(fight) {
     renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,getPlayerCardImage,"玩家");
   }
@@ -1552,7 +1560,6 @@ async function cardeffect(side,type,effect,fight) {
     }
   }
   exposeBattleGlobals(fight);
-  await new Promise(function (resolve) { setTimeout(resolve,1000); });
   /* 将指定卡添加到卡组 */
   const getCards = isObject(effect) ? effect["获取卡"] : null;
   if (isObject(getCards) && side === 1) {
@@ -1599,6 +1606,7 @@ async function cardeffect(side,type,effect,fight) {
       }
     }
   }
+  await new Promise(function (resolve) { setTimeout(resolve,1000); });
   fight.carduseLocked = false;
   setPlayerHandDisabled(fight,false);
   renderAbilityButton(fight,1);
@@ -1614,8 +1622,27 @@ async function cardeffect(side,type,effect,fight) {
     return null;
   }
 
-  // 读取 loop 次数（默认为 1），允许 effect 为 null/非对象
-  const loopCount = isObject(effect) ? Math.max(1, toInt(effect.loop, 1)) : 1;
+  // 读取 loop 次数（默认为 1）
+  let loopCount = 1;
+if (isObject(effect) && isObject(effect.loop)) {
+  const loopConfig = effect.loop;
+    if (Object.prototype.hasOwnProperty.call(loopConfig, 'value_js')) {
+    const funcName = String(loopConfig.value_js || '');
+    const inputStr = String(loopConfig.input || '');
+    const params = inputStr === '' ? [] : inputStr.split(';').map(s => s.trim());
+    if (typeof window[funcName] === 'function') {
+      try {
+        const result = window[funcName](...params, sidetype, fight);
+        loopCount = Math.max(1, toInt(result, 1));
+      } catch (err) {
+        console.error(`Error calling ${funcName}:`, err);
+        loopCount = 1;
+      }
+    }
+  } else if (Number.isFinite(Number(loopConfig.value))) {
+    loopCount = Math.max(1, toInt(loopConfig.value, 1));
+  }
+}
 
   // 将 loop 字段视为控制参数，不要让后续判定误读（可选：保留原对象但不影响逻辑）
   // 注意：不深拷贝 effect，因为有些判定/装备希望基于战局状态在每次循环重新计算 effect。
@@ -2043,4 +2070,7 @@ window.carduse = carduse;
 window.cardeffect = cardeffect;
 window.modifyTagCount = modifyTagCount;
 window.getTagCount = getTagCount;
+window.parseFightCard = parseFightCard;
+window.createFightCardEntry = createFightCardEntry;
+window.getFightCardData = getFightCardData;
 })();
