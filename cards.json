@@ -8,7 +8,8 @@
     }
   },
     "描述":"造成2普通伤害",
-    "tag":"handcard;handcarddamage"
+    "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
   },
   "测试卡牌2":{
   "类型":"道具卡",
@@ -42,7 +43,7 @@
     "获取卡":{
     "测试卡牌1":{
         "value":2,
-        "sidetype":"temp"
+        "sidetype":"temp,typeNormal"
     }
     }
   },
@@ -332,11 +333,14 @@
       "fight.<selfside>.MP":{ /* 为自己增加 */
       "value":2
       }
+    },
+    "抽卡":{
+    "value":1
     }
   },
     "MP":1,
-    "描述":"对方获得2冻结，获得2MP",
-    "tag":"handcard;handcardaddtagother;handcardaddMPself",
+    "描述":"对方获得2冻结，获得2MP，抽取1张卡",
+    "tag":"handcard;handcardaddtagother;handcardaddMPself;handcardaddcard",
     "sidetype":"typeIce"
   },
   "冰袭方阵":{
@@ -385,6 +389,23 @@
   },
   
   /* General */
+  "顺走":{
+  "类型":"基本卡",
+  "效果":{
+    "卡牌选择":{
+      "mode":"get",
+      "pick":"pick",
+      "value":1,
+	  "side":"other",
+	  "sidetypechange":"+|other",
+	  "newcardside":"self"
+    }
+  },
+    "MP":1,
+    "tag":"countercard;handcarddelothercard;handcardgetorhercard",
+    "描述":"选择一张对方手中的卡牌加入手中，忽略双方反制卡，装备，特性，标记的效果",
+    "ignore":"startsidecounter;startsideequip;startsidetrait;startsidetag;nsidetag;nsidetrait;nsideequip;nsidecounter"
+  },
   
   "打击":{
   "类型":"基本卡",
