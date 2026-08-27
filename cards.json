@@ -43,7 +43,7 @@
     "获取卡":{
     "测试卡牌1":{
         "value":2,
-        "sidetype":"temp,typeNormal"
+        "sidetype":"temp;typeNormal"
     }
     }
   },
@@ -234,7 +234,38 @@
     "MP":2,
     "tag":"handcard;handcarddamage"
   },
-  
+  /* 妖精A */
+  "香蕉皮陷阱":{
+  "类型":"反制卡",
+  "效果":{
+    "卡牌选择":{
+      "mode":"remove",
+      "pick":"random",
+      "number":1,
+	    "side":"other"
+    },
+    "rule":"handcard",
+    "rule_js":"checkmp",
+    "input":"0;use;=",
+    "siderule":"other"
+  },
+    "tag":"countercard;countercarddelothercard",
+    "描述":"当对方打出0费卡时触发，对方随机丢弃一张卡牌"
+  },
+  /*
+  "土坑陷阱":{
+  "类型":"反制卡",
+  "效果":{
+    "伤害":{
+      "value":2,
+	    "type":"普通"
+    },
+    "rule":"handcard",
+    "siderule":"self"
+  },
+    "tag":"countercard;countercarddamage",
+    "描述":"打出普通卡时触发，造成4伤害"
+  },*/
   /* 露米娅 */
   
   "黑暗":{ /* 技能 */

@@ -37,6 +37,44 @@
 
     return result;
   }
+    function checkmp(compareValue,compareMode,checkContent,cardName,valuechange,sidetype,fight) {
+    const mode = String(compareMode ?? "").trim();
+    const content = String(checkContent ?? "").trim().toLowerCase();
+    const compare = Number(compareValue);
+    let targetValue = NaN;
 
+    if (!Number.isFinite(compare)) {
+      return false;
+    }
+
+    if (content === "use") {
+      const values = valuechange && typeof valuechange === "object" ? valuechange : {};
+      targetValue = Number(values.MP ?? values.mp);
+    } else if (content === "base") {
+      const card = window.getFightCardData && typeof window.getFightCardData === "function" ? window.getFightCardData(cardName) : null;
+      targetValue = card ? Number(card["MP"] ?? 0) : NaN;
+    } else {
+      return false;
+    }
+
+    if (!Number.isFinite(targetValue)) {
+      return false;
+    }
+
+    if (mode === ">") {
+      return targetValue > compare;
+    }
+
+    if (mode === "=") {
+      return targetValue === compare;
+    }
+
+    if (mode === "<") {
+      return targetValue < compare;
+    }
+    return false;
+  }
+
+  window.checkmp = checkmp;
   window.readmapsideType = readmapsideType;
 })();

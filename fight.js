@@ -13,29 +13,47 @@
     return Number.isFinite(number) ? Math.floor(number) : fallback;
   }
 
-  function parseFightCard(cardEntry) {
+function parseFightCard(cardEntry) {
     const text = String(cardEntry ?? "");
-    const separatorIndex = text.indexOf(";");
-    if (separatorIndex === -1) {
+    const firstSeparatorIndex = text.indexOf(";");
+    if (firstSeparatorIndex === -1) {
       return {
         name: text,
-        sidetype: []
+        sidetype: [],
+        valuechange: {}
       };
     }
 
-    const name = text.slice(0, separatorIndex);
-    const sidetypeText = text.slice(separatorIndex + 1);
+    const secondSeparatorIndex = text.indexOf(";",firstSeparatorIndex + 1);
+    const name = text.slice(0,firstSeparatorIndex);
+    const sidetypeText = secondSeparatorIndex === -1 ? text.slice(firstSeparatorIndex + 1) : text.slice(firstSeparatorIndex + 1,secondSeparatorIndex);
+    const valuechangeText = secondSeparatorIndex === -1 ? "" : text.slice(secondSeparatorIndex + 1);
+    let valuechange = {};
+
+    if (valuechangeText) {
+      try {
+        const parsedValuechange = JSON.parse(valuechangeText);
+        if (isObject(parsedValuechange)) {
+          valuechange = parsedValuechange;
+        }
+      } catch (error) {
+        valuechange = {};
+      }
+    }
 
     return {
       name: name,
-      sidetype: sidetypeText === "" ? [] : sidetypeText.split("|").map(function (value) { return value.trim(); }).filter(Boolean)
+      sidetype: sidetypeText === "" ? [] : sidetypeText.split("|").map(function (value) { return value.trim(); }).filter(Boolean),
+      valuechange: valuechange
     };
   }
 
-  function createFightCardEntry(cardName,sidetype) {
+  function createFightCardEntry(cardName,sidetype,valuechange) {
     const name = String(cardName ?? "");
     const types = Array.isArray(sidetype) ? sidetype.filter(Boolean) : [];
-    return types.length > 0 ? `${name};${types.join("|")}` : name;
+    const values = isObject(valuechange) ? valuechange : {};
+    const valuechangeText = Object.keys(values).length > 0 ? `;${JSON.stringify(values)}` : "";
+    return types.length > 0 ? `${name};${types.join("|")}${valuechangeText}` : `${name}${valuechangeText}`;
   }
 
   function fightCardHasSideType(cardEntry,sidetype) {
@@ -317,7 +335,6 @@
     window.fightplayerequip = fight.fightplayerequip;
     window.fightenemyequip = fight.fightenemyequip;
 
-    // 新增：在全局也暴露标签数组（用于调试/外部访问）
     window.fightplayerfighttags = fight.playerfighttags;
     window.fightenemyfighttags = fight.enemyfighttags;
 
@@ -624,7 +641,7 @@ function renderFightEquip(fight,owner) {
       1 = 玩家
       0 = 敌人
   */
-  function movetosite(fight,cardName,owner,sidetype,loops) {
+  function movetosite(fight,cardName,owner,sidetype,loops,valuechange = {}) {
     if(loops != 1) return false;
     if (!fight || !cardName) {
       return false;
@@ -634,14 +651,10 @@ function renderFightEquip(fight,owner) {
   }
     owner = Number(owner) === 1 ? 1 : 0;
 
-    /*
-      卡牌加入场上数组末尾。
-    */
-    fight.fightsitecards.push(createFightCardEntry(cardName,sidetype));
+    /* 卡牌加入场上数组末尾。 */
+    fight.fightsitecards.push(createFightCardEntry(cardName,sidetype,valuechange));
 
-    /*
-      相同位置保存所有者。
-    */
+    /* 相同位置保存所有者。 */
     fight.fightsitecardsow.push(owner);
 
     renderFightSite(fight);
@@ -665,7 +678,7 @@ function renderFightEquip(fight,owner) {
       }
       const moveToOtherGrave = fightCardHasSideType(cardEntry,"other");
       const parsedCard = parseFightCard(cardEntry);
-      const graveCardEntry = createFightCardEntry(parsedCard.name,parsedCard.sidetype.filter(function (sidetype) { return !graveRemoveSideTypes.includes(sidetype); }));
+      const graveCardEntry = createFightCardEntry(parsedCard.name,parsedCard.sidetype.filter(function (sidetype) { return !graveRemoveSideTypes.includes(sidetype); }),{});
       // 带有other的卡牌会移动到另一方的坟场
       if (owner === 1) {
         if (moveToOtherGrave){
@@ -829,7 +842,7 @@ function renderFightEquip(fight,owner) {
     renderSlots(".game-area .player.top .slots .card-slot",cards,getEnemyCardImage,"敌人");
   }
 
-  function drawPlayerCards(DCnumber) {
+function drawPlayerCards(DCnumber) {
   const drawCount = DCnumber;
   for (let index = 0;index < drawCount;index += 1) {
     const cardEntry = fight.playercards.pop();
@@ -840,14 +853,18 @@ function renderFightEquip(fight,owner) {
     const card = getFightCardData(cardName);
     const sidetypeStr = card && String(card.sidetype || '').trim();
     const sidetype = sidetypeStr && sidetypeStr !== '' ? sidetypeStr.split(';').map(s => s.trim()).filter(Boolean) : [];
-    fight.playerhand.push(createFightCardEntry(cardName, sidetype));
+    const valuechange = {};
+    const mpValue = card ? Number(card["MP"] ?? 0) : 0;
+    if (Number.isFinite(mpValue)) {
+      valuechange.MP = mpValue;
+    }
+    fight.playerhand.push(createFightCardEntry(cardName,sidetype,valuechange));
   }
 
   window.fightplayerhand = fight.playerhand;
-
   updateFightPileCounts(fight);
 }
-  function drawEnemyCards(DCnumber) {
+function drawEnemyCards(DCnumber) {
   const drawCount = DCnumber;
   for (let index = 0;index < drawCount;index += 1) {
     const cardEntry = fight.enemycards.pop();
@@ -858,11 +875,15 @@ function renderFightEquip(fight,owner) {
     const card = getFightCardData(cardName);
     const sidetypeStr = card && String(card.sidetype || '').trim();
     const sidetype = sidetypeStr && sidetypeStr !== '' ? sidetypeStr.split(';').map(s => s.trim()).filter(Boolean) : [];
-    fight.enemyhand.push(createFightCardEntry(cardName, sidetype));
+    const valuechange = {};
+    const mpValue = card ? Number(card["MP"] ?? 0) : 0;
+    if (Number.isFinite(mpValue)) {
+      valuechange.MP = mpValue;
+    }
+    fight.enemyhand.push(createFightCardEntry(cardName,sidetype,valuechange));
   }
 
   window.fightenemyhand = fight.enemyhand;
-
   updateFightPileCounts(fight);
 }
   function renderPlayerHand(fight) {
@@ -1033,10 +1054,23 @@ function parseValueReadWithOptions(expression, fight, side, maxValue, typeValue)
     const tags = String(tag ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     return rules.some(function (value) { return tags.includes(value); });
   }
+  async function ruleJsAPI(source,cardName,valuechange,sidetype,fight,side,type,effect) {
+    if (!isObject(source) || !Object.prototype.hasOwnProperty.call(source,"rule_js")) return true;
+    const funcName = String(source.rule_js ?? "").trim();
+    const inputText = String(source.input ?? "").trim();
+    const params = inputText === "" ? [] : inputText.split(";").map(function (value) { return value.trim(); });
+    if (!funcName || typeof window[funcName] !== "function") return true;
+    try {
+      return !!(await window[funcName](...params,cardName ?? fight.currentCardName ?? "",isObject(valuechange) ? valuechange : (isObject(fight.currentCardValuechange) ? fight.currentCardValuechange : {}),sidetype,fight,side,type,effect));
+    } catch (error) {
+      console.error(`Error calling ${funcName}:`,error);
+      return false;
+    }
+  }
 
   function sideruleMatches(siderule,incomingSide,equipOwnerSide) {
     const rule = String(siderule ?? "").trim();
-    if (!rule || rule === "") return true;
+    if (!rule || rule === "" || rule === "all") return true;
     if (rule === "self") {
       return Number(incomingSide) === Number(equipOwnerSide);
     }
@@ -1234,10 +1268,32 @@ function renderFightBags() {
     });
   }
 }
-  async function startsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
-    if (false) await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,null,side,1);
+async function startsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    const counterSide = side === 1 ? 1 : 0;
+    const hand = counterSide === 1 ? fight.playerhand : fight.enemyhand;
+    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
+
+    for (let index = startIndex;index < hand.length;index += 1) {
+      const cardEntry = hand[index];
+      const parsedCard = parseFightCard(cardEntry);
+      const cardName = parsedCard.name;
+      const card = getFightCardData(cardName);
+      const cardEffect = card ? card["效果"] : null;
+      const cardTag = card ? String(card["tag"] ?? "").trim() : "";
+      const cardType = card ? String(card["类型"] ?? "").trim() : "";
+
+      if (!cardName || cardType !== "反制卡" || !isObject(cardEffect) || !equipRuleMatch(cardTag,tag)) {
+        continue;
+      }
+      if (!await ruleJsAPI(cardEffect,cardName,fight.currentCardValuechange,sidetype,fight,side,type,effect)) continue;
+      const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,counterSide,1);
+
+      if (result && result.effect !== effect) {
+        effect = result.effect;
+      }
+    }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
-  }
+}
     async function startsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex) {
     const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
     const ownerSide = side === 1 ? 1 : 0;
@@ -1249,6 +1305,7 @@ function renderFightBags() {
       const cardSiderule = cardEffect ? String(cardEffect["siderule"] ?? "").trim() : "";
       if (!isObject(cardEffect) || !equipRuleMatch(cardEffect["rule"],tag)) continue;
       if (!sideruleMatches(cardSiderule,side,ownerSide)) continue;
+      if (!await ruleJsAPI(cardEffect,cardName,fight.currentCardValuechange,sidetype,fight,side,type,effect)) continue;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,ownerSide,1);
       effect = result.effect;
       console.log("startsideequipindex:", index, "effect:", effect);
@@ -1276,6 +1333,7 @@ function renderFightBags() {
       const def = tagDefs[tagName];
       console.log("startsidetagdef:",def);
       if (!isObject(def) || !equipRuleMatch(def.rule,tag) || !sideruleMatches(def.siderule,side,ownerSide)) continue;
+      if (!await ruleJsAPI(cardEffect,cardName,fight.currentCardValuechange,sidetype,fight,side,type,effect)) continue;
       console.log("startsidetagindex:", index, "effect:", effect);
       const defEffect = isObject(def["效果"]) ? def["效果"] : null;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,defEffect,ownerSide,tagCount);
@@ -1297,6 +1355,7 @@ function renderFightBags() {
       if (!tagName || tagCount <= 0) continue;
       const def = tagDefs[tagName];
       if (!isObject(def) || !equipRuleMatch(def.rule,tag) || !sideruleMatches(def.siderule,side,ownerSide)) continue;
+      if (!await ruleJsAPI(cardEffect,cardName,fight.currentCardValuechange,sidetype,fight,side,type,effect)) continue;
       const defEffect = isObject(def["效果"]) ? def["效果"] : null;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,defEffect,ownerSide,tagCount);
       effect = result.effect;
@@ -1321,6 +1380,7 @@ function renderFightBags() {
       const cardSiderule = card ? String(card["siderule"] ?? "").trim() : "";
       if (!isObject(cardEffect) || !equipRuleMatch(cardEffect["rule"],tag)) continue;
       if (!sideruleMatches(cardSiderule,side,ownerSide)) continue;
+      if (!await ruleJsAPI(cardEffect,cardName,fight.currentCardValuechange,sidetype,fight,side,type,effect)) continue;
       const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,ownerSide,1);
       effect = result.effect;
     console.log("nsideequipindex:", index, "effect:", effect);
@@ -1328,10 +1388,31 @@ function renderFightBags() {
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
-  async function nsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
-    if (false) await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,null,1 - side,1);
+async function nsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex) {
+    const counterSide = side === 1 ? 0 : 1;
+    const hand = counterSide === 1 ? fight.playerhand : fight.enemyhand;
+    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
+
+    for (let index = startIndex;index < hand.length;index += 1) {
+      const cardEntry = hand[index];
+      const parsedCard = parseFightCard(cardEntry);
+      const cardName = parsedCard.name;
+      const card = getFightCardData(cardName);
+      const cardEffect = card ? card["效果"] : null;
+      const cardTag = card ? String(card["tag"] ?? "").trim() : "";
+      const cardType = card ? String(card["类型"] ?? "").trim() : "";
+
+      if (!cardName || cardType !== "反制卡" || !isObject(cardEffect) || !equipRuleMatch(cardTag,tag)) {
+        continue;
+      }
+      if (!await ruleJsAPI(cardEffect,cardName,fight.currentCardValuechange,sidetype,fight,side,type,effect)) continue;
+      const result = await effectAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,cardEffect,counterSide,1);
+      if (result && result.effect !== effect) {
+        effect = result.effect;
+      }
+    }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
-  }
+}
 
     function setPlayerHandDisabled(fight,disabled) {
     const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
@@ -1471,10 +1552,11 @@ function finishFight(fight, outcome) {
     }
     return Number(config.value);
   }
-async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount) {
+async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount,cardName,valuechange) {
 //  console.log(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount);
-  let nextEffect = effect;
   const source = isObject(sourceEffect) ? sourceEffect : {};
+
+  let nextEffect = effect;
     if (!isObject(nextEffect) && isObject(sourceEffect)) {
     nextEffect = {...sourceEffect};
   }
@@ -1750,8 +1832,10 @@ async function cardeffect(side,type,effect,fight) {
       
       if (hand && hand[pickedIndex]) {
         const pickedCardEntry = hand[pickedIndex];
-        const pickedCardName = parseFightCard(pickedCardEntry).name;
-        const pickedSidetype = parseFightCard(pickedCardEntry).sidetype;
+        const pickedCard = parseFightCard(pickedCardEntry);
+        const pickedCardName = pickedCard.name;
+        const pickedSidetype = pickedCard.sidetype;
+        const pickedValuechange = pickedCard.valuechange;
         const mode = selectConfig.mode;
         const newcardside = String(selectConfig.newcardside || 'self').trim();
         
@@ -1765,14 +1849,14 @@ async function cardeffect(side,type,effect,fight) {
           for (let i = 0; i < selectConfig.value; i += 1) {
             const newCardName = String(selectConfig.newcard || pickedCardName).trim();
             const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
-            targetHand.push(createFightCardEntry(newCardName, newSidetype));
+            targetHand.push(createFightCardEntry(newCardName,newSidetype,pickedValuechange));
           }
         } else if (mode === 'remove') {
           // Move to battlefield without triggering effects
           const cardName = pickedCardName;
           const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
           hand.splice(pickedIndex, 1);
-          movetosite(fight, cardName, pickedSide, newSidetype, 1);
+          movetosite(fight,cardName,pickedSide,newSidetype,1,pickedValuechange);
         } else if (mode === 'delete') {
           // Delete card without effects
           hand.splice(pickedIndex, 1);
@@ -1780,7 +1864,7 @@ async function cardeffect(side,type,effect,fight) {
           // Copy to target side
           for (let i = 0; i < selectConfig.value; i += 1) {
             const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
-            targetHand.push(createFightCardEntry(pickedCardName, newSidetype));
+            targetHand.push(createFightCardEntry(pickedCardName,newSidetype,pickedValuechange));
           }
         }
         
@@ -1811,7 +1895,7 @@ async function cardeffect(side,type,effect,fight) {
   return {side: side,type: type,effect: effect};
 }
 
-  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1, startStep = 0) {
+  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {}) {
   let ignore = "";
   fight = fight || window.fight;
 
@@ -1862,10 +1946,13 @@ if (isObject(effect) && isObject(effect.loop)) {
   let initialRegister = typeof register === "number" ? register : -1;
 
   // 执行一次完整的判定 + 生效流程（供循环内部调用）
+  const cardValuechange = isObject(valuechange) ? valuechange : {};
+  fight.currentCardName = cardName;
+  fight.currentCardValuechange = cardValuechange;
   async function doSingleIteration(iterIndex) {
     // 每次迭代都从初始 register（由调用者传入）开始扫描（各 step 内部用 register+1 语义）
     let currentRegister = initialRegister;
-    const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,effect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1);
+    const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,effect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1,cardName,cardValuechange);
     // 每次使用时，先通过 effectAPI 进行一次基础效果解析，再进入判定链
     let result = {side:Number(side) === 1 ? 1 : 0,type: type,effect: initialEffectResult.effect,tag: tag,sidetype:sidetype};
 
@@ -1974,6 +2061,7 @@ if (isObject(effect) && isObject(effect.loop)) {
       const parsedCard = parseFightCard(cardEntry);
       const cardName = parsedCard.name;
       const sidetype = parsedCard.sidetype;
+      const valuechange = parsedCard.valuechange;
       if (!cardName) {
         return;
       }
@@ -1994,7 +2082,7 @@ if (isObject(effect) && isObject(effect.loop)) {
       if (Number.isFinite(mpCost) && mpCost > 0) {
         fight.player.MP -= mpCost;
       }
-      const res = await carduse(1,type,effect,tag,cardName,fight,sidetype);
+      const res = await carduse(1,type,effect,tag,cardName,fight,sidetype,-1,0,valuechange);
       const outcome = getFightOutcome(fight);
       if (outcome === "win" || outcome === "lost") {
         finishFight(fight,outcome);
