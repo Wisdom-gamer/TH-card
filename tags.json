@@ -2,31 +2,32 @@
   "护甲":{
     "效果":{
     "伤害修改":{
-      "value_mode":-1,
-      "mode":"onefull"
+      "value_read":"0-<self.tags.护甲>",
+      "type":"普通;冰霜"
       },
       "标记":{
         "护甲":{
-          "side":"self",
-        "delete":1
+          "self":{
+        "value":-1
+          }
         }
       }
     },
     "rule":"handcarddamage;itemdamage;equipdamage",
     "siderule":"other",
-    "描述":""
+    "描述":"减少受到的伤害，不能抵御混沌伤害"
   },
   "力量":{
     "效果":{
     "伤害修改":{
-      "value_mode":1,
-      "mode":"onefull",
+      "value_read":"<self.tags.力量>",
       "type":"普通"
       },
       "标记":{
         "力量":{
-          "side":"self",
-        "delete":1
+          "self":{
+        "value":1
+          }
         }
       }
     },
@@ -36,15 +37,15 @@
   "冻结":{
     "效果":{
     "伤害修改":{
-      "value_mode":-1,
-      "mode":"onefull",
+      "value_read":"<self.tags.力量>",
       "type":"普通"
       },
       "标记":{
         "冻结":{
-          "side":"self",
-        "delete":1
+          "self":{
+        "value":-1
         }
+      }
       }
     },
     "rule":"handcarddamage;itemdamage;equipdamage",
@@ -53,8 +54,7 @@
   "弱化":{
     "效果":{
     "伤害修改":{
-      "value_mode":-1,
-      "mode":"onefull",
+      "value_read":"0-<self.tags.弱化>",
       "type":"普通"
       }
     },
@@ -65,14 +65,15 @@
     "效果":{
       "标记":{
         "弱化":{
-          "side":"self",
-        "delete":65535 /* 删除标记 */
+          "self":{
+        "value":-65535 /* 删除标记 */
+        }
         },
         "弱化控制":{
-          "side":"self",
-        "delete":65535 /* 删除标记 */
+          "self":{
+        "value":-65535 /* 删除标记 */
         }
-      }
+      }}
     },
     "rule":"turnend",
     "hide":"true",
@@ -86,8 +87,9 @@
         },
       "标记":{
         "黑暗":{
-          "side":"self",
-        "delete":1
+          "self":{
+        "value":-65535 
+        }
         }
       }
     },

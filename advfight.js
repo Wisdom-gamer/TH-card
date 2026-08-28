@@ -74,7 +74,23 @@
     }
     return false;
   }
+    function checksidetype(checkSideType,checkMode,cardName,valuechange,sidetype,fight,side,type,effect) {
+    const targetSideType = String(checkSideType ?? "").trim();
+    const mode = String(checkMode ?? "").trim().toLowerCase();
+    const sideTypes = Array.isArray(sidetype) ? sidetype.map(function (value) { return String(value ?? "").trim(); }).filter(Boolean) : [];
+    const hasSideType = targetSideType !== "" && sideTypes.includes(targetSideType);
 
+    if (mode === "in") {
+      return hasSideType;
+    }
+
+    if (mode === "out") {
+      return !hasSideType;
+    }
+
+    return false;
+  }
+  window.checksidetype = checksidetype;
   window.checkmp = checkmp;
   window.readmapsideType = readmapsideType;
 })();
