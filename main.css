@@ -1,0 +1,70 @@
+/* =========================================================
+主菜单
+========================================================= */
+
+#main-menu {
+width: 100vw;
+height: 100vh;
+padding: 0 20px 20px 0;
+
+display: flex;
+flex-direction: column;
+align-items: flex-end;
+justify-content: flex-end;
+gap: 5px;
+
+overflow: hidden;
+background: var(--bg);
+}
+
+#main-menu.is-hidden {
+display: none;
+}
+
+#main-menu button {
+width: 200px;
+height: 60px;
+padding: 0;
+
+flex: 0 0 60px;
+
+border: 5px solid #000000;
+border-radius: 0;
+
+background-position: center;
+background-repeat: no-repeat;
+background-size: 100% 100%;
+
+cursor: pointer;
+appearance: none;
+-webkit-appearance: none;
+}
+
+#main-menu button:hover,
+#main-menu button:focus-visible {
+outline: none;
+}
+
+#main-menu button:disabled {
+cursor: default;
+opacity: 0.5;
+}
+
+#main-menu-continue {
+background-image: url("image/UI/继续游戏.png");
+}
+
+#main-menu-start {
+background-image: url("image/UI/开始游戏.png");
+}
+
+#main-menu-winlist {
+background-image: url("image/UI/通关成就.png");
+}
+
+@media (max-width: 760px) {
+#main-menu {
+width: 720px;
+min-width: 720px;
+}
+}

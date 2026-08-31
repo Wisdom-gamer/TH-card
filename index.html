@@ -2,22 +2,24 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
     <title>Cavlike — TH cards</title>
 
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="pc.css" />
+    <link rel="stylesheet" href="adventure.css" />
+    <link rel="stylesheet" href="fight.css" />
   </head>
 
   <body>
-    <section
-  id="character-select"
-  aria-label="角色选择"
-  aria-hidden="false"
->
+  <div id="main-menu" aria-label="主菜单">
+  <button id="main-menu-continue" type="button" aria-label="继续游戏"></button>
+  <button id="main-menu-start" type="button" aria-label="开始游戏"></button>
+  <button id="main-menu-winlist" type="button" aria-label="通关成就"></button>
+</div>
+    <section id="character-select" aria-label="角色选择" aria-hidden="false">
   <button
     id="character-prev"
     class="character-arrow"
@@ -414,7 +416,7 @@
         </div>
       </div>
     </div>
-
+    <script src="start.js"></script>
     <script src="bag.js"></script>
     <script src="cards.js"></script>
     <script src="character.js"></script>
@@ -432,45 +434,6 @@
     </button>
   </div>
 </div>
-
-<style>
-  #th-card-settings {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 9999;
-    font-size: 14px;
-  }
-
-  #th-card-settings-btn {
-    padding: 6px 10px;
-    border-radius: 999px;
-    cursor: pointer;
-  }
-
-  #th-card-settings-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 150px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgba(20, 20, 20, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  }
-
-  #th-card-settings-menu button {
-    display: block;
-    width: 100%;
-    padding: 8px 12px;
-    text-align: left;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-</style>
 
 <script>
 (function () {
