@@ -13,7 +13,6 @@
   --focus-color: rgba(30, 144, 255, 0.35);
 }
 
-/* 全局重置 */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -74,20 +73,60 @@ body {
   gap: 20px;
 
   overflow: hidden;
+  position: relative;
+}
+#character-select {
+  position: relative;
 }
 
-/* 图片 */
-#character-image {
-  width: min(82%, 360px);
-  max-width: 100%;
-  height: 100%;
-  max-height: 470px;
-
-  display: block;
-  object-fit: contain;
-
-  border: 0;
+#pcui1,
+#pcui2 {
+  position: absolute;
+  height: 40px;
   background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+
+#pcui1 {
+  top: calc(50% - min(38vh, 320px) - 40px);
+  left: 0;
+  right: calc(50% + 260px);
+}
+
+#pcui1-1 {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: #111;
+  font-size: 24px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#pcui2 {
+  top: calc(50% + min(38vh, 320px));
+  left: calc(50% + 260px);
+  right: 0;
+}
+
+#pcui2-1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  color: #111;
+  font-size: 24px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* 名字 */
@@ -130,8 +169,8 @@ body {
   -webkit-appearance: none;
 }
 
-#character-name:hover,
-#character-name:focus-visible,
+#pcui2-1:hover,
+#pcui2-1:focus-visible,
 .character-arrow:hover,
 .character-arrow:focus-visible {
   outline: none;

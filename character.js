@@ -335,8 +335,9 @@ document.addEventListener("th-card:start-new-game", function () {
       });
     }
 
-    if (nameButton) {
-      nameButton.addEventListener("click", selectCurrentCharacter);
+    const startButton = getElement("#pcui2-1");
+    if (startButton) {
+      startButton.addEventListener("click", selectCurrentCharacter);
     }
 
     if (image) {
