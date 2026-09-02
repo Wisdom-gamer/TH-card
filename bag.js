@@ -1,6 +1,17 @@
 /*
-  装备栏容量由 ME 决定
-  背包栏容量由 MB 决定
+  bag.js
+
+  功能：
+
+  1. 管理装备栏 equip
+  2. 管理背包栏 bagitem
+  3. adventureequip 保存当前装备栏卡牌
+  4. adventurebagitem 保存当前背包栏卡牌
+  5. adventureequip / adventurebagitem 保存到 Local Storage
+  6. 新获得卡牌时自动根据卡牌类型分配位置
+  7. 玩家主动移动卡牌时不触发“新卡自动分配”
+  8. 装备栏容量由 ME 决定
+  9. 背包栏容量由 MB 决定
 */
 
 (function () {
@@ -568,13 +579,31 @@
   }
 
   window.showCardInfo = showCardInfo;
+  
+  function selectBagPanel(panelId) {
+    const panels = document.querySelectorAll("#playerbag .bag-panel");
+    const tabs = document.querySelectorAll("#bag-tabs .bag-tab[data-bag-panel]");
 
+    panels.forEach(function (panel) {
+      panel.classList.toggle("is-active", panel.id === panelId);
+    });
 
-  /*
-    --------------------------------------------------
-    创建装备 / 背包卡牌按钮
-    --------------------------------------------------
-  */
+    tabs.forEach(function (tab) {
+      tab.classList.toggle("is-active", tab.dataset.bagPanel === panelId);
+    });
+  }
+
+  function bindBagTabs() {
+    const tabs = document.querySelectorAll("#bag-tabs .bag-tab[data-bag-panel]");
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        selectBagPanel(tab.dataset.bagPanel);
+      });
+    });
+  }
+
+  /* 装备/背包卡牌按钮 */
 
   function createBagSlot(
     cardName,
@@ -1142,115 +1171,76 @@
     },
 
 
-    /*
-      返回完整状态
-    */
+    /* 返回完整状态 */
 
     getState: function () {
 
       return {
-        equip:
-          equipmentCards.slice(),
+        equip:equipmentCards.slice(),
 
-        bagitem:
-          bagItemCards.slice(),
+        bagitem:bagItemCards.slice(),
 
-        adventureequip:
-          equipmentCards.slice(),
+        adventureequip:equipmentCards.slice(),
 
-        adventurebagitem:
-          bagItemCards.slice(),
+        adventurebagitem:bagItemCards.slice(),
 
-        ME:
-          limits.ME,
+        ME:limits.ME,
 
-        MB:
-          limits.MB
+        MB:limits.MB
       };
 
     },
 
 
-    /*
-      设置专用槽位容量
-    */
+    /*设置专用槽位容量*/
 
-    setLimits:
-      setLimits,
+    setLimits:setLimits,
 
 
-    /*
-      新获得卡牌
+    /* 新获得卡牌自动分配 */
 
-      自动分配
-    */
+    add:addNewCard,
 
-    add:
-      addNewCard,
-
-    addNew:
-      addNewCard,
+    addNew:addNewCard,
 
 
-    /*
-      牌库 → 专用栏
-    */
+    /*牌库 → 专用栏*/
 
-    moveFromDeck:
-      moveFromDeck,
+    moveFromDeck:moveFromDeck,
 
 
-    /*
-      专用栏 → 牌库
-    */
+    /*专用栏 → 牌库*/
 
-    take:
-      takeCard,
+    take:takeCard,
 
-    remove:
-      removeCard,
+    remove:removeCard,
 
 
-    /*
-      从角色存档恢复
-    */
+    /* 从角色存档恢复 */
 
-    restoreState:
-      restoreState,
+    restoreState:restoreState,
 
 
-    /*
-      清空
-    */
+    /* 清空 */
 
-    reset:
-      resetBag,
+    reset:resetBag,
 
 
-    /*
-      刷新显示
-    */
+    /* 刷新显示 */
 
-    refresh:
-      renderBag
+    refresh:renderBag
 
   };
 
 
-  /*
-    --------------------------------------------------
-    DOM 加载后读取存档
-    --------------------------------------------------
-  */
+  /* DOM 加载后读取存档 */
 
-  document.addEventListener(
-    "DOMContentLoaded",
+  document.addEventListener("DOMContentLoaded",
     function () {
-
       loadBag();
-
       renderBag();
-
+      bindBagTabs();
+      selectBagPanel("bagcards");
     }
   );
 

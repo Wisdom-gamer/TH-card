@@ -357,193 +357,100 @@
 }
 
 /* 右下 playerbag */
+/* 右下 playerbag */
 #adventure #playerbag {
   grid-column: 2;
   grid-row: 2;
-
   min-width: 0;
   min-height: 0;
-
   display: flex;
-  gap: var(--scene-gap);
-
+  flex-direction: column;
   overflow: hidden;
   background: #fff;
 }
 
-/* 左侧牌库 */
-#adventure #bagcards {
-  flex: 1 1 auto;
+#adventure #bag-content {
+  width: 100%;
   min-width: 0;
   min-height: 0;
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
+  background: #f3f3f3;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+}
 
-  padding: 32px 5px 5px 5px;
-
-  display: grid;
+#adventure .bag-panel {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 5px;
+  display: none;
   grid-auto-rows: var(--bag-slot-size);
-  grid-template-columns:
-    repeat(auto-fill, var(--bag-slot-size));
-
+  grid-template-columns: repeat(auto-fill, var(--bag-slot-size));
   align-content: start;
   gap: 5px;
-
   overflow: auto;
   background: #f3f3f3;
-
-  position: relative;
-
-  box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+  box-sizing: border-box;
 }
 
-/* 牌库标题 */
-#adventure #bagcards::before {
-  content: "牌库";
-
-  position: absolute;
-  top: 5px;
-  left: 5px;
-
-  padding: 2px 6px;
-
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 1.2;
-
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-
-  border-radius: 3px;
-
-  z-index: 10;
-  pointer-events: none;
+#adventure .bag-panel.is-active {
+  display: grid;
 }
 
-/* 右侧区域 */
-#adventure #bag-side {
-  width: 60px;
-  flex: 0 0 60px;
-
-  min-height: 0;
-
-  display: flex;
-  flex-direction: column;
-
-  gap: 5px;
-
+#adventure #bag-tabs {
+  width: 100%;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
   overflow: hidden;
 }
 
-/* 装备栏 */
-#adventure #equip {
-  width: 60px;
-  height: 50%;
-  flex: 1 1 50%;
-
-  min-height: 0;
-
-  padding: 32px 5px 5px 5px;
-
-  display: grid;
-  grid-template-columns: var(--bag-slot-size);
-  grid-auto-rows: var(--bag-slot-size);
-
-  align-content: start;
-  gap: 5px;
-
-  overflow: auto;
-
-  position: relative;
-
-  background: #f3f3f3;
-
-  box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-
-  box-sizing: border-box;
+#adventure .bag-tab {
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  padding: 0;
+  border: 2px solid #000;
+  border-top: 0;
+  border-right: 0;
+  border-radius: 0;
+  background: #5B5B5B;
+  color: #000000;
+  font: inherit;
+  line-height: 26px;
+  text-align: center;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-/* 装备标题 */
-#adventure #equip::before {
-  content: "装备";
-
-  position: absolute;
-  top: 5px;
-  left: 50%;
-
-  transform: translateX(-50%);
-
-  padding: 2px 4px;
-
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1.2;
-
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-
-  border-radius: 3px;
-
-  white-space: nowrap;
-
-  z-index: 10;
-  pointer-events: none;
+#adventure .bag-tab:first-child {
+  border-left: 2px solid #000;
 }
 
-/* 背包栏 */
-#adventure #bagitem {
-  width: 60px;
-  height: 50%;
-  flex: 1 1 50%;
-
-  min-height: 0;
-
-  padding: 32px 5px 5px 5px;
-
-  display: grid;
-  grid-template-columns: var(--bag-slot-size);
-  grid-auto-rows: var(--bag-slot-size);
-
-  align-content: start;
-  gap: 5px;
-
-  overflow: auto;
-
-  position: relative;
-
-  background: #f3f3f3;
-
-  box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-
-  box-sizing: border-box;
+#adventure .bag-tab:last-child {
+  border-right: 2px solid #000;
 }
 
-/* 背包标题 */
-#adventure #bagitem::before {
-  content: "背包";
+#adventure .bag-tab.is-active {
+  background: #FFFFFF;
+  color: #000000;
+}
 
-  position: absolute;
-  top: 5px;
-  left: 50%;
+#adventure .bag-tab:hover,
+#adventure .bag-tab:focus-visible {
+  color: #000000;
+  outline: none;
+}
 
-  transform: translateX(-50%);
-
-  padding: 2px 4px;
-
-  font-size: 14px;
-  font-weight: bold;
-  line-height: 1.2;
-
-  color: #222;
-  background: rgba(255, 255, 255, 0.85);
-
-  border-radius: 3px;
-
-  white-space: nowrap;
-
-  z-index: 10;
-  pointer-events: none;
+#adventure .bag-tab[data-bag-panel]:hover,
+#adventure .bag-tab[data-bag-panel]:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus-color);
 }
 
 /* JavaScript 动态创建的 RPG 背包窗格 */

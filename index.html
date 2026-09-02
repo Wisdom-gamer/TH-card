@@ -387,24 +387,29 @@
       </div>
 
       <div id="playerbag">
-        <div
-          id="bagcards"
-          class="bag-grid"
-          aria-label="bag cards"
-        ></div>
-
-        <div id="bag-side">
+        <div id="bag-content">
           <div
-            id="equip"
-            class="bag-grid"
-            aria-label="equipment"
+            id="bagcards"
+            class="bag-grid bag-panel is-active"
+            aria-label="牌库"
           ></div>
-
           <div
             id="bagitem"
-            class="bag-grid"
-            aria-label="bag items"
+            class="bag-grid bag-panel"
+            aria-label="背包"
           ></div>
+          <div
+            id="equip"
+            class="bag-grid bag-panel"
+            aria-label="装备"
+          ></div>
+        </div>
+        <div id="bag-tabs" aria-label="卡牌分类">
+          <button class="bag-tab is-active" type="button" data-bag-panel="bagcards">牌库</button>
+          <button class="bag-tab" type="button" data-bag-panel="bagitem">背包</button>
+          <button class="bag-tab" type="button" data-bag-panel="equip">装备</button>
+          <button class="bag-tab" type="button">测试1</button>
+          <button class="bag-tab" type="button">测试2</button>
         </div>
       </div>
     </div>
