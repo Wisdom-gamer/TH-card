@@ -1,19 +1,3 @@
-/*
-  bag.js
-
-  功能：
-
-  1. 管理装备栏 equip
-  2. 管理背包栏 bagitem
-  3. adventureequip 保存当前装备栏卡牌
-  4. adventurebagitem 保存当前背包栏卡牌
-  5. adventureequip / adventurebagitem 保存到 Local Storage
-  6. 新获得卡牌时自动根据卡牌类型分配位置
-  7. 玩家主动移动卡牌时不触发“新卡自动分配”
-  8. 装备栏容量由 ME 决定
-  9. 背包栏容量由 MB 决定
-*/
-
 (function () {
   "use strict";
 
@@ -391,51 +375,23 @@
   }
 
 
-  /*
-    --------------------------------------------------
-    判断卡牌应该进入哪个区域
-    --------------------------------------------------
-
-    返回：
-
-    equip
-    bagitem
-    deck
-    --------------------------------------------------
-  */
+  /* 判断卡牌应该进入哪个区域 */
 
   function getCardDestination(cardName) {
-    const card =
-      getCardInfo(cardName);
+    const card = getCardInfo(cardName);
 
-    const type =
-      card &&
-      typeof card["类型"] === "string"
-        ? card["类型"].trim()
-        : "";
+    const type = card && typeof card["类型"] === "string" ? card["类型"].trim() : "";
 
-    /*
-      装备卡
-    */
+    /* 装备卡 */
 
-    if (
-      type === "装备卡" ||
-      type === "装备"
-    ) {
+    if (type === "装备卡") {
       return "equip";
     }
 
 
-    /*
-      道具卡 / 物品卡
-    */
+    /* 道具卡 */
 
-    if (
-      type === "道具卡" ||
-      type === "物品卡" ||
-      type === "道具" ||
-      type === "物品"
-    ) {
+    if (type === "道具卡") {
       return "bagitem";
     }
 
@@ -539,7 +495,17 @@
 
     return rows.join("");
   }
+  function setAdventureCardInfoVisible(visible) {
+    const actions = document.querySelector("#cardinfo-button");
+    const ui1 = document.querySelector("#adventure-ui1");
+    const selectedImage = document.querySelector("#adventure-selected-image");
 
+    if (actions) actions.hidden = !visible;
+    if (ui1) ui1.hidden = !visible;
+    if (selectedImage) selectedImage.hidden = !visible;
+  }
+
+  window.setAdventureCardInfoVisible = setAdventureCardInfoVisible;
   function showCardInfo(cardName) {
     const box = document.querySelector("#cardinfo-content");
 
@@ -547,8 +513,8 @@
       return;
     }
 
-    if (typeof window.setCardInfoActionVisible === "function") {
-      window.setCardInfoActionVisible(false);
+    if (typeof window.setAdventureCardInfoVisible === "function") {
+      window.setAdventureCardInfoVisible(false);
     }
 
     const card = getCardInfo(cardName);

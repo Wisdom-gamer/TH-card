@@ -418,6 +418,7 @@
 
     activeIndex = -1;
   }
+    window.clearInfo = clearInfo;
 
   function getAvailableActions(cardState, cardData) {
     if (!cardData) return [];
@@ -504,12 +505,7 @@
       const image = document.createElement("img");
       button.type = "button";
       button.className = "cardinfo-action";
-      button.setAttribute(
-        "aria-label",
-        action.useCount && action.useCount > 1
-          ? `${action.name} ×${action.useCount}`
-          : action.name
-      );
+      button.setAttribute("aria-label",action.useCount && action.useCount > 1 ? `${action.name} ×${action.useCount}` : action.name);
       image.src = `images/adventure/${action.name}.png`;
       image.alt = "";
       button.appendChild(image);

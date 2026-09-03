@@ -158,6 +158,12 @@
 #adventure #adventure-ui1[hidden] {
   display: none;
 }
+#adventure #cardinfo-button[hidden] {
+  display: none;
+}
+#adventure #adventure-selected-image[hidden] {
+  display: none;
+}
 
 #adventure #adventure-selected-image {
   width: auto;
@@ -172,9 +178,7 @@
   pointer-events: none;
 }
 
-#adventure #adventure-selected-image[hidden] {
-  display: none;
-}
+
 /* 牌堆计数牌 */
 #adventure #adventuredeck {
   width: min(150px, 100%);
