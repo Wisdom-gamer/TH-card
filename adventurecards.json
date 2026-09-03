@@ -1,5 +1,7 @@
 {
   "水井":{
+    "image":"images/adventure/水井.png",
+    "px":60,
     "action":{
       "actionnum":2,
       "喝":{

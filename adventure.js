@@ -400,11 +400,20 @@
   function clearInfo() {
     const content = $("#cardinfo-content");
     const actions = $("#cardinfo-button");
+    const ui1 = $("#adventure-ui1");
+    const selectedImage = $("#adventure-selected-image");
 
     if (content) content.innerHTML = "";
     if (actions) {
       actions.innerHTML = "";
       actions.hidden = true;
+    }
+    if (ui1) ui1.hidden = true;
+    if (selectedImage) {
+      selectedImage.hidden = true;
+      selectedImage.removeAttribute("src");
+      selectedImage.style.width = "";
+      selectedImage.style.height = "";
     }
 
     activeIndex = -1;
@@ -450,7 +459,32 @@
 
     return actions;
   }
+  function renderSelectedCardImages(cardData) {
+    const ui1 = $("#adventure-ui1");
+    const selectedImage = $("#adventure-selected-image");
 
+    if (ui1) ui1.hidden = false;
+
+    if (!selectedImage) return;
+
+    selectedImage.hidden = true;
+    selectedImage.removeAttribute("src");
+    selectedImage.style.width = "";
+    selectedImage.style.height = "";
+
+    if (!cardData || cardData.action === "战斗" || !cardData.image) return;
+
+    selectedImage.src = cardData.image;
+    selectedImage.alt = "";
+
+    const px = Number(cardData.px);
+    if (Number.isFinite(px) && px > 0) {
+      selectedImage.style.width = `${px}px`;
+      selectedImage.style.height = "auto";
+    }
+
+    selectedImage.hidden = false;
+  }
   function renderActions(cardState, cardData) {
     const box = $("#cardinfo-button");
     if (!box) return;
@@ -467,12 +501,18 @@
 
     for (const action of actions) {
       const button = document.createElement("button");
+      const image = document.createElement("img");
       button.type = "button";
       button.className = "cardinfo-action";
-      button.textContent =
+      button.setAttribute(
+        "aria-label",
         action.useCount && action.useCount > 1
           ? `${action.name} ×${action.useCount}`
-          : action.name;
+          : action.name
+      );
+      image.src = `images/adventure/${action.name}.png`;
+      image.alt = "";
+      button.appendChild(image);
 
       button.addEventListener("click", async function () {
         await runAction(cardState, action);
@@ -494,7 +534,7 @@
     }
 
     const cardData = getCardData(cardState.name);
-
+renderSelectedCardImages(cardData);
     if (typeof window.setCardInfoActionVisible === "function") {
       window.setCardInfoActionVisible(true);
     }
