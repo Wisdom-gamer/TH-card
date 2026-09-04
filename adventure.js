@@ -486,6 +486,12 @@
 
     selectedImage.hidden = false;
   }
+  function toCircledNumber(value) {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n <= 1) return "";
+    if (n <= 20) return String.fromCodePoint(0x2460 + n - 1);
+    return String(n);
+  }
   function renderActions(cardState, cardData) {
     const box = $("#cardinfo-button");
     if (!box) return;
@@ -503,12 +509,16 @@
     for (const action of actions) {
       const button = document.createElement("button");
       const image = document.createElement("img");
+      const badge = document.createElement("span");
       button.type = "button";
       button.className = "cardinfo-action";
       button.setAttribute("aria-label",action.useCount && action.useCount > 1 ? `${action.name} ×${action.useCount}` : action.name);
       image.src = `images/adventure/${action.name}.png`;
       image.alt = "";
+      badge.className = "cardinfo-action-badge";
+      badge.textContent = toCircledNumber(action.useCount);
       button.appendChild(image);
+      if (badge.textContent) button.appendChild(badge);
 
       button.addEventListener("click", async function () {
         await runAction(cardState, action);

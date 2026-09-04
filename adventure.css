@@ -97,7 +97,7 @@
 
   display: block;
   overflow: visible;
-
+  position: relative;
   cursor: pointer;
 
   appearance: none;
@@ -111,7 +111,21 @@
   border: 0;
   pointer-events: none;
 }
-
+#adventure #cardinfo-button .cardinfo-action-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  padding: 0;
+  color: #000;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  text-align: left;
+  z-index: 10;
+  pointer-events: none;
+}
 #adventure #cardinfo-button .cardinfo-action:hover,
 #adventure #cardinfo-button .cardinfo-action:focus-visible {
   outline: none;
