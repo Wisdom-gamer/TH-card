@@ -393,7 +393,9 @@
 
   function updateCounter() {
     const counter = $("#adventurecardnum");
+    const backCard = $("#adventurebackcard");
     if (counter) counter.textContent = String(deck.length);
+    if (backCard) backCard.src = `images/adventure/card_${deck.length >= 4 ? 4 : deck.length}.png`;
     window.adventurecardnum = deck.length;
   }
 
@@ -553,8 +555,8 @@ renderSelectedCardImages(cardData);
 
     let html = `<h3>${escapeHtml(cardState.name)}</h3>`;
 
-    if (cardData.display) {
-      html += `<p>${escapeHtml(cardData.display)}</p>`;
+    if (cardData.info) {
+      html += `<p>${escapeHtml(cardData.info)}</p>`;
     }
 
     if (cardData["描述"]) {
@@ -625,6 +627,7 @@ renderSelectedCardImages(cardData);
     handSlots.forEach((button, index) => {
       const entry = hand[index];
       const img = button.querySelector("img");
+      const cardName = button.querySelector(".adventure-card-name");
 
       button.dataset.index = String(index);
 
@@ -633,6 +636,8 @@ renderSelectedCardImages(cardData);
         button.disabled = false;
         button.dataset.card = entry.name;
         button.setAttribute("aria-label", entry.name);
+        const cardData = getCardData(entry.name);
+        if (cardName) cardName.textContent = cardData && cardData.display ? cardData.display : entry.name;
 
         if (img) {
           img.src = getCardImage(entry.name);
@@ -643,6 +648,7 @@ renderSelectedCardImages(cardData);
         button.disabled = true;
         button.removeAttribute("data-card");
         button.setAttribute("aria-label", `空卡位${index + 1}`);
+        if (cardName) cardName.textContent = "";
 
         if (img) {
           img.src = "null.png";

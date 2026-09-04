@@ -14,10 +14,12 @@
         "actionnum":"void"
       }
     },
-    "display":"喝水可以获得10HP",
+    "display":"水井",
+    "info":"喝水可以获得10HP",
     "ID":"testw"
   },
   "测试敌人1":{
+    "display":"测试用敌人1",
     "action":"战斗",
     "ID":"test1",
     "HP":11,

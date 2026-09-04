@@ -195,43 +195,60 @@
 
 /* 牌堆计数牌 */
 #adventure #adventuredeck {
-  width: min(150px, 100%);
-  height: 72px;
+  width: 150px;
+  height: 70px;
   margin: 0 auto;
 
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   align-self: center;
+  gap: 4px;
 
-  border: 6px solid var(--black);
-  background: #808080;
+  border: 0;
+  background: transparent;
 
-  color: #fff;
-  font-size: 24px;
+  color: #000000;
+  font-size: 16px;
   font-weight: bold;
-  line-height: 1;
+  line-height: 16px;
 }
 
 #adventure #adventurecardnum {
-  color: #fff;
+  color: #000000;
   font-weight: bold;
-  font-size: 24px;
-  line-height: 1;
+  font-size: 16px;
+  line-height: 16px;
 }
-
+#adventure #adventurebackcard {
+  width: 150px;
+  height: 50px;
+  max-width: none;
+  max-height: none;
+  flex: 0 0 50px;
+  display: block;
+}
+#adventure #adventurebackcard {
+  width: 150px;
+  height: 50px;
+  max-width: none;
+  max-height: none;
+  flex: 0 0 50px;
+  display: block;
+}
 /* 手牌区域 */
 #adventure #adventure-hand {
   width: 100%;
-  padding: 6px;
-
+  padding: calc(60px + 1em) 6px 6px;
+  border: 2px solid #000000;
   display: grid;
   grid-template-columns: repeat(5, minmax(50px, 1fr));
   align-items: center;
   align-content: center;
   justify-items: center;
 
-  gap: 8px;
+  gap: 3px;
 
   overflow: auto;
 }
@@ -242,8 +259,22 @@
   height: auto;
 
   aspect-ratio: 1 / 1;
+  position: relative;
+  overflow: visible;
 }
-
+#adventure #adventure-hand .adventure-card-name {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 30px);
+  width: 100%;
+  font-size: 16px;
+  line-height: 16px;
+  color: #000000;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 2;
+  pointer-events: none;
+}
 #adventure #adventure-hand .card-slot.is-empty,
 #adventure #adventure-hand .card-slot:disabled {
   opacity: 0.35;
