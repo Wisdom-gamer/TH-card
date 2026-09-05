@@ -89,7 +89,7 @@
   "类型":"装备卡",
   "效果":{
     "伤害修改":{
-      "value":1,
+      "value":-1,
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
 	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
@@ -102,7 +102,7 @@
   "类型":"装备卡",
   "效果":{
     "伤害修改":{
-      "value":-1,
+      "value":1,
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
 	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */

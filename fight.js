@@ -972,18 +972,19 @@ function parseValueRead(expression, fight, side) {
       }
       const sourceEffect = source[effectKey];
       if (isObject(sourceEffect)) {
-        if (!equipRuleMatch(sourceEffect["rule"],tag)) {
+        const ruleSource = sourceEffect["siderule"] !== undefined ? sourceEffect : source;
+        if (!equipRuleMatch(ruleSource["rule"],tag)) {
           effectIndex += 1;
           continue;
         }
-        if (!sideruleMatches(sourceEffect["siderule"],side,ownerSide)) {
+        if (!sideruleMatches(ruleSource["siderule"],side,ownerSide)) {
           effectIndex += 1;
           continue;
         }
         let rulePassed = true;
-        if (Object.prototype.hasOwnProperty.call(sourceEffect,"rule_js")) {
-          const funcName = String(sourceEffect.rule_js ?? "").trim();
-          const inputText = String(sourceEffect.input ?? "").trim();
+        if (Object.prototype.hasOwnProperty.call(ruleSource,"rule_js")) {
+          const funcName = String(ruleSource.rule_js ?? "").trim();
+          const inputText = String(ruleSource.input ?? "").trim();
           const params = inputText === "" ? [] : inputText.split(";").map(function (value) { return value.trim(); });
           if (funcName && typeof window[funcName] === "function") {
             try {
@@ -1533,7 +1534,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
           }
           const damageValue = Number(damage.value);
           if (Number.isFinite(modifierValue) && Number.isFinite(damageValue)) {
-            nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(damageValue - modifierValue))};
+            nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(damageValue + modifierValue))};
           }
         }
       }
