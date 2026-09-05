@@ -1,7 +1,3 @@
-/* =========================================================
-   冒险场景 adventure
-   ========================================================= */
-
 #adventure {
   width: 100vw;
   height: 100vh;
@@ -287,7 +283,7 @@
   grid-column: 1;
   grid-row: 2;
 
-  width: 100%;
+  width: 332px;
   height: 100%;
 
   min-width: 0;
@@ -295,7 +291,7 @@
 
   display: flex;
   align-items: flex-end;
-  justify-self: stretch;
+  justify-self: start;
 
   gap: 12px;
 
@@ -322,7 +318,42 @@
   flex: 0 0 160px;
   max-height: 100%;
 }
+#adventure #adventuredata2 {
+  width: 160px;
+  padding: 12px;
 
+  border: var(--border-thick) solid var(--black);
+  background: #fff;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 12px;
+
+  flex: 0 0 160px;
+  align-self: flex-end;
+
+  color: #111;
+  font-size: 16px;
+}
+
+#adventure #adventurenewcard {
+  grid-column: 1;
+  grid-row: 2;
+
+  height: 50%;
+  margin-left: 344px;
+  margin-top: auto;
+
+  min-width: 0;
+  min-height: 0;
+
+  border: 3px solid #000000;
+  background: #fff;
+
+  box-sizing: border-box;
+  position: relative;
+}
 /* 头像区域 */
 #adventure .avatar-inner {
   width: var(--avatar-size);
@@ -609,7 +640,6 @@
     width: 95%;
   }
 }
-
 @media (max-width: 760px) {
   #adventure {
     width: 720px;
