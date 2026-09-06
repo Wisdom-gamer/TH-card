@@ -55,9 +55,8 @@
     -->
 <div class="game-area">
   <!-- 敌人区域 -->
-  <div class="player top">
-  <div class="player-tags-left" id="enemytags" aria-hidden="false"></div>
-    <div class="avatar-container">
+<div class="player top">
+  <div class="avatar-container">
       <div class="avatar-info">
         <div class="avatar-inner">
           <img
@@ -85,8 +84,8 @@
           </div>
         </div>
       </div>
+    </div>
 
-<div class="fight-side">
   <div class="fight-piles">
     <div
       class="fight-pile"
@@ -114,8 +113,8 @@
   </div>
 
   <div id="fightenemyequip" aria-label="装备"></div>
-</div>
-    </div>
+
+  <div class="player-tags-left" id="enemytags" aria-hidden="false"></div>
 
     <div class="hand large-hand">
       <div class="hand-label">卡牌</div>
@@ -153,6 +152,7 @@
 </div>
   </div>
 
+
   <!-- 结束回合按钮 -->
   <button class="end-turn" type="button">
     结束回合
@@ -162,9 +162,8 @@
   <div id="fightsite" aria-label="战斗场地"></div>
 
   <!-- 玩家区域 -->
-  <div class="player bottom">
-  <div class="player-tags-left" id="playertags" aria-hidden="false"></div>
-    <div class="avatar-container">
+<div class="player bottom">
+  <div class="avatar-container">
       <div class="avatar-info">
         <div class="avatar-inner">
           <img
@@ -192,37 +191,25 @@
           </div>
         </div>
       </div>
+    </div>
 
-<div class="fight-side">
   <div class="fight-piles">
-    <div
-      class="fight-pile"
-      aria-label="玩家卡组"
-    >
-      <span
-        id="fightplayerdecknum"
-        class="fight-pile-number"
-      >0</span>
+    <div class="fight-pile" aria-label="玩家卡组">
+      <span id="fightplayerdecknum" class="fight-pile-number">0</span>
 
       <span class="fight-pile-label">卡组</span>
     </div>
 
-    <div
-      class="fight-pile"
-      aria-label="玩家坟场"
-    >
-      <span
-        id="fightplayergravenum"
-        class="fight-pile-number"
-      >0</span>
+    <div class="fight-pile" aria-label="玩家坟场">
+      <span id="fightplayergravenum" class="fight-pile-number">0</span>
 
       <span class="fight-pile-label">坟场</span>
     </div>
   </div>
 
   <div id="fightplayerequip" aria-label="装备"></div>
-</div>
-    </div>
+
+  <div class="player-tags-left" id="playertags" aria-hidden="false"></div>
 
     <div class="hand large-hand bottom-hand">
       <div class="hand-label">卡牌</div>
