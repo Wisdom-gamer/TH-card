@@ -1470,7 +1470,7 @@ async function advvalue(config,side,fight,cardName,valuechange,sidetype,type,eff
 async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount,cardName,valuechange) {
 //  console.log(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount);
   const source = isObject(sourceEffect) ? sourceEffect : {};
-
+  const isFallbackSource = !isObject(effect);
   let nextEffect = effect;
     if (!isObject(nextEffect) && isObject(sourceEffect)) {
     nextEffect = {...sourceEffect};
@@ -1489,7 +1489,8 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
 
       const newConfig = isObject(config) ? {...config} : {value:config};
       if (Object.prototype.hasOwnProperty.call(newConfig,"value_read") || Object.prototype.hasOwnProperty.call(newConfig,"value_js")) {
-        const value = await advvalue(newConfig,side,fight,cardName,valuechange,sidetype,type,effect);
+        // const value = await advvalue(newConfig,side,fight,cardName,valuechange,sidetype,type,effect); 旧逻辑
+        const value = await advvalue(newConfig,effectSide,fight,cardName,valuechange,sidetype,type,effect);
         newConfig.value = Number.isFinite(value) ? value : 0;
         delete newConfig.value_read;
         delete newConfig.value_js;
@@ -1528,7 +1529,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
         } else {
           let modifierValue;
           if (Object.prototype.hasOwnProperty.call(damageModifier,"value_read") || Object.prototype.hasOwnProperty.call(damageModifier,"value_js")) {
-            modifierValue = await advvalue(damageModifier,side,fight,cardName,valuechange,sidetype,type,effect);
+            modifierValue = await advvalue(damageModifier,effectSide,fight,cardName,valuechange,sidetype,type,effect);
           } else {
             modifierValue = Number(damageModifier.value);
           }
@@ -1540,23 +1541,30 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
       }
     }
   }
-  if (isObject(nextEffect) && isObject(nextEffect["标记"])) {
-    nextEffect = {...nextEffect,"标记":{...nextEffect["标记"]}};
-    for (const [tagName,tagConfig] of Object.entries(nextEffect["标记"])) {
+  const sourceMarks = source["标记"];
+  if (!isFallbackSource && isObject(sourceMarks)) {
+    nextEffect = isObject(nextEffect) ? {...nextEffect,"标记":{...(nextEffect["标记"] || {})}} : {"标记":{}};
+    const flipSelfOther = Number(ownerSide) !== Number(side);
+    for (const [tagName,tagConfig] of Object.entries(sourceMarks)) {
       if (!isObject(tagConfig)) continue;
-      const nextTagConfig = {...tagConfig};
+      const existingTagConfig = isObject(nextEffect["标记"][tagName]) ? {...nextEffect["标记"][tagName]} : {};
       for (const sideName of ["self","other","all"]) {
-        if (!isObject(nextTagConfig[sideName])) continue;
-        const nextSideConfig = {...nextTagConfig[sideName]};
-        if (Object.prototype.hasOwnProperty.call(nextSideConfig,"value_read") || Object.prototype.hasOwnProperty.call(nextSideConfig,"value_js")) {
-          const value = await advvalue(nextSideConfig,side,fight,cardName,valuechange,sidetype,type,effect);
-          nextSideConfig.value = Number.isFinite(value) ? value : 0;
-          delete nextSideConfig.value_read;
-          delete nextSideConfig.value_js;
+        if (!isObject(tagConfig[sideName])) continue;
+        const sourceSideConfig = {...tagConfig[sideName]};
+        if (Object.prototype.hasOwnProperty.call(sourceSideConfig,"value_read") || Object.prototype.hasOwnProperty.call(sourceSideConfig,"value_js")) {
+          const value = await advvalue(sourceSideConfig,effectSide,fight,cardName,valuechange,sidetype,type,effect);
+          sourceSideConfig.value = Number.isFinite(value) ? value : 0;
+          delete sourceSideConfig.value_read;
+          delete sourceSideConfig.value_js;
         }
-        nextTagConfig[sideName] = nextSideConfig;
+        const targetSideName = flipSelfOther ? (sideName === "self" ? "other" : sideName === "other" ? "self" : "all") : sideName;
+        if (isObject(existingTagConfig[targetSideName]) && Number.isFinite(Number(existingTagConfig[targetSideName].value)) && Number.isFinite(Number(sourceSideConfig.value))) {
+          existingTagConfig[targetSideName] = {...existingTagConfig[targetSideName],value:Number(existingTagConfig[targetSideName].value) + Number(sourceSideConfig.value)};
+        } else {
+          existingTagConfig[targetSideName] = sourceSideConfig;
+        }
       }
-      nextEffect["标记"][tagName] = nextTagConfig;
+      nextEffect["标记"][tagName] = existingTagConfig;
     }
   }
   if (isObject(nextEffect) && isObject(nextEffect["抽卡"])) {
@@ -1587,7 +1595,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
     const passive = source["被动伤害"];
     let value;
     if (Object.prototype.hasOwnProperty.call(passive,"value_read") || Object.prototype.hasOwnProperty.call(passive,"value_js")) {
-      value = await advvalue(passive,side,fight,cardName,valuechange,sidetype,type,effect);
+      value = await advvalue(passive,effectSide,fight,cardName,valuechange,sidetype,type,effect);
     } else {
       value = Number(passive.value);
     }
