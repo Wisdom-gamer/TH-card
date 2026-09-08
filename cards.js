@@ -132,7 +132,7 @@
     button.dataset.source = "deck";
     button.setAttribute("aria-label", cardName);
 
-    img.src = card && card["图片"] ? card["图片"] : "null.png";
+    img.src = card && card["image"] ? card["image"] : "null.png";
     img.alt = cardName;
     button.appendChild(img);
 
@@ -241,7 +241,16 @@
     if (!character) {
       throw new Error(`pc.json 中不存在角色：${characterName}`);
     }
-
+    
+  window.playerCharacterData = {
+    ...character,
+    ability: character.ability
+      ? {
+          name: String(character.ability.name || ""),
+          turn: normalizeCount(character.ability.turn)
+        }
+      : null
+  };
     resetDeck();
 
     if (window.playerBag) {

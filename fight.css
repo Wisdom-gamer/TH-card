@@ -368,30 +368,35 @@
   grid-column: 1;
   grid-row: 2;
 
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+
+  width: 442px;
+  height: 90px;
   min-width: 0;
   min-height: 0;
 
-  padding: 6px;
+  padding: 3px;
 
-  display: grid;
-  grid-template-columns: repeat(10, var(--slot-size));
-  grid-auto-rows: var(--slot-size);
-  gap: 8px;
+  display: block;
 
-  align-content: center;
-  justify-content: center;
+  transform: translate(-50%, -50%) rotate(-10deg);
+  transform-origin: center center;
 
-  overflow: auto;
-  border: 0;
+  overflow: hidden;
+  border: 2px solid #000000;
   background: transparent;
+  box-sizing: border-box;
 }
 
 .game-area #fightsite .fightsite-card {
   width: var(--slot-size);
   height: var(--slot-size);
   padding: 0;
+
+  position: absolute;
+  top: 3px;
 
   border: 0;
   background: transparent;
@@ -404,6 +409,10 @@
 
   appearance: none;
   -webkit-appearance: none;
+}
+
+.game-area #fightsite .fightsite-card:first-child {
+  margin-left: 0;
 }
 
 .game-area #fightsite .fightsite-card img {

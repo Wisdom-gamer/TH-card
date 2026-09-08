@@ -83,8 +83,7 @@ function parseFightCard(cardEntry) {
   }
 
   function getAdventureCardById(cardId) {
-    const database =
-      window.adventureCardsDatabase;
+    const database = window.adventureCardsDatabase;
 
     if (!isObject(database)) {
       return null;
@@ -164,7 +163,7 @@ function parseFightCard(cardEntry) {
 
     const card = isObject(database) ? database[cardName] : null;
 
-    return card && card["图片"];
+    return card && card["image"];
   }
 
   function getEnemyCardImage(cardName) {
@@ -172,7 +171,7 @@ function parseFightCard(cardEntry) {
 
     const card = isObject(database) ? database[cardName] : null;
 
-    return card && `images/adventure/${card.ID}.png`;
+    return card && card["image"];
   }
 
   function renderSlots(slotSelector,cards,imageResolver,labelPrefix) {
@@ -274,9 +273,7 @@ window.fightenemyability = fight.enemyability;
     updateBattleBars();
   }
 
-  /*
-    更新卡组和坟场数量。
-  */
+  /* 更新卡组和坟场数量 */
   function updateFightPileCounts(fight) {
     const playerDeck = document.getElementById("fightplayerdecknum");
     const playerGrave = document.getElementById("fightplayergravenum");
@@ -300,10 +297,8 @@ window.fightenemyability = fight.enemyability;
     }
   }
 
-  /*
-    创建战斗场地上的卡牌。
-  */
-  function renderFightSite(fight) {
+  /* 创建战斗场地上的卡牌 */
+function renderFightSite(fight) {
     const site = document.getElementById("fightsite");
 
     if (!site) {
@@ -311,6 +306,13 @@ window.fightenemyability = fight.enemyability;
     }
 
     site.innerHTML = "";
+
+    const cardCount = fight.fightsitecards.length;
+    const cardWidth = 80;
+    const normalGap = 8;
+    const sitePadding = 3;
+    const availableWidth = 442 - 4 - sitePadding * 2;
+    const step = cardCount <= 5 ? cardWidth + normalGap : (availableWidth - cardWidth) / (cardCount - 1);
 
     fight.fightsitecards.forEach(
       function (cardEntry, index) {
@@ -326,6 +328,8 @@ window.fightenemyability = fight.enemyability;
         button.className = "fightsite-card";
 
         button.tabIndex = -1;
+        button.style.left = `${sitePadding + index * step}px`;
+        button.style.zIndex = String(index + 1);
 
         button.setAttribute(
           "aria-label",
@@ -2324,9 +2328,7 @@ async function fightenemyactioncard(fight) {
     );
   }
 
-  /*
-    对外暴露。
-  */
+  /* 对外暴露 */
 window.fightAPI = fightAPI;
 window.fightmain = fightmain;
 window.fightenemyaction = fightenemyaction;

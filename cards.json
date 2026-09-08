@@ -11,6 +11,21 @@
     "tag":"handcard;handcarddamage",
     "sidetype":"typeNormal"
   },
+  "测试卡牌flood":{
+  "image":"images/fight/测试卡牌flood.png",
+  "类型":"基本卡",
+  "效果":{
+    "获取卡":{
+    "测试卡牌flood":{
+        "value":2,
+        "sidetype":"temp;typeNormal"
+    }
+    }
+  },
+    "描述":"造成2普通伤害",
+    "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
+  },
   "测试卡牌2":{
   "类型":"道具卡",
   "效果":{
