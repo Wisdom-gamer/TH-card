@@ -458,10 +458,7 @@
       return "";
     }
 
-    const directDescription =
-      typeof card["描述"] === "string"
-        ? card["描述"].trim()
-        : "";
+    const directDescription = typeof card["描述"] === "string" ? card["描述"].trim() : "";
 
     if (directDescription) {
       return directDescription;
@@ -469,10 +466,7 @@
 
     const effect = isPlainObject(card["效果"]) ? card["效果"] : null;
 
-    const effectDescription =
-      effect && typeof effect["描述"] === "string"
-        ? effect["描述"].trim()
-        : "";
+    const effectDescription = effect && typeof effect["描述"] === "string" ? effect["描述"].trim() : "";
 
     return effectDescription;
   }
@@ -1096,13 +1090,7 @@
   }
 
 
-  /*
-    --------------------------------------------------
-    重置背包
-
-    新角色开始游戏时调用。
-    --------------------------------------------------
-  */
+  /* 重置背包 */
 
   function resetBag() {
 
@@ -1117,11 +1105,7 @@
   }
 
 
-  /*
-    --------------------------------------------------
-    对外接口
-    --------------------------------------------------
-  */
+  /* 对外接口 */
 
   window.playerBag = {
 

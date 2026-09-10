@@ -172,8 +172,9 @@
 /* 结束回合按钮 */
 .game-area .end-turn {
   position: absolute;
-  top: 42%;
-  right: 48px;
+  top: 50%;
+/*  left: 68px; */
+/*  right: auto; */
 
   padding: 12px 18px;
 
@@ -186,10 +187,21 @@
   cursor: pointer;
   user-select: none;
 
-  transform: translateY(-50%);
+  transform: translateY(-50%) rotate(-5deg);
+  transform-origin: center center;
 
   appearance: none;
   -webkit-appearance: none;
+}
+
+.game-area .end-turn img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+  object-fit: fill;
+
+  border: 0;
 }
 
 .game-area .end-turn:hover,
@@ -198,9 +210,60 @@
   box-shadow: 0 0 0 4px var(--focus-color);
 }
 
-/* =========================================================
-   战斗装备栏
-   ========================================================= */
+/* 战斗卡牌信息栏 */
+.game-area #fightcardinfo {
+  position: absolute;
+  transform: rotate(-5deg);
+  right: 20px;
+  top: 250px;
+
+  width: 220px;
+  height: 250px;
+
+  border: 3px solid var(--black);
+  background: #fff;
+
+  box-sizing: border-box;
+  overflow: hidden;
+
+  z-index: 5;
+}
+
+.game-area #fightcardinfo-title {
+  width: 100%;
+  height: 30px;
+
+  border-bottom: 3px solid var(--black);
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 8px;
+
+  color: #111;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.game-area #fightcardinfo-content {
+  width: 100%;
+  height: calc(100% - 33px);
+  white-space: pre-line;
+
+  box-sizing: border-box;
+
+  padding: 8px;
+
+  color: #111;
+  font-size: 16px;
+  line-height: 1.4;
+
+  overflow-y: auto;
+}
+
+/* 战斗装备栏 */
 
 .game-area #fightenemyequip,
 .game-area #fightplayerequip {
@@ -278,9 +341,7 @@
   flex: 0 0 var(--bag-slot-size);
 }
 
-/* =========================================================
-   战斗区头像、卡组、坟场
-   ========================================================= */
+/* 战斗区头像、卡组、坟场 */
 
 .game-area .player.top .avatar-container,
 .game-area .player.bottom .avatar-container {
@@ -494,48 +555,76 @@
 }
 
 /* 战斗界面背包 */
+
 .game-area #fightenemybag,
 .game-area #fightplayerbag {
   width: 60px;
+  height: 155px;
+
   min-width: 60px;
+  min-height: 0;
+
   padding: 24px 5px 5px 5px;
+
   display: grid;
   grid-template-columns: var(--bag-slot-size);
   grid-auto-rows: var(--bag-slot-size);
   align-content: start;
   gap: 5px;
-  overflow: auto;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  position: absolute;
+
   background: #f3f3f3;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.75);
+
   box-sizing: border-box;
-  position: relative;
+  z-index: 3;
+}
+
+/* 敌人背包 */
+.game-area .player.top #fightenemybag {
+  left: 1050px;
+  top: 0;
+}
+
+/* 玩家背包 */
+.game-area .player.bottom #fightplayerbag {
+  left: 1050px;
+  bottom: 0;
 }
 
 /* 战斗背包标题 */
+
 .game-area #fightenemybag::before,
 .game-area #fightplayerbag::before {
   content: "背包";
+
   position: absolute;
   top: 5px;
   left: 50%;
+
   transform: translateX(-50%);
+
   padding: 2px 4px;
+
   font-size: 14px;
   font-weight: bold;
   line-height: 1.2;
+
   color: #222;
   background: rgba(255, 255, 255, 0.85);
+
   border-radius: 3px;
+
   white-space: nowrap;
+
   z-index: 10;
   pointer-events: none;
-}
-
-/* 放在手牌右侧时给出 5px 间隔并与手牌等高 */
-.game-area .player .hand.large-hand + #fightenemybag,
-.game-area .player .hand.large-hand + #fightplayerbag {
-  margin-left: 5px;
-  align-self: stretch;
 }
 
 /* 战斗背包卡片 */
@@ -544,36 +633,50 @@
   width: var(--bag-slot-size);
   height: var(--bag-slot-size);
   padding: 0;
+
   border: 2px solid #2e2e2e;
   border-radius: 3px;
+
   background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(215,215,215,0.95));
+
   display: grid;
   place-items: center;
+
   position: relative;
+
   overflow: hidden;
+
   color: #111;
+
   cursor: pointer;
   outline: none;
+
   box-shadow: inset 2px 2px 0 rgba(255,255,255,0.8), inset -2px -2px 0 rgba(0,0,0,0.2);
+
+  box-sizing: border-box;
 }
 
-/* =========================================================
-    战斗技能区域
-    ========================================================= */
+/* 战斗技能区域 */
 
 .game-area .ability-area {
-  width: 72px;
-  min-width: 72px;
-  height: 72px;
-  min-height: 72px;
+  width: max-content;
+  min-width: 25px;
+  height: 25px;
+  min-height: 25px;
 
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  gap: 5px;
 
-  position: relative;
+  position: absolute;
 
   flex-shrink: 0;
+
+  padding: 0;
+
+  overflow: visible;
 }
 
 .game-area .ability-area[hidden] {
@@ -581,8 +684,11 @@
 }
 
 .game-area .fight-ability-button {
-  width: 100%;
-  height: 100%;
+  width: 25px;
+  min-width: 25px;
+  height: 25px;
+  min-height: 25px;
+  flex: 0 0 20px;
   padding: 0;
 
   position: relative;
@@ -620,7 +726,7 @@
 
   display: block;
 
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .game-area .ability-cooldown {
@@ -702,10 +808,11 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 6px 0;
-  width: 100%;
+  justify-content: flex-end;
+  padding: 0;
+  width: max-content;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .game-area .player .fight-side-stack.player-side-bottom {

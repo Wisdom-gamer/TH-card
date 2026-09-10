@@ -6,7 +6,8 @@
       typeof value === "object" &&
       !Array.isArray(value);
   }
-
+  window.isObject = isObject;
+  
   function toInt(value, fallback) {
     const number = Number(value);
 
@@ -187,22 +188,16 @@ function parseFightCard(cardEntry) {
         button.dataset.index = String(index);
 
         if (cardName) {
-          button.classList.remove(
-            "is-empty"
-          );
+          button.classList.remove("is-empty");
 
           button.disabled = false;
 
           button.dataset.card = cardName;
-
-          button.setAttribute(
-            "aria-label",
-            cardName
-          );
+          bindFightCardInfo(button,1,cardName);
+          button.setAttribute("aria-label",cardName);
 
           if (img) {
             img.src = imageResolver(cardName);
-
             img.alt = cardName;
           }
         } else {
@@ -331,15 +326,9 @@ function renderFightSite(fight) {
         button.style.left = `${sitePadding + index * step}px`;
         button.style.zIndex = String(index + 1);
 
-        button.setAttribute(
-          "aria-label",
-          cardName
-        );
-
-        /*
-          1 = 玩家
-          0 = 敌人
-        */
+        button.setAttribute("aria-label",cardName);
+        bindFightCardInfo(button,1,cardName);
+        /* 1 = 玩家 0 = 敌人 */
         img.src = owner === 1 ? getPlayerCardImage(cardName) : getEnemyCardImage(cardName);
 
         img.alt = cardName;
@@ -374,16 +363,9 @@ function renderFightEquip(fight,owner) {
 
         slot.className = "bag-slot";
 
-        slot.setAttribute(
-          "aria-label",
-          cardName
-        );
-
-        img.src =
-          imageResolver(
-            cardName
-          );
-
+        slot.setAttribute("aria-label",cardName);
+        bindFightCardInfo(slot,1,cardName);
+        img.src = imageResolver(cardName);
         img.alt = cardName;
 
         slot.appendChild(img);
@@ -811,13 +793,34 @@ function drawEnemyCards(DCnumber) {
   function renderPlayerHand(fight) {
     renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,getPlayerCardImage,"玩家");
   }
-  function renderAbilityButton(fight, owner) {
+  function positionFightAbility(fight,owner) {
+  const containerId = owner === 1 ? "fightplayerability" : "fightenemyability";
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const player = container.closest(".player");
+  const hand = player ? player.querySelector(".hand.large-hand") : null;
+  if (!player || !hand) return;
+  const playerRect = player.getBoundingClientRect();
+  const handRect = hand.getBoundingClientRect();
+  container.style.right = `${playerRect.right - handRect.right}px`;
+  container.style.left = "auto";
+  if (owner === 1) {
+    container.style.bottom = `${playerRect.bottom - handRect.top + 5}px`;
+    container.style.top = "auto";
+  } else {
+    container.style.top = `${handRect.bottom - playerRect.top + 5}px`;
+    container.style.bottom = "auto";
+  }
+}
+function renderAbilityButton(fight, owner) {
   const abilities = owner === 1 ? fight.playerability : fight.enemyability;
   const containerId = owner === 1 ? "fightplayerability" : "fightenemyability";
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = "";
-  if (!Array.isArray(abilities) || abilities.length === 0) return;
+  if (!Array.isArray(abilities) || abilities.length === 0) {
+    return;
+  }
 
   abilities.forEach(function (entry, idx) {
     const cardName = String(entry[0] ?? "").trim();
@@ -827,16 +830,16 @@ function drawEnemyCards(DCnumber) {
     const card = getFightCardData(cardName);
     if (!card) return;
 
-    const imageResolver = owner === 1 ? getPlayerCardImage : getEnemyCardImage;
     const btn = document.createElement("button");
     btn.type = "button";
+    btn.className = "fight-ability-button";
     btn.dataset.ability = "true";
     btn.dataset.owner = String(owner);
     btn.dataset.abilityIndex = String(idx);
     btn.setAttribute("aria-label", cardName + (remaining > 0 ? `（冷却${remaining}回合）` : ""));
 
     const img = document.createElement("img");
-    img.src = imageResolver(cardName);
+    img.src = encodeURI(`images/fight/${cardName}.png`);
     img.alt = cardName;
     btn.appendChild(img);
 
@@ -896,6 +899,7 @@ function drawEnemyCards(DCnumber) {
       }
     };
   });
+  positionFightAbility(fight,owner);
 }
     function getFightCardData(cardName) {
     const database = window.cardDatabase;
@@ -905,6 +909,50 @@ function drawEnemyCards(DCnumber) {
     }
     return database[cardName] || null;
   }
+    function displayfightcardinfo(type,name) {
+    const title = document.getElementById("fightcardinfo-title");
+    const content = document.getElementById("fightcardinfo-content");
+
+    if (!title || !content) {
+      return;
+    }
+
+    const targetType = Number(type);
+    const targetName = String(name ?? "").trim();
+
+    if (!targetName || typeof window.cardinfoAPI !== "function") {
+//      title.textContent = "";
+//      content.innerHTML = "";
+      return;
+    }
+
+    const info = window.cardinfoAPI(targetType,targetName);
+
+    if (!info) {
+//      title.textContent = "";
+//      content.innerHTML = "";
+      return;
+    }
+
+//    title.textContent = info.name;
+    if(Number(window.debugmode) === 1){
+      content.innerHTML = `${info.name}\n ${JSON.stringify(info.data, null, 2)} ${info.description}`;
+      }else{
+    content.innerHTML = `${info.name}\n${info.description}`;
+  }
+  }
+
+  window.displayfightcardinfo = displayfightcardinfo;
+
+  function bindFightCardInfo(element, type, name) {
+  if (!element) {
+    return;
+  }
+
+  element.addEventListener("mouseenter", function () {
+    displayfightcardinfo(type, name);
+  });
+}
 function parseValueRead(expression, fight, side) {
   if (typeof expression !== "string") return Number(expression);
   let result = String(expression).trim();
@@ -1143,11 +1191,11 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = window.cardDatabase[cardName]["图片"];
+      img.src = window.cardDatabase[cardName]["image"];
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
-        if (typeof window.showCardInfo === "function") window.showCardInfo(cardName);
+        displayfightcardinfo(1,cardName);
       });
       playerBagEl.appendChild(btn);
     });
@@ -1168,7 +1216,7 @@ function renderFightBags() {
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
-        if (typeof window.showCardInfo === "function") window.showCardInfo(cardName);
+        displayfightcardinfo(1,cardName);
       });
       playerEquipEl.appendChild(btn);
     });
@@ -1187,6 +1235,7 @@ function renderFightBags() {
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
+      bindFightCardInfo(btn,1,cardName);
       btn.appendChild(img);
       enemyBagEl.appendChild(btn);
     });
@@ -1205,6 +1254,7 @@ function renderFightBags() {
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
+      bindFightCardInfo(btn,1,cardName);
       btn.appendChild(img);
       enemyEquipEl.appendChild(btn);
     });

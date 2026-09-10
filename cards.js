@@ -4,11 +4,53 @@
   const DECK_STORAGE_KEY = "TH_CARD_DECK";
 
   let cardDatabase = {};
-  let pcDatabase = {};
+  let tagDatabase = {};
   let deckCards = [];
 
   window.cardDatabase = cardDatabase;
+  window.tagDatabase = tagDatabase;
 
+  function cardinfoAPI(type,name) {
+    const targetType = Number(type);
+    const targetName = String(name ?? "").trim();
+
+    if (!targetName) {
+      return null;
+    }
+
+    if (targetType === 1) {
+      const card = cardDatabase[targetName];
+
+      if (!isObject(card)) {
+        return null;
+      }
+
+      return {
+        name: targetName,
+        description: String(card["描述"] ?? ""),
+        data: card
+      };
+    }
+
+    if (targetType === 2) {
+      const tag = itagDatabase[targetName];
+
+      if (!isObject(tag)) {
+        return null;
+      }
+
+      return {
+        name: targetName,
+        description: String(tag["描述"] ?? ""),
+        data: tag
+      };
+    }
+
+    return null;
+  }
+
+  window.cardinfoAPI = cardinfoAPI;
+  let pcDatabase = {};
   function stripJsonComments(text) {
     let result = "";
     let inString = false;
@@ -75,14 +117,17 @@
 
   const databaseReady = Promise.all([
     fetchJsonFile("cards.json", true),
-    fetchJsonFile("pc.json", false)
+    fetchJsonFile("pc.json", false),
+    fetchJsonFile("tags.json", true)
   ])
     .then(function (result) {
       cardDatabase = result[0];
       pcDatabase = result[1];
+      tagDatabase = result[2];
 
       window.cardDatabase = cardDatabase;
       window.pcDatabase = pcDatabase;
+      window.tagDatabase = tagDatabase;
 
       renderDeck();
 
