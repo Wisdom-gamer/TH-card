@@ -393,10 +393,9 @@
   function addCardToAdventureDeck(cardName) {
     const name = String(cardName || "").trim();
     if (!name) return false;
+    if (!window.playerDeck || typeof window.playerDeck.addDirect !== "function") return false;
 
-    deck.push(name);
-    saveState();
-    updateCounter();
+    window.playerDeck.addDirect(name);
     return true;
   }
 
@@ -436,7 +435,7 @@
     return true;
   }
 
-  function shopbuycard(cardName, merchantData) {
+    function shopbuycard(cardName, merchantData, shopIndex) {
     const priceType = getShopPriceType(merchantData);
     const price = getShopPrice(cardName);
 
@@ -450,6 +449,19 @@
 
     if (!addCardToAdventureDeck(cardName)) {
       return false;
+    }
+
+    if (merchantData.ID) {
+      const key = `SHOP_DATA_${merchantData.ID}`;
+      const saved = localStorage.getItem(key);
+
+      if (saved) {
+          const data = JSON.parse(saved);
+          if (Array.isArray(data)) {
+            data.splice(shopIndex, 1);
+            localStorage.setItem(key, JSON.stringify(data));
+          }
+      }
     }
 
     return true;
@@ -488,26 +500,34 @@
       if (!cardName) continue;
 
       const image = document.createElement("img");
-      image.src = getCardImage(cardName);
+      const productCard = window.cardDatabase && window.cardDatabase[cardName];
+      image.src = productCard && productCard.image ? productCard.image : "null.png";
       image.alt = cardName;
       image.title = `${cardName} ${getShopPrice(cardName)}${shopData.pricetype}`;
 
       box.appendChild(image);
+      image.addEventListener("mouseenter", function () {
+        if (typeof window.showCardInfo === "function") {
+          window.showCardInfo(cardName);
+        }
+      });
       box.hidden = false;
 
       box.dataset.card = cardName;
       box.dataset.pricetype = shopData.pricetype;
+      box.dataset.shopIndex = String(i);
 
       box.addEventListener("click", function () {
         const targetName = box.dataset.card;
         if (!targetName) return;
 
-        if (!shopbuycard(targetName, cardData)) return;
+        if (!shopbuycard(targetName, cardData, Number(box.dataset.shopIndex))) return;
 
         box.innerHTML = "";
         box.hidden = true;
         box.removeAttribute("data-card");
         box.removeAttribute("data-pricetype");
+        box.removeAttribute("data-shop-index");
       }, { once: true });
     }
   }
@@ -813,7 +833,7 @@
 
     const cardData = getCardData(cardState.name);
     renderSelectedCardImages(cardData);
-    shopaddcard(cardData);
+//    shopaddcard(cardData);
     if (typeof window.setCardInfoActionVisible === "function") {
       window.setCardInfoActionVisible(true);
     }
@@ -853,6 +873,7 @@
       const focusInfo = function () {
         if (button.classList.contains("is-empty")) return;
         showCardInfo(index);
+        shopaddcard(getCardData(hand[index].name));
       };
 
       button.addEventListener("mouseenter", focusInfo);
