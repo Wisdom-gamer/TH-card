@@ -4,6 +4,7 @@
   const DEFAULT_LEVEL = "L14";
   const STATE_KEY = "TH_CARD_ADVENTURE_STATE";
   const CHARACTER_KEY = "TH_CARD_CHARACTER";
+  const SHOP_DATA_PREFIX = "SHOP_DATA_";
   const HAND_LIMIT = 5;
 
   let cardDB = {};
@@ -236,12 +237,280 @@
   function getCardData(name) {
     return cardDB[name] || null;
   }
+  /* 创建商店 */
+  function createShopData(cardName) {
+    const cardData = getCardData(cardName);
+    if (!isObject(cardData) || !isObject(cardData.shops) || !cardData.ID) return;
+
+    const characterState = readCharacterState();
+    const characterName = characterState && typeof characterState.name === "string"
+      ? characterState.name
+      : "";
+
+    const weightMap = {};
+
+    for (const [shopCharacter, shopCards] of Object.entries(cardData.shops)) {
+      if (!isObject(shopCards)) continue;
+
+      let matched = shopCharacter === "all";
+
+      if (!matched) {
+        matched = shopCharacter
+          .split(";")
+          .some((name) => name === characterName);
+      }
+
+      if (!matched) continue;
+
+      for (const [shopCardName, weightValue] of Object.entries(shopCards)) {
+        const weight = Number(weightValue);
+        if (!Number.isFinite(weight) || weight <= 0) continue;
+
+        weightMap[shopCardName] = (weightMap[shopCardName] || 0) + weight;
+      }
+    }
+
+    const indexTable = [];
+    let totalWeight = 0;
+
+    for (const [shopCardName, weight] of Object.entries(weightMap)) {
+      totalWeight += weight;
+      indexTable.push({
+        name: shopCardName,
+        weight,
+        end: totalWeight
+      });
+    }
+
+    if (totalWeight <= 0 || indexTable.length === 0) return;
+
+    const result = [];
+
+    for (let i = 0; i < 3; i += 1) {
+      const randomValue = Math.random() * totalWeight;
+
+      for (const item of indexTable) {
+        if (randomValue < item.end) {
+          result.push(item.name);
+          break;
+        }
+      }
+    }
+
+    localStorage.setItem(
+      `SHOP_DATA_${cardData.ID}`,
+      JSON.stringify(result)
+    );
+  }
+
+  function initializeShopDataForCards(cards) {
+    const initialized = new Set();
+
+    for (const cardName of cards) {
+      const cardData = getCardData(cardName);
+      if (!isObject(cardData) || !isObject(cardData.shops) || !cardData.ID) continue;
+
+      const shopKey = String(cardData.ID);
+      if (initialized.has(shopKey)) continue;
+
+      initialized.add(shopKey);
+      createShopData(cardName);
+    }
+  }
 
   function getCardImage(name) {
     const card = getCardData(name);
     return card && card.ID ? `images/adventure/${card.ID}.png` : "null.png";
   }
+  function clearShopCards() {
+    for (let i = 1; i <= 3; i += 1) {
+      const box = $(`#adventurenewcard${i}`);
+      if (!box) continue;
+      box.innerHTML = "";
+      box.hidden = true;
+    }
+  }
 
+  function getShopPrice(cardName) {
+    const card = window.cardDatabase && window.cardDatabase[cardName];
+    if (!isObject(card)) return 10;
+
+    const price = Number(card.price);
+    return Number.isFinite(price) ? price : 10;
+  }
+
+  function getShopPriceType(shopData) {
+    if (!isObject(shopData)) return "Gold";
+
+    const priceType = String(shopData.pricetype || "Gold").trim();
+    return priceType === "HP" || priceType === "MAXHP" ? priceType : "Gold";
+  }
+
+  function getShopMerchantData(cardData) {
+    if (!isObject(cardData) || !isObject(cardData.shops)) return null;
+
+    return cardData;
+  }
+
+  function getShopDataForCurrentCharacter(cardData) {
+    const shopData = getShopMerchantData(cardData);
+    if (!shopData) return null;
+
+    const characterState = readCharacterState();
+    const characterName = characterState && typeof characterState.name === "string"
+      ? characterState.name
+      : "";
+
+    const result = {};
+    const matched = [];
+
+    for (const [characterRule, cards] of Object.entries(shopData.shops)) {
+      if (!isObject(cards)) continue;
+
+      if (characterRule === "all") {
+        matched.push(cards);
+        continue;
+      }
+
+      const names = characterRule.split(";");
+      if (names.some((name) => name === characterName)) {
+        matched.push(cards);
+      }
+    }
+
+    for (const cards of matched) {
+      for (const [cardName, weight] of Object.entries(cards)) {
+        result[cardName] = (result[cardName] || 0) + Number(weight || 0);
+      }
+    }
+
+    return {
+      cards: result,
+      pricetype: getShopPriceType(shopData)
+    };
+  }
+
+  function addCardToAdventureDeck(cardName) {
+    const name = String(cardName || "").trim();
+    if (!name) return false;
+
+    deck.push(name);
+    saveState();
+    updateCounter();
+    return true;
+  }
+
+  function canPayShopPrice(priceType, price) {
+    const value = Number(price);
+    if (!Number.isFinite(value) || value < 0) return false;
+
+    if (priceType === "HP") {
+      return stats.HP >= value;
+    }
+
+    if (priceType === "MAXHP") {
+      return stats.maxHP >= value;
+    }
+
+    return stats.Gold >= value;
+  }
+
+  function payShopPrice(priceType, price) {
+    const value = Number(price);
+    if (!Number.isFinite(value) || value < 0) return false;
+
+    if (!canPayShopPrice(priceType, value)) return false;
+
+    if (priceType === "HP") {
+      stats.HP -= value;
+    } else if (priceType === "MAXHP") {
+      stats.maxHP -= value;
+      if (stats.HP > stats.maxHP) {
+        stats.HP = stats.maxHP;
+      }
+    } else {
+      stats.Gold -= value;
+    }
+
+    syncStatsToDom(true);
+    return true;
+  }
+
+  function shopbuycard(cardName, merchantData) {
+    const priceType = getShopPriceType(merchantData);
+    const price = getShopPrice(cardName);
+
+    if (!canPayShopPrice(priceType, price)) {
+      return false;
+    }
+
+    if (!payShopPrice(priceType, price)) {
+      return false;
+    }
+
+    if (!addCardToAdventureDeck(cardName)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function shopaddcard(cardData) {
+    clearShopCards();
+
+    const shopData = getShopDataForCurrentCharacter(cardData);
+    if (!shopData) return;
+
+    let savedCards = null;
+
+    if (cardData.ID) {
+      const saved = localStorage.getItem(`SHOP_DATA_${cardData.ID}`);
+
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (Array.isArray(data)) {
+            savedCards = data;
+          }
+        } catch (error) {
+          console.warn("商店卡牌数据读取失败", error);
+        }
+      }
+    }
+
+    if (!savedCards) return;
+
+    for (let i = 0; i < 3; i += 1) {
+      const box = $(`#adventurenewcard${i + 1}`);
+      if (!box) continue;
+
+      const cardName = savedCards[i];
+      if (!cardName) continue;
+
+      const image = document.createElement("img");
+      image.src = getCardImage(cardName);
+      image.alt = cardName;
+      image.title = `${cardName} ${getShopPrice(cardName)}${shopData.pricetype}`;
+
+      box.appendChild(image);
+      box.hidden = false;
+
+      box.dataset.card = cardName;
+      box.dataset.pricetype = shopData.pricetype;
+
+      box.addEventListener("click", function () {
+        const targetName = box.dataset.card;
+        if (!targetName) return;
+
+        if (!shopbuycard(targetName, cardData)) return;
+
+        box.innerHTML = "";
+        box.hidden = true;
+        box.removeAttribute("data-card");
+        box.removeAttribute("data-pricetype");
+      }, { once: true });
+    }
+  }
   function normalizeRemaining(value) {
     if (value === null || value === undefined) return null;
     if (value === "void") return null;
@@ -325,7 +594,7 @@
     shuffle(cards);
     return cards;
   }
-
+  
   function addGroupToBottom(levelKey) {
     const level = adventureDB[levelKey];
     if (!isObject(level)) return false;
@@ -337,6 +606,7 @@
 
     if (!cards.length) return false;
 
+    initializeShopDataForCards(cards);
     deck.unshift(...cards);
     return true;
   }
@@ -542,7 +812,8 @@
     }
 
     const cardData = getCardData(cardState.name);
-renderSelectedCardImages(cardData);
+    renderSelectedCardImages(cardData);
+    shopaddcard(cardData);
     if (typeof window.setCardInfoActionVisible === "function") {
       window.setCardInfoActionVisible(true);
     }
@@ -895,9 +1166,43 @@ async function runAction(cardState, action) {
 
     activated = true;
   }
+  let pendingNewGame = false;
 
+  function clearShopData() {
+    const keys = [];
+
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("SHOP_DATA_")) {
+        keys.push(key);
+      }
+    }
+
+    for (const key of keys) {
+      localStorage.removeItem(key);
+    }
+  }
+
+  document.addEventListener("th-card:start-new-game", function () {
+    pendingNewGame = true;
+    deck = [];
+    hand = [];
+    activeIndex = -1;
+    handSlots = [];
+    currentLevel = DEFAULT_LEVEL;
+    localStorage.removeItem(STATE_KEY);
+    clearShopData();
+  });
+
+  document.addEventListener("th-card:character-selected", function () {
+    if (!pendingNewGame) return;
+
+    pendingNewGame = false;
+    resetAdventure();
+  });
   function resetAdventure() {
     deck = buildDeckFromLevel(currentLevel);
+    initializeShopDataForCards(deck);
     hand = [];
     fillHandToFive();
     saveState();

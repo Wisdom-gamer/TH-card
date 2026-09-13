@@ -354,6 +354,35 @@
   box-sizing: border-box;
   position: relative;
 }
+#adventure #adventurenewcard {
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+#adventure #adventurenewcard > div {
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#adventure #adventurenewcard > div img {
+  width: 60px;
+  height: 60px;
+  display: block;
+  object-fit: cover;
+}
 /* 头像区域 */
 #adventure .avatar-inner {
   width: var(--avatar-size);
