@@ -177,7 +177,7 @@
 
     if (hp) hp.textContent = formatStat(stats.HP, stats.maxHP);
     if (mp) mp.textContent = formatStat(stats.MP, stats.maxMP);
-    if (xp) xp.textContent = String(stats.XP);
+    if (xp) xp.textContent = `${stats.XP}/${getCurrentLevelXPNeed()}`;
     if (gold) gold.textContent = String(stats.Gold);
 
     window.HP = stats.HP;
@@ -531,6 +531,22 @@
       }, { once: true });
     }
   }
+  /* 升级 */
+  function getCurrentLevelXPNeed() {
+  const character = readCharacterState();
+
+  if (!character) return 0;
+
+  const pc = window.PCAPI
+    ? window.PCAPI(character.name)
+    : null;
+
+  if (!pc || !Array.isArray(pc.levelup)) return 0;
+
+  const level = Number(character.Level) || 1;
+
+  return pc.levelup[level - 1] || 65536; // 65536=不可升级。
+}
   function normalizeRemaining(value) {
     if (value === null || value === undefined) return null;
     if (value === "void") return null;
@@ -914,6 +930,10 @@
   }
 
   function renderHand() {
+    if (!handSlots.length) {
+      bindHandSlots();
+    }
+
     if (!handSlots.length) return;
 
     handSlots.forEach((button, index) => {
@@ -1059,7 +1079,119 @@
 
     return Array.from(keys);
   }
+function PCLevelUP() {
+  const character = readCharacterState();
 
+  if (!character) return;
+
+  const pc = window.PCAPI
+    ? window.PCAPI(character.name)
+    : null;
+
+  if (!pc || !Array.isArray(pc.levelup)) return;
+
+  const currentLevel = Number(character.Level) || 1;
+
+  const needXP = pc.levelup[currentLevel - 1];
+
+  if (!Number.isFinite(needXP)) return;
+
+  if (stats.XP < needXP) return;
+
+  stats.XP -= needXP;
+
+  character.XP = stats.XP;
+  character.Level = currentLevel + 1;
+
+  localStorage.setItem(
+    CHARACTER_KEY,
+    JSON.stringify(character)
+  );
+
+  showLevelUpChoice(character.name);
+}
+function showLevelUpChoice(pcName) {
+  const pc = window.PCAPI ? window.PCAPI(pcName) : null;
+
+  if (!pc || !isObject(pc.level)) return;
+
+  const level = Number(
+    readCharacterState().Level
+  );
+
+  const choices = [];
+
+  for (const [cardName, levelData] of Object.entries(pc.level)) {
+
+    const weight = Number(levelData[level]);
+
+    if (!Number.isFinite(weight) || weight <= 0) {
+      continue;
+    }
+
+    choices.push({name:cardName,weight:weight});
+  }
+
+
+  const result = [];
+
+  while(result.length < 3 && choices.length){
+
+    let total = 0;
+
+    choices.forEach(function(item){
+      total += item.weight;
+    });
+
+
+    let random=Math.random()*total;
+
+    for(let i=0;i<choices.length;i++){
+
+      random-=choices[i].weight;
+
+      if(random<=0){
+
+        result.push(choices[i].name);
+        choices.splice(i,1);
+
+        break;
+      }
+    }
+  }
+
+
+  clearShopCards();
+
+  result.forEach(function(cardName,index){
+
+    const box=$(`#adventurenewcard${index+1}`);
+
+    if(!box)return;
+
+
+    box.hidden=false;
+
+    box.innerHTML=
+    `<button data-card="${escapeHtml(cardName)}">
+      <img src="images/fight/${escapeHtml(cardName)}.png">
+    </button>`;
+
+
+    box.querySelector("button")
+      .addEventListener(
+        "click",
+        function(){
+
+          addCardToAdventureDeck(cardName);
+
+          clearShopCards();
+
+          syncStatsToDom(true);
+        }
+      );
+  });
+}
   function handleReaction(cardState, cardData, result) {
     if (!cardData || !isObject(cardData.reaction)) return false;
 
@@ -1068,6 +1200,18 @@
 
     for (const outcome of outcomes) {
       const ops = cardData.reaction[outcome];
+      if (ops.XP !== undefined) {
+        const xp = Number(ops.XP);
+
+        if (Number.isFinite(xp)) {
+
+          stats.XP += Math.floor(xp);
+
+          changed = true;
+
+          PCLevelUP();
+        }
+      }
       if (!isObject(ops)) continue;
 
       if (ops.delete !== undefined) {
@@ -1305,11 +1449,16 @@ async function runAction(cardState, action) {
   document.addEventListener("DOMContentLoaded", boot);
 
 document.addEventListener("th-card:character-selected", function () {
-  loadStatsFromCharacter();
+    loadStatsFromCharacter();
 
-  if (!activated) {
-    activateAdventureScene();
-  }
+    if (pendingNewGame) {
+      pendingNewGame = false;
+      resetAdventure();
+    }
+
+    if (!activated) {
+      activateAdventureScene();
+    }
 });
 
   window.adventurecardnum = 0;

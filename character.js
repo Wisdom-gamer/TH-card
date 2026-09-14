@@ -8,6 +8,7 @@
   let characters = {};
   let characterNames = [];
   let currentIndex = 0;
+  let pcTemplate = {};
 
   function getElement(selector) {
     return document.querySelector(selector);
@@ -100,6 +101,8 @@ function saveCharacterState(characterName, character) {
 
   const state = {
     name: characterName,
+    Level:1,
+    XP:0,
     HP: hp,
     maxHP: hp,
     MP: mp,
@@ -216,16 +219,14 @@ function restoreSavedCharacter() {
     const hp = Number(savedState.HP) || 0;
     const mp = Number(savedState.MP) || 0;
 
-    const maxHP = Number.isFinite(Number(savedState.maxHP))
-      ? Number(savedState.maxHP)
-      : hp;
+    const maxHP = Number.isFinite(Number(savedState.maxHP)) ? Number(savedState.maxHP) : hp;
 
-    const maxMP = Number.isFinite(Number(savedState.maxMP))
-      ? Number(savedState.maxMP)
-      : mp;
+    const maxMP = Number.isFinite(Number(savedState.maxMP)) ? Number(savedState.maxMP) : mp;
 
     const state = {
       name: savedState.name,
+      Level: Number(savedState.Level) || 1,
+      XP: Number(savedState.XP) || 0,
       HP: Math.min(hp, maxHP),
       maxHP: maxHP,
       MP: Math.min(mp, maxMP),
@@ -276,6 +277,41 @@ function restoreSavedCharacter() {
     return false;
   }
 }
+function mergePCData(base, target) {
+  const result = {};
+
+  Object.assign(result, base);
+
+  for (const [key, value] of Object.entries(target || {})) {
+    if (key === "level" && isObject(value) && isObject(result.level)) {
+      result.level = {
+        ...result.level
+      };
+
+      for (const [levelName, levelData] of Object.entries(value)) {
+        if (!Object.prototype.hasOwnProperty.call(result.level, levelName)) {
+          result.level[levelName] = levelData;
+        }
+      }
+
+      continue;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(result, key)) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+function PCAPI(pcName) {
+  const pcData = characters[pcName] || {};
+
+  return mergePCData(pcTemplate, pcData);
+}
+
+window.PCAPI = PCAPI;
   async function loadCharacters() {
     const response = await fetch("pc.json", { cache: "no-store" });
 
@@ -284,7 +320,14 @@ function restoreSavedCharacter() {
     }
 
     characters = await response.json();
-    characterNames = Object.keys(characters);
+
+    if (characters.ALLPC_template) {
+      pcTemplate = characters.ALLPC_template;
+    }
+
+    characterNames = Object.keys(characters).filter(function(name){
+      return name !== "ALLPC_template";
+    });
 
     if (characterNames.length === 0) {
       throw new Error("pc.json 中没有可选择的角色");
