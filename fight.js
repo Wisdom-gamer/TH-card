@@ -141,19 +141,13 @@ function parseFightCard(cardEntry) {
     }
 
     const hpSource = saved ? (saved.adventurehp ?? saved.HP) : (stats.HP ?? window.adventurehp ?? window.HP);
-
     const mpSource = saved ? (saved.adventuremp ?? saved.MP) : (stats.MP ?? window.adventuremp ?? window.MP);
 
     const hp = Number.isFinite(Number(hpSource)) ? Math.floor(Number(hpSource)) : 0;
-
     const maxHPSource = saved ? (saved.maxHP ?? hp) : (stats.maxHP ?? window.maxHP ?? hp);
-
     const maxMPSource = saved ? (saved.maxMP ?? mpSource) : (stats.maxMP ?? window.maxMP ?? mpSource);
-
     const maxHP = Number.isFinite(Number(maxHPSource)) &&  Number(maxHPSource) > 0 ? Math.floor(Number(maxHPSource)) : hp;
-
     const mp = Number.isFinite(Number(mpSource)) ? Math.floor(Number(mpSource)) : 0;
-
     const maxMP = Number.isFinite(Number(maxMPSource)) && Number(maxMPSource) > 0 ? Math.floor(Number(maxMPSource)) : mp;
 
     return {HP: hp,MAXHP: maxHP,MP: mp,MAXMP: maxMP};
@@ -953,6 +947,8 @@ function renderAbilityButton(fight, owner) {
     displayfightcardinfo(type, name);
   });
 }
+
+const valuetypes = ["value_js","value_read"]; // 动态取值关键字,无value时按此顺序查找并调用advvalue 
 function parseValueRead(expression, fight, side) {
   if (typeof expression !== "string") return Number(expression);
   let result = String(expression).trim();
@@ -983,7 +979,7 @@ function parseValueRead(expression, fight, side) {
 
     if (Object.prototype.hasOwnProperty.call(nextEffect,"伤害")) {
       const damage = nextEffect["伤害"];
-      if (!isObject(damage) || (damage.value === null || damage.value === undefined) && !Object.prototype.hasOwnProperty.call(damage,"value_read") || Object.prototype.hasOwnProperty.call(damage,"value") && !Number.isFinite(Number(damage.value)) || Object.prototype.hasOwnProperty.call(damage,"value") && Number(damage.value) === 0) {
+      if (!isObject(damage) || (damage.value === null || damage.value === undefined) && !valuetypes.some(function (valueType) { return Object.prototype.hasOwnProperty.call(damage,valueType); }) || Object.prototype.hasOwnProperty.call(damage,"value") && !Number.isFinite(Number(damage.value)) || Object.prototype.hasOwnProperty.call(damage,"value") && Number(damage.value) === 0) {
         delete nextEffect["伤害"];
       }
     }
@@ -1455,67 +1451,29 @@ function finishFight(fight, outcome) {
 
   return outcome;
 }
-  function getEffectReadValue(path,side,fight) {
-    const currentSide = Number(side) === 1 ? 1 : 0;
-    const otherSide = 1 - currentSide;
-    const selfState = currentSide === 1 ? fight.player : fight.enemy;
-    const otherState = otherSide === 1 ? fight.player : fight.enemy;
-    const selfTags = currentSide === 1 ? fight.playerfighttags : fight.enemyfighttags;
-    const otherTags = otherSide === 1 ? fight.playerfighttags : fight.enemyfighttags;
-    const text = String(path ?? "").trim();
-    const match = text.match(/^(self|other)\.([^.]+)(?:\.(.+))?$/);
-    if (!match) return NaN;
-    const target = match[1] === "self" ? selfState : otherState;
-    const tags = match[1] === "self" ? selfTags : otherTags;
-    const key = match[2];
-    const rest = match[3] ?? "";
-    if (key === "tags") {
-      if (!rest) return NaN;
-      const tagName = rest;
-      return getTagCount(fight,match[1] === "self" ? currentSide : otherSide,tagName);
-    }
-    if (!Object.prototype.hasOwnProperty.call(target,key)) return NaN;
-    let value = target[key];
-    if (rest) {
-      for (const part of rest.split(".")) {
-        if (value === null || value === undefined) return NaN;
-        value = value[part];
-      }
-    }
-    return Number(value);
-  }
-
-  function evaluateEffectValueRead(expression,side,fight) {
-    const text = String(expression ?? "").trim();
-    const replaced = text.replace(/<([^<>]+)>/g,function (_,path) {
-      const value = getEffectReadValue(path,side,fight);
-      return Number.isFinite(value) ? String(value) : "NaN";
-    });
-    if (!/^[0-9+\-*/().\sNaN]+$/.test(replaced)) return NaN;
-    try {
-      const value = Function(`"use strict";return (${replaced});`)();
-      return Number.isFinite(Number(value)) ? Number(value) : NaN;
-    } catch (error) {
-      return NaN;
-    }
-  }
 async function advvalue(config,side,fight,cardName,valuechange,sidetype,type,effect) {
   if (!isObject(config)) return 0;
-  if (Object.prototype.hasOwnProperty.call(config,"value_read")) {
-    const value = parseValueRead(config.value_read,fight,side);
-    return Number.isFinite(value) ? value : 0;
-  }
-  if (Object.prototype.hasOwnProperty.call(config,"value_js")) {
-    const funcName = String(config.value_js ?? "").trim();
-    const inputText = String(config.input ?? "").trim();
-    const params = inputText === "" ? [] : inputText.split(";").map(function (value) { return value.trim(); });
-    if (!funcName || typeof window[funcName] !== "function") return 0;
-    try {
-      const value = await window[funcName](...params,cardName ?? fight.currentCardName ?? "",isObject(valuechange) ? valuechange : (isObject(fight.currentCardValuechange) ? fight.currentCardValuechange : {}),sidetype,fight,side,type,effect);
-      return Number.isFinite(Number(value)) ? Number(value) : 0;
-    } catch (error) {
-      console.error(`Error calling ${funcName}:`,error);
-      return 0;
+   for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+    const valueType = valuetypes[valueTypeIndex];
+    if (!Object.prototype.hasOwnProperty.call(config,valueType)) {
+      continue;
+    }
+    if (valueType === "value_read") {
+      const value = parseValueRead(config.value_read,fight,side);
+      return Number.isFinite(value) ? value : 0;
+    }
+    if (valueType === "value_js") {
+      const funcName = String(config.value_js ?? "").trim();
+      const inputText = String(config.input ?? "").trim();
+      const params = inputText === "" ? [] : inputText.split(";").map(function (value) { return value.trim(); });
+      if (!funcName || typeof window[funcName] !== "function") return 0;
+      try {
+        const value = await window[funcName](...params,cardName ?? fight.currentCardName ?? "",isObject(valuechange) ? valuechange : (isObject(fight.currentCardValuechange) ? fight.currentCardValuechange : {}),sidetype,fight,side,type,effect);
+        return Number.isFinite(Number(value)) ? Number(value) : 0;
+      } catch (error) {
+        console.error(`Error calling ${funcName}:`,error);
+        return 0;
+      }
     }
   }
   const value = Number(config.value);
@@ -1542,12 +1500,18 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
       newPath = newPath.replace("<otherside>",side === 1 ? "enemy" : "player");
 
       const newConfig = isObject(config) ? {...config} : {value:config};
-      if (Object.prototype.hasOwnProperty.call(newConfig,"value_read") || Object.prototype.hasOwnProperty.call(newConfig,"value_js")) {
-        // const value = await advvalue(newConfig,side,fight,cardName,valuechange,sidetype,type,effect); 旧逻辑
-        const value = await advvalue(newConfig,effectSide,fight,cardName,valuechange,sidetype,type,effect);
-        newConfig.value = Number.isFinite(value) ? value : 0;
-        delete newConfig.value_read;
-        delete newConfig.value_js;
+      if (!Object.prototype.hasOwnProperty.call(newConfig,"value")) {
+        for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+          if (!Object.prototype.hasOwnProperty.call(newConfig,valuetypes[valueTypeIndex])) {
+            continue;
+          }
+          // const value = await advvalue(newConfig,side,fight,cardName,valuechange,sidetype,type,effect); 旧逻辑
+          const value = await advvalue(newConfig,effectSide,fight,cardName,valuechange,sidetype,type,effect);
+          newConfig.value = Number.isFinite(value) ? value : 0;
+          delete newConfig.value_read;
+          delete newConfig.value_js;
+          break;
+        }
       }
       valueModify[newPath] = newConfig;
     }
@@ -1555,12 +1519,18 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   }
   if (isObject(nextEffect) && isObject(nextEffect["伤害"])) {
     const damage = nextEffect["伤害"];
-    if (Object.prototype.hasOwnProperty.call(damage,"value_read") || Object.prototype.hasOwnProperty.call(damage,"value_js")) {
-      const value = await advvalue(damage,side,fight,cardName,valuechange,sidetype,type,effect);
-      nextEffect = {...nextEffect};
-      nextEffect["伤害"] = {...damage,value:Number.isFinite(value) ? value : 0};
-      delete nextEffect["伤害"].value_read;
-      delete nextEffect["伤害"].value_js;
+    if (!Object.prototype.hasOwnProperty.call(damage,"value")) {
+      for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+        if (!Object.prototype.hasOwnProperty.call(damage,valuetypes[valueTypeIndex])) {
+          continue;
+        }
+        const value = await advvalue(damage,side,fight,cardName,valuechange,sidetype,type,effect);
+        nextEffect = {...nextEffect};
+        nextEffect["伤害"] = {...damage,value:Number.isFinite(value) ? value : 0};
+        delete nextEffect["伤害"].value_read;
+        delete nextEffect["伤害"].value_js;
+        break;
+      }
     }
   }
   const damageModifier = source["伤害修改"];
@@ -1605,11 +1575,17 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
       for (const sideName of ["self","other","all"]) {
         if (!isObject(tagConfig[sideName])) continue;
         const sourceSideConfig = {...tagConfig[sideName]};
-        if (Object.prototype.hasOwnProperty.call(sourceSideConfig,"value_read") || Object.prototype.hasOwnProperty.call(sourceSideConfig,"value_js")) {
-          const value = await advvalue(sourceSideConfig,effectSide,fight,cardName,valuechange,sidetype,type,effect);
-          sourceSideConfig.value = Number.isFinite(value) ? value : 0;
-          delete sourceSideConfig.value_read;
-          delete sourceSideConfig.value_js;
+        if (!Object.prototype.hasOwnProperty.call(sourceSideConfig,"value")) {
+          for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+            if (!Object.prototype.hasOwnProperty.call(sourceSideConfig,valuetypes[valueTypeIndex])) {
+              continue;
+            }
+            const value = await advvalue(sourceSideConfig,effectSide,fight,cardName,valuechange,sidetype,type,effect);
+            sourceSideConfig.value = Number.isFinite(value) ? value : 0;
+            delete sourceSideConfig.value_read;
+            delete sourceSideConfig.value_js;
+            break;
+          }
         }
         const targetSideName = flipSelfOther ? (sideName === "self" ? "other" : sideName === "other" ? "self" : "all") : sideName;
         if (isObject(existingTagConfig[targetSideName]) && Number.isFinite(Number(existingTagConfig[targetSideName].value)) && Number.isFinite(Number(sourceSideConfig.value))) {
@@ -1623,12 +1599,18 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   }
   if (isObject(nextEffect) && isObject(nextEffect["抽卡"])) {
     const drawCard = nextEffect["抽卡"];
-    if (Object.prototype.hasOwnProperty.call(drawCard,"value_read") || Object.prototype.hasOwnProperty.call(drawCard,"value_js")) {
-      const value = await advvalue(drawCard,side,fight,cardName,valuechange,sidetype,type,effect);
-      nextEffect = {...nextEffect};
-      nextEffect["抽卡"] = {...drawCard,value:Number.isFinite(value) ? value : 0};
-      delete nextEffect["抽卡"].value_read;
-      delete nextEffect["抽卡"].value_js;
+    if (!Object.prototype.hasOwnProperty.call(drawCard,"value")) {
+      for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+        if (!Object.prototype.hasOwnProperty.call(drawCard,valuetypes[valueTypeIndex])) {
+          continue;
+        }
+        const value = await advvalue(drawCard,side,fight,cardName,valuechange,sidetype,type,effect);
+        nextEffect = {...nextEffect};
+        nextEffect["抽卡"] = {...drawCard,value:Number.isFinite(value) ? value : 0};
+        delete nextEffect["抽卡"].value_read;
+        delete nextEffect["抽卡"].value_js;
+        break;
+      }
     }
   }
   if (isObject(nextEffect) && isObject(nextEffect["获取卡"])) {
@@ -1648,8 +1630,14 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   if (isObject(source["被动伤害"])) {
     const passive = source["被动伤害"];
     let value;
-    if (Object.prototype.hasOwnProperty.call(passive,"value_read") || Object.prototype.hasOwnProperty.call(passive,"value_js")) {
-      value = await advvalue(passive,effectSide,fight,cardName,valuechange,sidetype,type,effect);
+    if (!Object.prototype.hasOwnProperty.call(passive,"value")) {
+      for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+        if (!Object.prototype.hasOwnProperty.call(passive,valuetypes[valueTypeIndex])) {
+          continue;
+        }
+        value = await advvalue(passive,effectSide,fight,cardName,valuechange,sidetype,type,effect);
+        break;
+      }
     } else {
       value = Number(passive.value);
     }
@@ -1971,18 +1959,14 @@ async function cardeffect(side,type,effect,fight) {
 
     if (isObject(currentEffect) && isObject(currentEffect.loop)) {
       const loopConfig = currentEffect.loop;
-      if (Object.prototype.hasOwnProperty.call(loopConfig,"value_js")) {
-        const funcName = String(loopConfig.value_js || "");
-        const inputStr = String(loopConfig.input || "");
-        const params = inputStr === "" ? [] : inputStr.split(";").map(function (value) { return value.trim(); });
-        if (typeof window[funcName] === "function") {
-          try {
-            const result = await window[funcName](...params,sidetype,fight);
-            loopCount = Math.max(1,toInt(result,1));
-          } catch (err) {
-            console.error(`Error calling ${funcName}:`,err);
-            loopCount = 1;
+      if (!Object.prototype.hasOwnProperty.call(loopConfig,"value")) {
+        for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+          if (!Object.prototype.hasOwnProperty.call(loopConfig,valuetypes[valueTypeIndex])) {
+            continue;
           }
+          const loopValue = await advvalue(loopConfig,side,fight,cardName,valuechange,sidetype,type,currentEffect);
+          loopCount = Math.max(1,toInt(loopValue,1));
+          break;
         }
       } else if (Number.isFinite(Number(loopConfig.value))) {
         loopCount = Math.max(1,toInt(loopConfig.value,1));
@@ -1993,16 +1977,17 @@ async function cardeffect(side,type,effect,fight) {
       if (!fight || fight.ended) break;
 
       let currentRegister = initialRegister;
+      const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,currentEffect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1,cardName,valuechange);
+      // 每次使用时，先通过 effectAPI 进行一次基础效果解析，再进入判定链
       let result = {
         side:Number(side) === 1 ? 1 : 0,
         type:type,
-        effect:currentEffect,
+        effect:initialEffectResult.effect,
         tag:tag,
         sidetype:sidetype,
         cardName:cardName,
         valuechange:valuechange
       };
-
       for (let i = startStep;i < judgementSteps.length;i += 1) {
         const step = judgementSteps[i];
         result = await runJudgementStep(step,result,fight,currentRegister,i);

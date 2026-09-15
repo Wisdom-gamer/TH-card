@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-    function readmapsideType(sideType, multiplier, typeMode, includeSelf, sidetype, fight) {
+    function readmapsideType(sideType, multiplier, typeMode, includeSelf, cardName, valuechange, sidetype, fight) {
     if (!fight || !Array.isArray(fight.fightsitecards)) {
       return 0;
     }
