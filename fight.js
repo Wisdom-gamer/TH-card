@@ -578,7 +578,7 @@ function renderFightEquip(fight,owner) {
       const parsedCard = parseFightCard(cardEntry);
       const graveCardEntry = createFightCardEntry(parsedCard.name,parsedCard.sidetype.filter(function (sidetype) { return !graveRemoveSideTypes.includes(sidetype); }),{});
       // 带有other的卡牌会移动到另一方的坟场
-      if (owner === 1) {
+      if (owner === 0) {
         if (moveToOtherGrave){
         fight.fightplayergrave.push(graveCardEntry);
         }else{
@@ -854,7 +854,7 @@ function renderAbilityButton(fight, owner) {
     const effect = card["效果"];
     const mpCost = card ? Number(card["MP"] ?? 0) : 0;
 
-    btn.disabled = fight.carduseLocked || remaining > 0 || !effect || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
+    btn.disabled = fight.carduseLocked || remaining > 0 || !effect || !checkCardCanUse(createFightCardEntry(cardName, [], valuechange), fight.player);
     btn.onclick = async function () {
       // re-read entry by index in case abilities array mutated
       const abilityEntry = (Array.isArray(fight.playerability) && fight.playerability[idx]) ? fight.playerability[idx] : entry;
@@ -1364,56 +1364,77 @@ function renderFightBags() {
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
+// 在文件开头的工具函数区，添加新的卡牌可用性检查函数（在 setPlayerHandDisabled 函数之前）
 
-    function setPlayerHandDisabled(fight,disabled) {
-    const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
-
-    slots.forEach(
-      function (button,index) {
-        if (disabled) {
-          button.disabled = true;
-          return;
-        }
-
-        const cardEntry = fight.playerhand[index];
-        const cardName = parseFightCard(cardEntry).name;
-
-        if (!cardName || button.classList.contains("is-empty")) {
-          button.disabled = true;
-          return;
-        }
-
-        const card = getFightCardData(cardName);
-        const effect = card ? card["效果"] : null;
-        const mpCost = card ? Number(card["MP"] ?? 0) : 0;
-
-        button.disabled =
-          Number.isFinite(mpCost) &&
-          mpCost > 0 &&
-          fight.player.MP < mpCost;
-      }
-    );
+// 卡牌可用性检查
+function checkCardCanUse(cardEntry, player) {
+  const parsedCard = parseFightCard(cardEntry);
+  const cardName = parsedCard.name;
+  const card = getFightCardData(cardName);
+  
+  if (!card) return false;
+  
+  // 反制卡不可用
+  const type = String(card["类型"] ?? "").trim();
+  if (type === "反制卡") {
+    return false;
   }
-  function updatePlayerHandMPDisabled(fight) {
-    const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
-
-    slots.forEach(
-      function (button,index) {
-        const cardEntry = fight.playerhand[index];
-        const cardName = parseFightCard(cardEntry).name;
-        const card = getFightCardData(cardName);
-        const effect = card ? card["效果"] : null;
-        const mpCost = Number(effect["MP"] ?? 0);
-
-        if (!cardName) {
-          button.disabled = true;
-          return;
-        }
-
-        button.disabled = fight.carduseLocked || (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost);
-      }
-    );
+  
+  // 检查MP不足
+  const mpCost = Number(card["MP"] ?? 0);
+  if (Number.isFinite(mpCost) && mpCost > 0) {
+    const playerMP = isObject(player) ? Number(player.MP) : 0;
+    if (playerMP < mpCost) {
+      return false;
+    }
   }
+  
+  return true;
+}
+
+function playerCardCanUse(fight, cardEntry, isBackpack) {
+  // 背包卡牌逻辑
+  if (isBackpack) {
+    // 非玩家回合：禁用
+    if (fight.turn % 2 === 0) {
+      return false;
+    }
+    // 玩家回合：可用
+    return true;
+  }
+  
+  // 手牌逻辑
+  // 非玩家回合：禁用
+  if (fight.turn % 2 === 0) {
+    return false;
+  }
+  
+  // 检查卡牌是否可用
+  if (!checkCardCanUse(cardEntry, fight.player)) {
+    return false;
+  }
+  
+  // 手牌可用
+  return true;
+}
+function updatePlayerHandUI(fight) {
+  const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
+
+  slots.forEach(
+    function (button, index) {
+      const cardEntry = fight.playerhand[index];
+      const cardName = parseFightCard(cardEntry).name;
+
+      if (!cardName || button.classList.contains("is-empty")) {
+        button.disabled = true;
+        return;
+      }
+
+      // 使用新的卡牌可用性检查
+      button.disabled = !playerCardCanUse(fight, cardEntry, false);
+    }
+  );
+}
   function getFightOutcome(fight) {
   if (fight.player.HP > 0 && fight.enemy.HP <= 0) {
     return "win";
@@ -1552,7 +1573,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
           }
         } else {
           let modifierValue;
-          if (Object.prototype.hasOwnProperty.call(damageModifier,"value_read") || Object.prototype.hasOwnProperty.call(damageModifier,"value_js")) {
+          if (!Object.prototype.hasOwnProperty.call(drawCard,valuetypes[valueTypeIndex])) {
             modifierValue = await advvalue(damageModifier,effectSide,fight,cardName,valuechange,sidetype,type,effect);
           } else {
             modifierValue = Number(damageModifier.value);
@@ -1618,7 +1639,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
     for (const [getCardName,getCardConfig] of Object.entries(nextEffect["获取卡"])) {
       if (!isObject(getCardConfig)) continue;
       const nextGetCardConfig = {...getCardConfig};
-      if (Object.prototype.hasOwnProperty.call(nextGetCardConfig,"value_read") || Object.prototype.hasOwnProperty.call(nextGetCardConfig,"value_js")) {
+      if (!Object.prototype.hasOwnProperty.call(drawCard,valuetypes[valueTypeIndex])) {
         const value = await advvalue(nextGetCardConfig,side,fight,cardName,valuechange,sidetype,type,effect);
         nextGetCardConfig.value = Number.isFinite(value) ? value : 0;
         delete nextGetCardConfig.value_read;
@@ -1903,11 +1924,6 @@ async function cardeffect(side,type,effect,fight) {
     }
   }
   await new Promise(function (resolve) { setTimeout(resolve,1000); });
-  fight.carduseLocked = false;
-  setPlayerHandDisabled(fight,false);
-  renderAbilityButton(fight,1);
-  renderAbilityButton(fight,0);
-  bindPlayerHandActions(fight);
   return {side: side,type: type,effect: effect};
 }
 
@@ -2043,7 +2059,7 @@ async function cardeffect(side,type,effect,fight) {
 
     鼠标点击 = 使用卡牌。
   */
-  function bindPlayerHandActions(fight) {
+function bindPlayerHandActions(fight) {
   const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
   slots.forEach(function (button) {
     if (fight.carduseLocked) {
@@ -2055,11 +2071,10 @@ async function cardeffect(side,type,effect,fight) {
     const cardEntry = fight.playerhand[index];
     const parsedCard = parseFightCard(cardEntry);
     const cardName = parsedCard.name;
-    const card = getFightCardData(cardName);
-    const effect = card ? card["效果"] : null;
-    const mpCost = card ? Number(card["MP"] ?? 0) : 0;
-    const mpDisabled = Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost;
-    button.disabled = button.classList.contains("is-empty") || mpDisabled;
+    
+    // 使用新的卡牌可用性检查
+    button.disabled = !playerCardCanUse(fight, cardEntry, false);
+    
     button.onclick = async function () {
       if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked) {
         return;
@@ -2083,18 +2098,21 @@ async function cardeffect(side,type,effect,fight) {
         setPlayerHandDisabled(fight,false);
         return;
       }
-      fight.playerhand.splice(index,1);
+      fight.playerhand.splice(index, 1);
       renderPlayerHand(fight);
       bindPlayerHandActions(fight);
       exposeBattleGlobals(fight);
       if (Number.isFinite(mpCost) && mpCost > 0) {
         fight.player.MP -= mpCost;
       }
-      const res = await carduse(1,type,effect,tag,cardName,fight,sidetype,-1,0,valuechange);
+      const res = await carduse(1, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange);
       const outcome = getFightOutcome(fight);
       if (outcome === "win" || outcome === "lost") {
         finishFight(fight,outcome);
       }
+      // ============ 在 carduse 返回后【完整】重新绑定 ============
+      setPlayerHandDisabled(fight, false);
+      bindPlayerHandActions(fight);
     };
   });
 }
