@@ -1195,7 +1195,7 @@ function renderFightBags() {
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
-        displayfightcardinfo(1, cardName);
+        displayfightcardinfo(1,cardName);
       });
       btn.onclick = async function () {
         if (!fight || fight.ended || fight.carduseLocked) {
@@ -1242,13 +1242,15 @@ function renderFightBags() {
   if (playerEquipEl) {
     playerEquipEl.innerHTML = "";
     (window.fightplayerequip || []).forEach(function (cardName) {
+      const card = isObject(window.cardDatabase) ? window.cardDatabase[cardName] : null;
+      if (!card) return;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "bag-slot";
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = window.cardDatabase[cardName]["图片"];
+      img.src = card["image"];
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
@@ -1271,7 +1273,7 @@ function renderFightBags() {
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
-      bindFightCardInfo(btn, 1, cardName);
+      bindFightCardInfo(btn,1,cardName);
       btn.appendChild(img);
       enemyBagEl.appendChild(btn);
     });
@@ -1290,7 +1292,7 @@ function renderFightBags() {
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
-      bindFightCardInfo(btn, 1, cardName);
+      bindFightCardInfo(btn,1,cardName);
       btn.appendChild(img);
       enemyEquipEl.appendChild(btn);
     });
@@ -2393,11 +2395,11 @@ async function fightenemyactioncard(fight) {
  // 敌人背包与装备置空（战斗开始前清理）
  window.fightenemybag = [];
  window.fightenemyequip = [];
+    window.fight = fight;
 
  // 渲染战斗界面相关 UI（标签与背包）
  renderFightTags(window.currentFight);
  renderFightBags();
-    window.fight = fight;
 
     fight.turn = 1;
     fight.ended = false;
