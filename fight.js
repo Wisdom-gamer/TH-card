@@ -56,7 +56,69 @@ function parseFightCard(cardEntry) {
     const valuechangeText = Object.keys(values).length > 0 ? `;${JSON.stringify(values)}` : "";
     return types.length > 0 ? `${name};${types.join("|")}${valuechangeText}` : `${name}${valuechangeText}`;
   }
+  function readvaluechange(cardname,valuechange,valuechangelist) {
+    const result = {};
+    const info = typeof window.cardinfoAPI === "function" ? window.cardinfoAPI(1,cardname) : null;
+    const cardData = info && isObject(info.data) ? info.data : {};
+    for (let index = 0;index < valuechangelist.length;index += 1) {
+      const sourceKey = valuechangelist[index][0];
+      const targetKey = valuechangelist[index][1];
+      const originalValue = Number(cardData[sourceKey] ?? 0);
+      const inputConfig = isObject(valuechange) && isObject(valuechange[targetKey]) ? valuechange[targetKey] : null;
+      const inputValue = inputConfig ? inputConfig.value : null;
+      let finalValue = Number.isFinite(originalValue) ? originalValue : 0;
+      if (typeof inputValue === "string") {
+        const match = inputValue.trim().match(/^([+\-=])\|(.+)$/);
+        if (match) {
+          const operator = match[1];
+          const changeValue = Number(match[2]);
+          if (Number.isFinite(changeValue)) {
+            if (operator === "+") {
+              finalValue += changeValue;
+            } else if (operator === "-") {
+              finalValue -= changeValue;
+            } else if (operator === "=") {
+              finalValue = changeValue;
+            }
+          }
+        }
+      } else if (inputValue !== undefined && inputValue !== null && Number.isFinite(Number(inputValue))) {
+        finalValue = Number(inputValue);
+      }
+      result[targetKey] = {value:finalValue};
+    }
+    return result;
+  }
 
+  function addcardtohand(cardname,side,sidetype,valuechange) {
+    const valuechangelist = [["MP","MP"]];
+    const name = String(cardname ?? "").trim();
+    if (!name) return false;
+    const info = typeof window.cardinfoAPI === "function" ? window.cardinfoAPI(1,name) : null;
+    const cardData = info && isObject(info.data) ? info.data : null;
+    if (!cardData) return false;
+    const baseSidetype = String(cardData.sidetype ?? "").trim();
+    let finalSidetype = baseSidetype === "" ? [] : baseSidetype.split(";").map(function (value) { return value.trim(); }).filter(Boolean);
+    if (sidetype !== undefined && sidetype !== null && String(sidetype).trim() !== "") {
+      finalSidetype = applySidetypeChange(finalSidetype,String(sidetype).trim());
+    }
+    const finalValuechange = readvaluechange(name,valuechange,valuechangelist);
+    const targetSides = String(side ?? "").trim().toLowerCase() === "all" ? [0,1] : [Number(side)];
+    let added = false;
+    for (let index = 0;index < targetSides.length;index += 1) {
+      const targetSide = targetSides[index];
+      if (targetSide !== 0 && targetSide !== 1) continue;
+      const targetHand = targetSide === 1 ? fight.playerhand : fight.enemyhand;
+      if (!Array.isArray(targetHand) || targetHand.length >= 8) continue;
+      targetHand.push(createFightCardEntry(name,finalSidetype,finalValuechange));
+      added = true;
+    }
+    if (added) {
+      window.fightplayerhand = fight.playerhand;
+      window.fightenemyhand = fight.enemyhand;
+    }
+    return added;
+  }
   function fightCardHasSideType(cardEntry,sidetype) {
     return parseFightCard(cardEntry).sidetype.includes(String(sidetype ?? ""));
   }
@@ -560,12 +622,8 @@ function renderFightEquip(fight,owner) {
     return true;
   }
 
-  /*
-    将场上所有卡牌移动到
-    原持有者的坟场。
-  */
+  /* 将场上所有卡牌移动到原持有者的坟场 */
     function moveSiteCardsToGrave(fight) {
-    const graveRemoveSideTypes = ["other"];
     for (let index = 0;index < fight.fightsitecards.length;index += 1) {
       const cardEntry = fight.fightsitecards[index];
 
@@ -576,7 +634,7 @@ function renderFightEquip(fight,owner) {
       }
       const moveToOtherGrave = fightCardHasSideType(cardEntry,"other");
       const parsedCard = parseFightCard(cardEntry);
-      const graveCardEntry = createFightCardEntry(parsedCard.name,parsedCard.sidetype.filter(function (sidetype) { return !graveRemoveSideTypes.includes(sidetype); }),{});
+      const graveCardEntry = createFightCardEntry(parsedCard.name,[],{});
       // 带有other的卡牌会移动到另一方的坟场
       if (owner === 0) {
         if (moveToOtherGrave){
@@ -1782,10 +1840,10 @@ async function cardeffect(side,type,effect,fight) {
   const drawValue = isObject(drawCard) ? Number(drawCard.value) : 0;
   if (Number.isFinite(drawValue) && drawValue > 0) {
     if (side === 1) {
-      drawPlayerCards(drawValue);
+      addcardtohand(cardName,1);
       renderPlayerHand(fight);
     } else {
-      drawEnemyCards(drawValue);
+      addcardtohand(cardName,0);
       renderEnemyHand(fight);
     }
   }
@@ -1801,7 +1859,7 @@ async function cardeffect(side,type,effect,fight) {
         continue;
       }
       for (let index = 0;index < Math.floor(count);index += 1) {
-        fight.playerhand.push(createFightCardEntry(cardName,sidetype));
+        addcardtohand(cardName,1,sidetypeText || undefined,undefined);
       }
     }
     window.fightplayerhand = fight.playerhand;
@@ -1921,27 +1979,26 @@ async function cardeffect(side,type,effect,fight) {
         const targetHand = targetSide === 1 ? fight.playerhand : fight.enemyhand;
         
         if (mode === 'get') {
-          // Remove selected card, add new card to target side
+          // move to target side
           hand.splice(pickedIndex, 1);
+          const newCardName = String(selectConfig.newcard || pickedCardName).trim();
+          const newSidetype = selectConfig.sidetypechange;
           for (let i = 0; i < selectConfig.value; i += 1) {
-            const newCardName = String(selectConfig.newcard || pickedCardName).trim();
-            const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
-            targetHand.push(createFightCardEntry(newCardName,newSidetype,pickedValuechange));
+            addcardtohand(newCardName,targetSide,newSidetype,pickedValuechange);
           }
         } else if (mode === 'remove') {
-          // Move to battlefield without triggering effects
+          // remove to side,not have effect
           const cardName = pickedCardName;
           const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
           hand.splice(pickedIndex, 1);
           movetosite(fight,cardName,pickedSide,newSidetype,1,pickedValuechange);
         } else if (mode === 'delete') {
-          // Delete card without effects
+          // deldte in the fight
           hand.splice(pickedIndex, 1);
         } else if (mode === 'copy') {
           // Copy to target side
           for (let i = 0; i < selectConfig.value; i += 1) {
-            const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
-            targetHand.push(createFightCardEntry(pickedCardName,newSidetype,pickedValuechange));
+            addcardtohand(pickedCardName,targetSide,selectConfig.sidetypechange,pickedValuechange);
           }
         }
         
