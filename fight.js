@@ -850,11 +850,13 @@ function renderAbilityButton(fight, owner) {
       btn.disabled = true;
       return;
     }
-
     const effect = card["效果"];
     const mpCost = card ? Number(card["MP"] ?? 0) : 0;
+    // 检查玩家是否有 "noability" 标记
+    const hasNoAbilityTag = getTagCount(fight, 1, "noability") > 0;
+    // check can use
+    btn.disabled = fight.carduseLocked || remaining > 0 || !effect || !checkCardCanUse(createFightCardEntry(cardName, [], {}), fight.player) || hasNoAbilityTag;
 
-    btn.disabled = fight.carduseLocked || remaining > 0 || !effect || !checkCardCanUse(createFightCardEntry(cardName, [], valuechange), fight.player);
     btn.onclick = async function () {
       // re-read entry by index in case abilities array mutated
       const abilityEntry = (Array.isArray(fight.playerability) && fight.playerability[idx]) ? fight.playerability[idx] : entry;
@@ -888,7 +890,7 @@ function renderAbilityButton(fight, owner) {
         exposeBattleGlobals(fight);
         renderAbilityButton(fight,1);
         renderAbilityButton(fight,0);
-        setPlayerHandDisabled(fight,false);
+        updatePlayerHandUI(fight);
         bindPlayerHandActions(fight);
       }
     };
@@ -1174,13 +1176,15 @@ function parseValueRead(expression, fight, side) {
    }
   // ---------- end 标签工具 ----------
   
- // 渲染战斗界面背包与装备（简单渲染，复用 .bag-slot 结构）
+// 渲染战斗界面背包与装备（简单渲染，复用 .bag-slot 结构）
 function renderFightBags() {
+  const fight = window.fight;
+  
   // 玩家背包（道具）
   const playerBagEl = document.getElementById("fightplayerbag");
   if (playerBagEl) {
     playerBagEl.innerHTML = "";
-    (window.fightplayerbag || []).forEach(function (cardName) {
+    (window.fightplayerbag || []).forEach(function (cardName, bagIndex) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "bag-slot";
@@ -1191,8 +1195,44 @@ function renderFightBags() {
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
-        displayfightcardinfo(1,cardName);
+        displayfightcardinfo(1, cardName);
       });
+      btn.onclick = async function () {
+        if (!fight || fight.ended || fight.carduseLocked) {
+          return;
+        }
+        const card = getFightCardData(cardName);
+        if (!card) return;
+        
+        const type = card ? card["类型"] : null;
+        const effect = card ? card["效果"] : null;
+        const tagValue = card ? String(card["tag"] ?? "").trim() : "";
+        const tag = tagValue;
+        const mpCost = card ? Number(card["MP"] ?? 0) : 0;
+        
+        if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
+          return;
+        }
+        
+        // 从背包移除
+        window.fightplayerbag.splice(bagIndex, 1);
+        renderFightBags();
+        
+        if (Number.isFinite(mpCost) && mpCost > 0) {
+          fight.player.MP -= mpCost;
+        }
+        
+        await carduse(1, type, effect, tag, cardName, fight, [], -1, 0, {});
+        const outcome = getFightOutcome(fight);
+        if (outcome === "win" || outcome === "lost") {
+          finishFight(fight, outcome);
+        }
+        
+        updatePlayerHandUI(fight);
+        renderAbilityButton(fight, 1);
+        renderAbilityButton(fight, 0);
+        bindPlayerHandActions(fight);
+      };
       playerBagEl.appendChild(btn);
     });
   }
@@ -1212,7 +1252,7 @@ function renderFightBags() {
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
-        displayfightcardinfo(1,cardName);
+        displayfightcardinfo(1, cardName);
       });
       playerEquipEl.appendChild(btn);
     });
@@ -1231,7 +1271,7 @@ function renderFightBags() {
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
-      bindFightCardInfo(btn,1,cardName);
+      bindFightCardInfo(btn, 1, cardName);
       btn.appendChild(img);
       enemyBagEl.appendChild(btn);
     });
@@ -1250,7 +1290,7 @@ function renderFightBags() {
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["图片"];
       img.alt = cardName;
-      bindFightCardInfo(btn,1,cardName);
+      bindFightCardInfo(btn, 1, cardName);
       btn.appendChild(img);
       enemyEquipEl.appendChild(btn);
     });
@@ -1364,8 +1404,6 @@ function renderFightBags() {
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
-// 在文件开头的工具函数区，添加新的卡牌可用性检查函数（在 setPlayerHandDisabled 函数之前）
-
 // 卡牌可用性检查
 function checkCardCanUse(cardEntry, player) {
   const parsedCard = parseFightCard(cardEntry);
@@ -1961,7 +1999,7 @@ async function cardeffect(side,type,effect,fight) {
   }
 
   fight.carduseLocked = true;
-  setPlayerHandDisabled(fight, true);
+  updatePlayerHandUI(fight);
 
   let lastCardEffectResult = null;
   let cardMoved = false;
@@ -2045,9 +2083,9 @@ async function cardeffect(side,type,effect,fight) {
   }
 
   fight.carduseLocked = false;
-  setPlayerHandDisabled(fight,false);
+  updatePlayerHandUI(fight);
   renderAbilityButton(fight,1);
-  renderAbilityButton(fight,0);
+//  renderAbilityButton(fight,0);
   bindPlayerHandActions(fight);
 
   return lastCardEffectResult;
@@ -2095,7 +2133,7 @@ function bindPlayerHandActions(fight) {
       const tag = tagValue;
       const mpCost = card ? Number(card["MP"] ?? 0) : 0;
       if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
-        setPlayerHandDisabled(fight,false);
+        updatePlayerHandUI(fight);
         return;
       }
       fight.playerhand.splice(index, 1);
@@ -2110,8 +2148,7 @@ function bindPlayerHandActions(fight) {
       if (outcome === "win" || outcome === "lost") {
         finishFight(fight,outcome);
       }
-      // ============ 在 carduse 返回后【完整】重新绑定 ============
-      setPlayerHandDisabled(fight, false);
+      updatePlayerHandUI(fight);
       bindPlayerHandActions(fight);
     };
   });
