@@ -1224,6 +1224,7 @@ function renderFightBags() {
       btn.className = "bag-slot";
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
+      btn.disabled = !playerCardCanUse(fight, null, true);
       const img = document.createElement("img");
       img.src = window.cardDatabase[cardName]["image"];
       img.alt = cardName;
@@ -1232,7 +1233,7 @@ function renderFightBags() {
         displayfightcardinfo(1,cardName);
       });
       btn.onclick = async function () {
-        if (!fight || fight.ended || fight.carduseLocked) {
+        if (!fight || fight.ended || fight.carduseLocked || fight.sideturn === "enemy") {
           return;
         }
         const card = getFightCardData(cardName);
@@ -1242,8 +1243,8 @@ function renderFightBags() {
         const effect = card ? card["效果"] : null;
         const tagValue = card ? String(card["tag"] ?? "").trim() : "";
         const tag = tagValue;
-        const mpCost = card ? Number(card["MP"] ?? 0) : 0;
-        
+//        const mpCost = card ? Number(card["MP"] ?? 0) : 0;
+        const mpCost = 0; // 背包内卡牌不消耗MP
         if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
           return;
         }
