@@ -85,7 +85,7 @@ function parseFightCard(cardEntry) {
       } else if (inputValue !== undefined && inputValue !== null && Number.isFinite(Number(inputValue))) {
         finalValue = Number(inputValue);
       }
-      result[targetKey] = {value:finalValue};
+      result[targetKey] = finalValue;
     }
     return result;
   }
@@ -591,15 +591,9 @@ function renderFightEquip(fight,owner) {
     };
   }
 
-  /*
-    将卡牌移动到场上。
-
-    owner:
-      1 = 玩家
-      0 = 敌人
-  */
+  /* 将卡牌移动到场上 1 = 玩家 0 = 敌人 */
   function movetosite(fight,cardName,owner,sidetype,loops,valuechange = {}) {
-    if(loops != 1) return false;
+    if(loops != 1) return false; // 防lopp多次移动
     if (!fight || !cardName) {
       return false;
     }
@@ -806,17 +800,8 @@ function drawPlayerCards(DCnumber) {
       break;
     }
     const cardName = String(cardEntry).trim();
-    const card = getFightCardData(cardName);
-    const sidetypeStr = card && String(card.sidetype || '').trim();
-    const sidetype = sidetypeStr && sidetypeStr !== '' ? sidetypeStr.split(';').map(s => s.trim()).filter(Boolean) : [];
-    const valuechange = {};
-    const mpValue = card ? Number(card["MP"] ?? 0) : 0;
-    if (Number.isFinite(mpValue)) {
-      valuechange.MP = mpValue;
-    }
-    fight.playerhand.push(createFightCardEntry(cardName,sidetype,valuechange));
+    addcardtohand(cardName,1);
   }
-
   window.fightplayerhand = fight.playerhand;
   updateFightPileCounts(fight);
 }
@@ -828,17 +813,8 @@ function drawEnemyCards(DCnumber) {
       break;
     }
     const cardName = String(cardEntry).trim();
-    const card = getFightCardData(cardName);
-    const sidetypeStr = card && String(card.sidetype || '').trim();
-    const sidetype = sidetypeStr && sidetypeStr !== '' ? sidetypeStr.split(';').map(s => s.trim()).filter(Boolean) : [];
-    const valuechange = {};
-    const mpValue = card ? Number(card["MP"] ?? 0) : 0;
-    if (Number.isFinite(mpValue)) {
-      valuechange.MP = mpValue;
-    }
-    fight.enemyhand.push(createFightCardEntry(cardName,sidetype,valuechange));
+    addcardtohand(cardName,0);
   }
-
   window.fightenemyhand = fight.enemyhand;
   updateFightPileCounts(fight);
 }
@@ -1479,7 +1455,7 @@ function checkCardCanUse(cardEntry, player) {
   }
   
   // 检查MP不足
-  const mpCost = Number(card["MP"] ?? 0);
+  const mpCost = Number(parsedCard.valuechange ? parsedCard.valuechange.MP : 0);
   if (Number.isFinite(mpCost) && mpCost > 0) {
     const playerMP = isObject(player) ? Number(player.MP) : 0;
     if (playerMP < mpCost) {
@@ -1494,7 +1470,7 @@ function playerCardCanUse(fight, cardEntry, isBackpack) {
   // 背包卡牌逻辑
   if (isBackpack) {
     // 非玩家回合：禁用
-    if (fight.turn % 2 === 0) {
+    if (fight.sideturn === "enemy") {
       return false;
     }
     // 玩家回合：可用
@@ -1503,7 +1479,7 @@ function playerCardCanUse(fight, cardEntry, isBackpack) {
   
   // 手牌逻辑
   // 非玩家回合：禁用
-  if (fight.turn % 2 === 0) {
+  if (fight.sideturn === "enemy") {
     return false;
   }
   
@@ -1861,10 +1837,10 @@ async function cardeffect(side,type,effect,fight) {
   const drawValue = isObject(drawCard) ? Number(drawCard.value) : 0;
   if (Number.isFinite(drawValue) && drawValue > 0) {
     if (side === 1) {
-      addcardtohand(cardName,1);
+      drawPlayerCards(1);
       renderPlayerHand(fight);
     } else {
-      addcardtohand(cardName,0);
+      drawEnemyCards(1);
       renderEnemyHand(fight);
     }
   }
@@ -2204,7 +2180,7 @@ function bindPlayerHandActions(fight) {
       const effect = card ? card["效果"] : null;
       const tagValue = card ? String(card["tag"] ?? "").trim() : "";
       const tag = tagValue;
-      const mpCost = card ? Number(card["MP"] ?? 0) : 0;
+      const mpCost = Number(valuechange ? valuechange.MP : 0);
       if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
         updatePlayerHandUI(fight);
         return;
@@ -2333,6 +2309,7 @@ async function fightenemyactioncard(fight) {
       return;
     }
     const turnStartResult = await carduse(1,"event","event","turnstart",null,fight);
+    fight.sideturn = "player" ;
 
     // 在玩家回合开始的 turnstart 事件完成后进行胜负判定（按你的要求）
     const outcomeAfterTurnstart = getFightOutcome(fight);
@@ -2378,6 +2355,7 @@ async function fightenemyactioncard(fight) {
   }
   endTurnButton.disabled = true;
   const turnEndResult = await carduse(1,"event","event","turnend",null,fight);
+  fight.sideturn = "enemy";
   moveSiteCardsToGrave(fight);
   renderAbilityButton(fight,1);
   renderAbilityButton(fight,0);

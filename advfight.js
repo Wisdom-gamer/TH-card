@@ -90,6 +90,68 @@
 
     return false;
   }
+  function advvalueread(expression, roundMode, upperLimit, cardName, valuechange, sidetype, fight, side, type, effect) {
+  let result;
+
+  if (typeof expression === "number") {
+    result = expression;
+  } else {
+    let text = String(expression ?? "").trim();
+
+    if (text === "") {
+      return 0;
+    }
+
+    // value_read
+    text = text.replace(/<(self|other)\.tags\.([^>]+)>/g, function (match, owner, tagName) {
+      const targetSide = owner === "self" ? Number(side) : 1 - Number(side);
+
+      const tagList = targetSide === 1 ? (fight && Array.isArray(fight.playerfighttags) ? fight.playerfighttags : []) : (fight && Array.isArray(fight.enemyfighttags) ? fight.enemyfighttags : []);
+
+      let count = 0;
+
+      for (let index = 0; index < tagList.length; index += 1) {
+        const entry = tagList[index];
+
+        if (Array.isArray(entry) && String(entry[0] ?? "") === String(tagName).trim()) {
+          count = Number(entry[1] ?? 0);
+          break;
+        }
+      }
+      return Number.isFinite(count) ? String(count) : "0";
+    });
+  }
+
+  result = Number(result);
+
+  if (!Number.isFinite(result)) {
+    return 0;
+  }
+
+  // 参数2：取整方式
+  const mode = String(roundMode ?? "").trim().toLowerCase();
+
+  if (mode === "int") {
+    result = Math.floor(result);
+  } else if (mode === "inth") {
+    result = Math.ceil(result);
+  }
+
+  // 参数3：上限；为空时不限制
+  const limitText = String(upperLimit ?? "").trim();
+
+  if (limitText !== "") {
+    const limit = Number(limitText);
+
+    if (Number.isFinite(limit)) {
+      result = Math.min(result, limit);
+    }
+  }
+
+  return result;
+}
+
+  window.advvalueread = advvalueread;
   window.checksidetype = checksidetype;
   window.checkmp = checkmp;
   window.readmapsideType = readmapsideType;

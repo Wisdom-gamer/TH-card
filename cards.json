@@ -23,7 +23,28 @@
     }
     }
   },
-    "描述":"造成2普通伤害",
+    "描述":"获得两张测试卡牌flood",
+    "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "测试卡牌effect":{
+  "image":"images/fight/测试卡牌effect.png",
+  "类型":"基本卡",
+  "效果":{
+    "获取卡":{
+    "测试卡牌effect":{
+        "value":1
+    }
+    }
+  },
+  "效果_2":{
+    "获取卡":{
+    "测试卡牌flood":{
+        "value":1
+    }
+    }
+  },
+    "描述":"获得测试卡牌flood和自身",
     "tag":"handcard;handcarddamage",
     "sidetype":"typeNormal"
   },
@@ -338,7 +359,7 @@
     "标记":{
       "黑暗":{
         "self":{
-        "value":-65535
+        "value":65535
         }
 	    }
     },
@@ -439,9 +460,8 @@
     },
       "额外回合":{
       "self":{
-      "value_read":"<other.tags.冻结>/10", /* 在给予1冻结标记后检查是否够10 */
-      "value_readmax":1, /* 最高1 */
-      "value_readtype":"int", /* 强制取整 */
+      "value_js":"valueread", 
+      "input":"<other.tags.冻结>/10;int;1" /* 在给予1冻结标记后检查是否够10 */
       }
     }
     }
