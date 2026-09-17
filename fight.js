@@ -1600,7 +1600,19 @@ async function advvalue(config,side,fight,cardName,valuechange,sidetype,type,eff
 }
 async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount,cardName,valuechange) {
 //  console.log(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount);
-  const source = isObject(sourceEffect) ? sourceEffect : {};
+  let source = isObject(sourceEffect) ? {...sourceEffect} : {};
+  for (const [effectName,effectConfig] of Object.entries(source)) {
+  if (!isObject(effectConfig) || !Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
+    continue;
+  }
+  const random = Number(effectConfig.random);
+  if (Number.isFinite(random) && Math.random() < random) {
+    delete source[effectName];
+  } else {
+    source[effectName] = {...effectConfig};
+    delete source[effectName].random;
+  }
+}
   const isFallbackSource = !isObject(effect);
   let nextEffect = effect;
     if (!isObject(nextEffect) && isObject(sourceEffect)) {
@@ -1654,32 +1666,32 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   }
   const damageModifier = source["伤害修改"];
   if (isObject(damageModifier) && isObject(nextEffect) && isObject(nextEffect["伤害"])) {
-    const random = Number(damageModifier.random);
-    if (Number.isFinite(random) && random > 0 && Math.random() < random) {
-      // 不执行此效果
-    } else {
-      const damage = nextEffect["伤害"];
-      const damageType = String(damage.type ?? "").trim();
-      const requiredType = String(damageModifier.type ?? "").trim();
-      if (!requiredType || !requiredType.split(";").map(function (value) { return value.trim(); }).filter(Boolean).includes(damageType)) {
+    const damage = nextEffect["伤害"];
+    const damageType = String(damage.type ?? "").trim();
+    const requiredType = String(damageModifier.type ?? "").trim();
+    if (requiredType === "unconstrained" || (requiredType && requiredType.split(";").map(function (value) { return value.trim(); }).filter(Boolean).includes(damageType))) {
+      nextEffect = {...nextEffect};
+      let modifierValue = null;
+      if (Object.prototype.hasOwnProperty.call(damageModifier,"value")) {
+        modifierValue = Number(damageModifier.value);
       } else {
-        nextEffect = {...nextEffect};
+        for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+          if (!Object.prototype.hasOwnProperty.call(damageModifier,valuetypes[valueTypeIndex])) {
+            continue;
+          }
+          modifierValue = await advvalue(damageModifier,effectSide,fight,cardName,valuechange,sidetype,type,effect);
+          break;
+        }
+      }
         if (Object.prototype.hasOwnProperty.call(damageModifier,"value_new")) {
-          const newValue = Number(damageModifier.value_new);
-          if (Number.isFinite(newValue)) {
-            nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(newValue))};
-          }
-        } else {
-          let modifierValue;
-          if (!Object.prototype.hasOwnProperty.call(drawCard,valuetypes[valueTypeIndex])) {
-            modifierValue = await advvalue(damageModifier,effectSide,fight,cardName,valuechange,sidetype,type,effect);
-          } else {
-            modifierValue = Number(damageModifier.value);
-          }
-          const damageValue = Number(damage.value);
-          if (Number.isFinite(modifierValue) && Number.isFinite(damageValue)) {
-            nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(damageValue + modifierValue))};
-          }
+        const newValue = Number(damageModifier.value_new);
+        if (Number.isFinite(newValue)) {
+          nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(newValue))};
+        }
+      } else if (Number.isFinite(modifierValue)) {
+        const damageValue = Number(damage.value);
+        if (Number.isFinite(damageValue)) {
+          nextEffect["伤害"] = {...damage,value:Math.max(0,Math.floor(damageValue + modifierValue))};
         }
       }
     }
@@ -1737,11 +1749,20 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
     for (const [getCardName,getCardConfig] of Object.entries(nextEffect["获取卡"])) {
       if (!isObject(getCardConfig)) continue;
       const nextGetCardConfig = {...getCardConfig};
-      if (!Object.prototype.hasOwnProperty.call(drawCard,valuetypes[valueTypeIndex])) {
-        const value = await advvalue(nextGetCardConfig,side,fight,cardName,valuechange,sidetype,type,effect);
-        nextGetCardConfig.value = Number.isFinite(value) ? value : 0;
-        delete nextGetCardConfig.value_read;
-        delete nextGetCardConfig.value_js;
+      if (!Object.prototype.hasOwnProperty.call(nextGetCardConfig,"value")) {
+        let value = null;
+        for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+          if (!Object.prototype.hasOwnProperty.call(nextGetCardConfig,valuetypes[valueTypeIndex])) {
+            continue;
+          }
+          value = await advvalue(nextGetCardConfig,side,fight,cardName,valuechange,sidetype,type,effect);
+          break;
+        }
+        if (Number.isFinite(value)) {
+          nextGetCardConfig.value = value;
+          delete nextGetCardConfig.value_read;
+          delete nextGetCardConfig.value_js;
+        }
       }
       nextEffect["获取卡"][getCardName] = nextGetCardConfig;
     }
@@ -2149,13 +2170,6 @@ async function cardeffect(side,type,effect,fight) {
 
   return lastCardEffectResult;
 }
-
-  /*
-    fightmain 中负责绑定
-    玩家手牌点击行为。
-
-    鼠标点击 = 使用卡牌。
-  */
 function bindPlayerHandActions(fight) {
   const slots = Array.from(document.querySelectorAll(".game-area .player.bottom .slots .card-slot"));
   slots.forEach(function (button) {
@@ -2329,19 +2343,17 @@ async function fightenemyactioncard(fight) {
     if (turnStartResult === "win" || turnStartResult === "lost") {
       return turnStartResult;
     }
-    /* 发卡
-      第1回合：3张
-      之后：2张
-    */
+    /* 发卡 */
     if(fight.turn === 1){
     drawPlayerCards(3);
     renderPlayerHand(fight);
+    
     }
 
     /* 绑定玩家手牌点击。鼠标点击即视为使用。 */
     bindPlayerHandActions(fight);
 
-    /* 敌人牌  */
+    /* 敌人初始牌 */
     if(fight.turn === 1){
     drawEnemyCards(3);
     renderEnemyHand(fight);

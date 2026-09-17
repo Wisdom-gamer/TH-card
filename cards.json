@@ -338,7 +338,7 @@
     "标记":{
       "黑暗":{
         "self":{
-        "value":65535
+        "value":-65535
         }
 	    }
     },
@@ -438,10 +438,11 @@
         }
     },
       "额外回合":{
+      "self":{
       "value_read":"<other.tags.冻结>/10", /* 在给予1冻结标记后检查是否够10 */
       "value_readmax":1, /* 最高1 */
       "value_readtype":"int", /* 强制取整 */
-	    "side":"other"
+      }
     }
     }
   },
