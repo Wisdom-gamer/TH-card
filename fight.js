@@ -1838,10 +1838,10 @@ async function cardeffect(side,type,effect,fight) {
   const drawValue = isObject(drawCard) ? Number(drawCard.value) : 0;
   if (Number.isFinite(drawValue) && drawValue > 0) {
     if (side === 1) {
-      drawPlayerCards(1);
+      drawPlayerCards(drawValue);
       renderPlayerHand(fight);
     } else {
-      drawEnemyCards(1);
+      drawEnemyCards(drawValue);
       renderEnemyHand(fight);
     }
   }
