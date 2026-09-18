@@ -1047,19 +1047,6 @@ function parseValueRead(expression, fight, side) {
     const tags = String(tag ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     return rules.some(function (value) { return tags.includes(value); });
   }
-  /*
-    判定来源规则 API。
-
-    整体流程：
-      carduse → effectAPI → 未触发新效果 → 继续判定链 → cardeffect
-    如果某条规则触发了新效果（获取卡/抽卡/伤害/标记/卡牌选择/数值修改），
-    则从该规则触发的位置开始一次新的 carduse（沿判定链往下继续判定），
-    新的 carduse 完成自己的 cardeffect 后返回这里，继续解析当前效果。
-
-    触发的新效果会从当前效果中拆出、单独结算：
-    - 避免同一次伤害被嵌套链与外层链各结算一次；
-    - 避免每次经过规则来源时把整个效果重新执行一遍（无限循环的根源）。
-  */
   async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange) {
     const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
     const stepCount = 8;
@@ -1140,18 +1127,7 @@ function parseValueRead(expression, fight, side) {
             const triggerResult = await effectAPI(ownerSide,type,null,tag,sidetype,fight,register,stepIndex,triggerPart,ownerSide,sourceCount,sourceName,sourceValuechange);
             const triggerEffect = triggerResult && isObject(triggerResult.effect) ? prepareJudgementEffect(triggerResult.effect) : null;
             if (triggerEffect !== null && !fight.ended) {
-              /*
-                从规则触发的位置开始一次新的 carduse：
-                - side 用 ownerSide，使伤害/标记等以来源方为 self 结算；
-                - ownerSide 不在当前链一侧时，层级索引需要镜像
-                  （side s 的第 i 层 ↔ side 1-s 的第 7-i 层），保证续判位置正确；
-                - 各判定层从 register+1 继续，即紧跟触发来源之后往下判定，
-                  不会重复判定同一个来源（否则会无限循环触发）；
-                - cardName 传 null：触发效果不是卡牌，不能从数据库重读卡牌效果，
-                  也不能被移入场中/装备区/坟场；
-                - tag 优先使用来源自身的 tag（例如装备的 equipdamage），
-                  让后续的伤害修改/标记等规则能正确检测到这次触发伤害。
-              */
+              /* new carduse */
               const chainTag = sourceTag !== "" ? sourceTag : tag;
               const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
               await carduse(ownerSide,type,triggerEffect,chainTag,null,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange);
@@ -1680,7 +1656,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
     /* 规则元数据（rule/siderule/rule_js）只用于匹配，不能混入效果 */
     for (let metaIndex = 0;metaIndex < ruleMetaKeys.length;metaIndex += 1) {
       delete nextEffect[ruleMetaKeys[metaIndex]];
-    }
+    } 
   }
   const effectSide = Number(ownerSide) === 1 ? 1 : 0;
     if (isObject(nextEffect) && isObject(nextEffect["数值修改"])) {
@@ -2163,11 +2139,7 @@ async function cardeffect(side,type,effect,fight) {
     startStep = 0;
   }
 
-  /*
-    carduse 可以嵌套（触发的新效果会发起新的 carduse）。
-    只有最外层负责加锁/解锁与手牌重绘，嵌套层结束时不能提前解锁，
-    否则结算过程中玩家就能再次出牌。
-  */
+  /* carduse 可以嵌套（触发的新效果会发起新的 carduse）。只有最外层负责加锁/解锁与手牌重绘，嵌套层结束时不能提前解锁 */
   const carduseDepth = Number(fight.carduseDepth) > 0 ? Number(fight.carduseDepth) : 0;
   const isRootCarduse = carduseDepth === 0;
   fight.carduseDepth = carduseDepth + 1;
@@ -2215,8 +2187,7 @@ async function cardeffect(side,type,effect,fight) {
       };
       for (let i = startStep;i < judgementSteps.length;i += 1) {
         const step = judgementSteps[i];
-        // register 只作用于 startStep 指定的那一层（表示该层已判定到 register 为止，
-        // 从下一项继续）；其后的层级必须从头判定，否则会错误跳过低索引来源（如标记）
+        // register 只作用于 startStep 指定的那一层（表示该层已判定到 register 为止，从下一项继续）；其后的层级必须从头判定，否则会错误跳过低索引来源
         const stepRegister = i === startStep ? initialRegister : -1;
         result = await runJudgementStep(step,result,fight,stepRegister,i);
 
@@ -2231,11 +2202,6 @@ async function cardeffect(side,type,effect,fight) {
         }
 
         result.register = -1;
-
-        // 嵌套触发的效果可能已经结束战斗，及时中止后续判定
-        if (fight.ended) {
-          break;
-        }
       }
 
       if (!result || result.effect === null || fight.ended) {
@@ -2259,8 +2225,7 @@ async function cardeffect(side,type,effect,fight) {
       const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight);
       lastCardEffectResult = cardeffectResult;
     }
-  }
-  } finally {
+  }  } finally {
     fight.carduseDepth = Math.max(0,Number(fight.carduseDepth) - 1);
     if (isRootCarduse) {
       fight.carduseLocked = false;
@@ -2270,7 +2235,6 @@ async function cardeffect(side,type,effect,fight) {
       bindPlayerHandActions(fight);
     }
   }
-
   return lastCardEffectResult;
 }
 function bindPlayerHandActions(fight) {
