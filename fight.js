@@ -1928,7 +1928,11 @@ async function cardeffect(side,type,effect,fight) {
         const config = isObject(tagConfig[sideName]) ? tagConfig[sideName] : null;
         if (!config) continue;
         const valueNew = Number(config.value_new);
-        const value = Number(config.value);
+        /* if no value */
+        let value = Number(config.value);
+        if (!Object.prototype.hasOwnProperty.call(config,"value") || !Number.isFinite(value)) {
+          value = await advvalue(config,side,fight,null,{},[],type,effect);
+        }
         if (sideName === "self") {
           if (Object.prototype.hasOwnProperty.call(config,"value_new") && Number.isFinite(valueNew)) {
             const list = getTagListForSide(fight,side);
@@ -2367,6 +2371,8 @@ async function fightenemyactioncard(fight) {
 }
   async function fightenemyaction() {
      const fight = window.fight;
+   while (true) {
+     if (!fight || fight.ended) return null;
      const turnStartResult = await carduse(0,"event","event","turnstart",null,fight);
      // 敌方能力：查找第一个可用（remaining === 0）的能力并使用
      if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
@@ -2411,20 +2417,20 @@ async function fightenemyactioncard(fight) {
          }
        }
      }
-      drawEnemyCards(2);
-      renderEnemyHand(fight);
-      const moreturnIdx = findMorereturnTag(fight, 1);
-      if (moreturnIdx !== -1) {
-        modifyTagCount(fight, 1, "额外回合", -1);
-        fight.turn += 1;
-        const turnStartResult = await carduse(1,"event","event","turnstart",null,fight);
-        exposeBattleGlobals(fight);
-        return "moreturn";
-      }
-
-      return "end";
+     const moreturnIdx = findMorereturnTag(fight, 0);
+     if (moreturnIdx !== -1 && !fight.ended) {
+       modifyTagCount(fight, 0, "额外回合", -1);
+       fight.turn += 1;
+       continue;
+     }
+     break;
    }
-
+   if (fight && !fight.ended) {
+     drawEnemyCards(2);
+     renderEnemyHand(fight);
+   }
+   return "end";
+   }
   async function fightmain() {
     const fight = window.fight;
 

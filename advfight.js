@@ -120,14 +120,16 @@
       }
       return Number.isFinite(count) ? String(count) : "0";
     });
+    // 将替换后的算式求值（与 fight.js parseValueRead 一致），例如 "10/10"
+    try {
+      const calculated = Function('"use strict"; return (' + text + ')')();
+      result = Number.isFinite(Number(calculated)) ? Number(calculated) : Number(text);
+    } catch (e) {
+      result = Number(text);
+    }
   }
 
   result = Number(result);
-
-  if (!Number.isFinite(result)) {
-    return 0;
-  }
-
   // 参数2：取整方式
   const mode = String(roundMode ?? "").trim().toLowerCase();
 
