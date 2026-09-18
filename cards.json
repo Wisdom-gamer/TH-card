@@ -27,6 +27,19 @@
     "tag":"handcard;handcarddamage",
     "sidetype":"typeNormal"
   },
+  "测试卡牌ignore":{
+  "image":"images/fight/测试卡牌ignore.png",
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":1
+    }
+  },
+    "描述":"造成1点伤害，忽略双方反制卡",
+    "tag":"handcard;handcarddamage",
+    "ignore":"startsidecounter;startsideequip;startsidetrait;startsidetag;nsidetag;nsidetrait;nsideequip;nsidecounter",
+    "sidetype":"typeNormal"
+  },
   "测试卡牌effect":{
   "image":"images/fight/测试卡牌effect.png",
   "类型":"基本卡",
@@ -133,7 +146,7 @@
     "siderule":"other" /* 触发回合规则 */
   },
     "描述":"受到的伤害-1",
-	  "tag":"equip" /* 触发器检测 */
+	  "tag":"equip;equipdamagechange" /* 触发器检测 */
   },
   "测试装备11":{
   "类型":"装备卡",
@@ -142,18 +155,19 @@
       "value":1,
 	  "type":"普通" /* 触发条件，什么类型的伤害会触发 */
     },
+    "startrule":"equiping",
 	  "rule":"handcarddamage;itemdamage;equipdamage", /* 触发规则 */
     "siderule":"self" /* 触发回合规则 */
   },
     "描述":"造成的伤害+1",
-	  "tag":"equip" /* 触发器检测 */
+	  "tag":"equip;equipdamagechange" /* 触发器检测 */
   },
   "测试装备2":{
   "类型":"装备卡",
   "效果":{
     "伤害":{
       "value":2,
-	  "type":"普通"	  
+	  "type":"普通"
     },
     "rule":"turnstart", /* 触发规则 */
     "siderule":"self" /* 触发回合规则 */
@@ -168,10 +182,10 @@
       "value":4,
 	  "type":"普通"	  
     },
-    "rule":"turnstart", /* 触发规则 */
+    "rule":"turnend", /* 触发规则 */
     "siderule":"self" /* 触发回合规则 */
   },
-    "描述":"在回合开始时对敌方造成4普通伤害",
+    "描述":"在回合结束时对敌方造成4普通伤害",
 	  "tag":"equip;equipdamage" /* 触发器检测 */
   },
   /* 正式内容 */
@@ -460,7 +474,7 @@
     },
       "额外回合":{
       "self":{
-      "value_js":"valueread", 
+      "value_js":"advvalueread", 
       "input":"<other.tags.冻结>/10;int;1" /* 在给予1冻结标记后检查是否够10 */
       }
     }
@@ -486,7 +500,7 @@
     }
   },
     "MP":1,
-    "tag":"countercard;handcarddelothercard;handcardgetorhercard",
+    "tag":"handcard;handcarddelothercard;handcardgetorhercard",
     "描述":"选择一张对方手中的卡牌加入手中，忽略双方反制卡，装备，特性，标记的效果",
     "ignore":"startsidecounter;startsideequip;startsidetrait;startsidetag;nsidetag;nsidetrait;nsideequip;nsidecounter",
     "sidetype":"typeNormal"
