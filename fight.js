@@ -784,6 +784,8 @@ function renderFightEquip(fight,owner) {
       resolve: null,
       ended: false,
       carduseLocked: false,
+      /* carduse 嵌套深度：0 表示当前没有正在解析的效果链 */
+      carduseDepth: 0,
     };
   }
 
@@ -985,6 +987,8 @@ function renderAbilityButton(fight, owner) {
 }
 
 const valuetypes = ["value_js","value_read"]; // 动态取值关键字,无value时按此顺序查找并调用advvalue 
+  /* 规则元数据关键字：只用于规则匹配，不属于效果本身 */
+  const ruleMetaKeys = ["rule","siderule","rule_js"];
 function parseValueRead(expression, fight, side) {
   if (typeof expression !== "string") return Number(expression);
   let result = String(expression).trim();
@@ -1043,14 +1047,28 @@ function parseValueRead(expression, fight, side) {
     const tags = String(tag ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     return rules.some(function (value) { return tags.includes(value); });
   }
+  /*
+    判定来源规则 API。
+
+    整体流程：
+      carduse → effectAPI → 未触发新效果 → 继续判定链 → cardeffect
+    如果某条规则触发了新效果（获取卡/抽卡/伤害/标记/卡牌选择/数值修改），
+    则从该规则触发的位置开始一次新的 carduse（沿判定链往下继续判定），
+    新的 carduse 完成自己的 cardeffect 后返回这里，继续解析当前效果。
+
+    触发的新效果会从当前效果中拆出、单独结算：
+    - 避免同一次伤害被嵌套链与外层链各结算一次；
+    - 避免每次经过规则来源时把整个效果重新执行一遍（无限循环的根源）。
+  */
   async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange) {
     const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
+    const stepCount = 8;
     const source = isObject(sourceData) ? sourceData : {};
     let nextEffect = effect;
     let effectIndex = 1;
-    let createNewEffectChain = false;
     const sourceName = String(cardName ?? "");
     const sourceValuechange = isObject(valuechange) ? valuechange : {};
+    const sourceTag = String(source["tag"] ?? "").trim();
     while (true) {
       const effectKey = effectIndex === 1 ? "效果" : `效果_${effectIndex}`;
       if (!Object.prototype.hasOwnProperty.call(source,effectKey)) {
@@ -1082,25 +1100,71 @@ function parseValueRead(expression, fight, side) {
           }
         }
         if (rulePassed) {
-          const result = await effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount,sourceName,sourceValuechange);
-          if (result && Object.prototype.hasOwnProperty.call(result,"effect")) {
-            nextEffect = result.effect;
+          /* 复现 effectAPI 的 random 过滤（只掷一次，避免二次判定） */
+          const filteredSource = {};
+          for (const [effectName,effectConfig] of Object.entries(sourceEffect)) {
+            if (isObject(effectConfig) && Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
+              const random = Number(effectConfig.random);
+              if (Number.isFinite(random) && Math.random() < random) {
+                continue;
+              }
+              const keptConfig = {...effectConfig};
+              delete keptConfig.random;
+              filteredSource[effectName] = keptConfig;
+            } else {
+              filteredSource[effectName] = effectConfig;
+            }
+          }
+          /*
+            把规则效果拆成两部分：
+            - 可触发的新效果键（伤害/标记/抽卡/…）作为触发的新效果，
+              由一次新的 carduse 从触发位置开始单独结算；
+            - 其余部分（伤害修改等）按原逻辑作为修改量并入当前效果。
+          */
+          const triggerPart = {};
+          const mergePart = {};
+          for (const [effectName,effectConfig] of Object.entries(filteredSource)) {
+            if (newEffectTypes.includes(effectName)) {
+              triggerPart[effectName] = effectConfig;
+            } else {
+              mergePart[effectName] = effectConfig;
+            }
+          }
+          const hasTrigger = Object.keys(triggerPart).length > 0;
+          const mergeResult = await effectAPI(side,type,nextEffect,tag,sidetype,fight,register,stepIndex,hasTrigger ? mergePart : filteredSource,ownerSide,sourceCount,sourceName,sourceValuechange);
+          if (mergeResult && Object.prototype.hasOwnProperty.call(mergeResult,"effect")) {
+            nextEffect = mergeResult.effect;
+          }
+          if (hasTrigger && !fight.ended) {
+            /* 以 ownerSide 为 self，解析触发效果的动态取值 */
+            const triggerResult = await effectAPI(ownerSide,type,null,tag,sidetype,fight,register,stepIndex,triggerPart,ownerSide,sourceCount,sourceName,sourceValuechange);
+            const triggerEffect = triggerResult && isObject(triggerResult.effect) ? prepareJudgementEffect(triggerResult.effect) : null;
+            if (triggerEffect !== null && !fight.ended) {
+              /*
+                从规则触发的位置开始一次新的 carduse：
+                - side 用 ownerSide，使伤害/标记等以来源方为 self 结算；
+                - ownerSide 不在当前链一侧时，层级索引需要镜像
+                  （side s 的第 i 层 ↔ side 1-s 的第 7-i 层），保证续判位置正确；
+                - 各判定层从 register+1 继续，即紧跟触发来源之后往下判定，
+                  不会重复判定同一个来源（否则会无限循环触发）；
+                - cardName 传 null：触发效果不是卡牌，不能从数据库重读卡牌效果，
+                  也不能被移入场中/装备区/坟场；
+                - tag 优先使用来源自身的 tag（例如装备的 equipdamage），
+                  让后续的伤害修改/标记等规则能正确检测到这次触发伤害。
+              */
+              const chainTag = sourceTag !== "" ? sourceTag : tag;
+              const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
+              await carduse(ownerSide,type,triggerEffect,chainTag,null,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange);
+            }
           }
         }
       }
       effectIndex += 1;
+      if (fight.ended) {
+        break;
+      }
     }
-    for (let index = 0;index < newEffectTypes.length;index += 1) {
-  if (isObject(nextEffect) && Object.prototype.hasOwnProperty.call(nextEffect,newEffectTypes[index])) {
-    createNewEffectChain = true;
-    break;
-  }
-}
-if (createNewEffectChain) {
-  register=register+1;
-await carduse(ownerSide,type,nextEffect,tag,sourceName,fight,sidetype,-1,0,sourceValuechange,`${stepIndex}:${register}`);
-}
-return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register,newEffectChain:createNewEffectChain};
+    return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1,newEffectChain:false};
   }
   function sideruleMatches(siderule,incomingSide,equipOwnerSide) {
     const rule = String(siderule ?? "").trim();
@@ -1359,6 +1423,7 @@ function renderFightBags() {
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange);
       effect = result.effect;
+      if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1373,6 +1438,7 @@ function renderFightBags() {
       if (!isObject(sourceCard)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,ownerSide,1,cardName,valuechange);
       effect = result.effect;
+      if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1396,6 +1462,7 @@ function renderFightBags() {
       if (!isObject(sourceData)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceData,ownerSide,tagCount,cardName,valuechange);
       effect = result.effect;
+      if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1415,6 +1482,7 @@ function renderFightBags() {
       if (!isObject(sourceData)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceData,ownerSide,tagCount,cardName,valuechange);
       effect = result.effect;
+      if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1433,6 +1501,7 @@ function renderFightBags() {
       if (!isObject(sourceCard)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,ownerSide,1,cardName,valuechange);
       effect = result.effect;
+      if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1450,9 +1519,8 @@ function renderFightBags() {
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange);
       effect = result.effect;
-      if (result.newEffectChain) {
-        await carduse(counterSide,type,effect,tag,cardName,fight,sidetype,-1,0,valuechange,{startsidecounter:index});
-      }
+      /* 触发的新效果链已由 effectruleAPI 内部从触发位置开始结算，这里继续判定当前链 */
+      if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1609,6 +1677,10 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   let nextEffect = effect;
     if (!isObject(nextEffect) && isObject(sourceEffect)) {
     nextEffect = {...sourceEffect};
+    /* 规则元数据（rule/siderule/rule_js）只用于匹配，不能混入效果 */
+    for (let metaIndex = 0;metaIndex < ruleMetaKeys.length;metaIndex += 1) {
+      delete nextEffect[ruleMetaKeys[metaIndex]];
+    }
   }
   const effectSide = Number(ownerSide) === 1 ? 1 : 0;
     if (isObject(nextEffect) && isObject(nextEffect["数值修改"])) {
@@ -2051,28 +2123,62 @@ async function cardeffect(side,type,effect,fight) {
     effectList.push(effect);
   }
 
-  fight.carduseLocked = true;
-  updatePlayerHandUI(fight);
+  const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter];
+
+  /*
+    续判位置（供触发的新效果发起的嵌套 carduse 使用）：
+    - 字符串 "层级:register"：从判定链第「层级」层、该层 register+1 处
+      （即紧跟触发来源之后）继续往下判定；
+    - 对象 {层级名: register}：按层级名定位的兼容写法；
+    - 都不传时从第一层、第一个来源开始完整判定。
+  */
+  let initialRegister = typeof register === "number" ? register : -1;
+  if (typeof nextto === "string") {
+    const nextData = nextto.split(":");
+    if (nextData.length === 2) {
+      const nextStep = Number(nextData[0]);
+      const nextRegister = Number(nextData[1]);
+      if (Number.isFinite(nextStep) && Number.isFinite(nextRegister)) {
+        startStep = Math.floor(nextStep);
+        initialRegister = Math.floor(nextRegister);
+      }
+    }
+  } else if (isObject(nextto)) {
+    for (const [stepName,stepRegister] of Object.entries(nextto)) {
+      let stepIndexByName = -1;
+      for (let stepIndex = 0;stepIndex < judgementSteps.length;stepIndex += 1) {
+        if (judgementSteps[stepIndex].name === stepName) {
+          stepIndexByName = stepIndex;
+          break;
+        }
+      }
+      if (stepIndexByName !== -1 && Number.isFinite(Number(stepRegister))) {
+        startStep = stepIndexByName;
+        initialRegister = Math.floor(Number(stepRegister));
+        break;
+      }
+    }
+  }
+  if (!Number.isFinite(startStep) || startStep < 0) {
+    startStep = 0;
+  }
+
+  /*
+    carduse 可以嵌套（触发的新效果会发起新的 carduse）。
+    只有最外层负责加锁/解锁与手牌重绘，嵌套层结束时不能提前解锁，
+    否则结算过程中玩家就能再次出牌。
+  */
+  const carduseDepth = Number(fight.carduseDepth) > 0 ? Number(fight.carduseDepth) : 0;
+  const isRootCarduse = carduseDepth === 0;
+  fight.carduseDepth = carduseDepth + 1;
+  if (isRootCarduse) {
+    fight.carduseLocked = true;
+    updatePlayerHandUI(fight);
+  }
 
   let lastCardEffectResult = null;
   let cardMoved = false;
-  let initialRegister ;
-  const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter];
-if (typeof nextto === "string") {
-  const nextData = nextto.split(":");
-  if (nextData.length === 2) {
-    const nextStep = Number(nextData[0]);
-    const nextRegister = Number(nextData[1]);
-    if (Number.isFinite(nextStep) && Number.isFinite(nextRegister)) {
-      startStep = nextStep;
-      initialRegister = nextRegister;
-    }
-  }
-}
-//  let initialRegister = typeof register === "number" ? register : -1;
-  if (nextto === null || nextto === undefined) {
-    nextto = {startsidecounter:-1};
-  }
+  try {
   for (let effectIndex = 0;effectIndex < effectList.length;effectIndex += 1) {
     const currentEffect = effectList[effectIndex];
     let loopCount = 1;
@@ -2096,7 +2202,6 @@ if (typeof nextto === "string") {
     for (let iter = 0;iter < loopCount;iter += 1) {
       if (!fight || fight.ended) break;
 
-      let currentRegister = initialRegister;
       const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,currentEffect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1,cardName,valuechange);
       // 每次使用时，先通过 effectAPI 进行一次基础效果解析，再进入判定链
       let result = {
@@ -2110,7 +2215,10 @@ if (typeof nextto === "string") {
       };
       for (let i = startStep;i < judgementSteps.length;i += 1) {
         const step = judgementSteps[i];
-        result = await runJudgementStep(step,result,fight,currentRegister,i);
+        // register 只作用于 startStep 指定的那一层（表示该层已判定到 register 为止，
+        // 从下一项继续）；其后的层级必须从头判定，否则会错误跳过低索引来源（如标记）
+        const stepRegister = i === startStep ? initialRegister : -1;
+        result = await runJudgementStep(step,result,fight,stepRegister,i);
 
         if (!result) {
           break;
@@ -2123,9 +2231,14 @@ if (typeof nextto === "string") {
         }
 
         result.register = -1;
+
+        // 嵌套触发的效果可能已经结束战斗，及时中止后续判定
+        if (fight.ended) {
+          break;
+        }
       }
 
-      if (!result || result.effect === null) {
+      if (!result || result.effect === null || fight.ended) {
         continue;
       }
 
@@ -2147,12 +2260,16 @@ if (typeof nextto === "string") {
       lastCardEffectResult = cardeffectResult;
     }
   }
-
-  fight.carduseLocked = false;
-  updatePlayerHandUI(fight);
-  renderAbilityButton(fight,1);
-//  renderAbilityButton(fight,0);
-  bindPlayerHandActions(fight);
+  } finally {
+    fight.carduseDepth = Math.max(0,Number(fight.carduseDepth) - 1);
+    if (isRootCarduse) {
+      fight.carduseLocked = false;
+      updatePlayerHandUI(fight);
+      renderAbilityButton(fight,1);
+//      renderAbilityButton(fight,0);
+      bindPlayerHandActions(fight);
+    }
+  }
 
   return lastCardEffectResult;
 }
