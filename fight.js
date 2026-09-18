@@ -1044,9 +1044,11 @@ function parseValueRead(expression, fight, side) {
     return rules.some(function (value) { return tags.includes(value); });
   }
   async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange) {
+    const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
     const source = isObject(sourceData) ? sourceData : {};
     let nextEffect = effect;
     let effectIndex = 1;
+    let createNewEffectChain = false;
     const sourceName = String(cardName ?? "");
     const sourceValuechange = isObject(valuechange) ? valuechange : {};
     while (true) {
@@ -1088,7 +1090,17 @@ function parseValueRead(expression, fight, side) {
       }
       effectIndex += 1;
     }
-    return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1};
+    for (let index = 0;index < newEffectTypes.length;index += 1) {
+  if (isObject(nextEffect) && Object.prototype.hasOwnProperty.call(nextEffect,newEffectTypes[index])) {
+    createNewEffectChain = true;
+    break;
+  }
+}
+if (createNewEffectChain) {
+  register=register+1;
+await carduse(ownerSide,type,nextEffect,tag,sourceName,fight,sidetype,-1,0,sourceValuechange,`${stepIndex}:${register}`);
+}
+return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register,newEffectChain:createNewEffectChain};
   }
   function sideruleMatches(siderule,incomingSide,equipOwnerSide) {
     const rule = String(siderule ?? "").trim();
@@ -1438,6 +1450,9 @@ function renderFightBags() {
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
       const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange);
       effect = result.effect;
+      if (result.newEffectChain) {
+        await carduse(counterSide,type,effect,tag,cardName,fight,sidetype,-1,0,valuechange,{startsidecounter:index});
+      }
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1744,25 +1759,6 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
       nextEffect["获取卡"][getCardName] = nextGetCardConfig;
     }
   }
-  if (isObject(source["被动伤害"])) {
-    const passive = source["被动伤害"];
-    let value;
-    if (!Object.prototype.hasOwnProperty.call(passive,"value")) {
-      for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
-        if (!Object.prototype.hasOwnProperty.call(passive,valuetypes[valueTypeIndex])) {
-          continue;
-        }
-        value = await advvalue(passive,effectSide,fight,cardName,valuechange,sidetype,type,effect);
-        break;
-      }
-    } else {
-      value = Number(passive.value);
-    }
-    if (Number.isFinite(value) && value !== 0) {
-      const nestedEffect = {"伤害":{value:value,type:passive.type}};
-      await carduse(effectSide,type,nestedEffect,tag,sidetype,fight,register,stepIndex);
-    }
-  }
     // Handle card selection
   // Handle card selection from main effect
   const cardSelection = isObject(nextEffect) ? nextEffect["卡牌选择"] : null;
@@ -2022,7 +2018,7 @@ async function cardeffect(side,type,effect,fight) {
   return {side: side,type: type,effect: effect};
 }
 
-  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {}) {
+  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {},nextto = null){
   let ignore = "";
   fight = fight || window.fight;
 
@@ -2060,10 +2056,23 @@ async function cardeffect(side,type,effect,fight) {
 
   let lastCardEffectResult = null;
   let cardMoved = false;
-
+  let initialRegister ;
   const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter];
-  let initialRegister = typeof register === "number" ? register : -1;
-
+if (typeof nextto === "string") {
+  const nextData = nextto.split(":");
+  if (nextData.length === 2) {
+    const nextStep = Number(nextData[0]);
+    const nextRegister = Number(nextData[1]);
+    if (Number.isFinite(nextStep) && Number.isFinite(nextRegister)) {
+      startStep = nextStep;
+      initialRegister = nextRegister;
+    }
+  }
+}
+//  let initialRegister = typeof register === "number" ? register : -1;
+  if (nextto === null || nextto === undefined) {
+    nextto = {startsidecounter:-1};
+  }
   for (let effectIndex = 0;effectIndex < effectList.length;effectIndex += 1) {
     const currentEffect = effectList[effectIndex];
     let loopCount = 1;
