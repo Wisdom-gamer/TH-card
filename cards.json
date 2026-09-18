@@ -302,7 +302,7 @@
     },
     "rule":"handcard",
     "rule_js":"checkmp",
-    "input":"0;use;=",
+    "input":"0;=;use",
     "siderule":"other"
   },
     "tag":"countercard;countercarddelothercard",

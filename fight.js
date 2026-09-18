@@ -2068,9 +2068,8 @@ async function cardeffect(side,type,effect,fight) {
             renderEnemyHand(fight);
           }
         }
-        
-        cardpick = null;
       }
+        cardpick = null;
     }
   }
   await new Promise(function (resolve) { setTimeout(resolve,1000); });
@@ -2160,19 +2159,22 @@ async function cardeffect(side,type,effect,fight) {
 
   let lastCardEffectResult = null;
   try {
-  /* 入场统一在使用开始时处理：反制卡/基本卡移入场中，装备卡移入装备区；若仍在本方手牌中则先移出 */
+  /* 入场统一在使用开始时处理：反制卡/基本卡移入场中，装备卡移入装备区 */
   if (cardName && cardType !== "" && !fight.ended) {
     const cardSide = Number(side) === 1 ? 1 : 0;
-    const moveHand = cardSide === 1 ? fight.playerhand : fight.enemyhand;
-    for (let handIndex = 0;handIndex < moveHand.length;handIndex += 1) {
-      if (parseFightCard(moveHand[handIndex]).name !== cardName) continue;
-      moveHand.splice(handIndex,1);
-      if (cardSide === 1) {
-        renderPlayerHand(fight);
-      } else {
-        renderEnemyHand(fight);
+    /* 反制卡移出手牌*/
+    if (cardType === "反制卡") {
+      const moveHand = cardSide === 1 ? fight.playerhand : fight.enemyhand;
+      for (let handIndex = 0;handIndex < moveHand.length;handIndex += 1) {
+        if (parseFightCard(moveHand[handIndex]).name !== cardName) continue;
+        moveHand.splice(handIndex,1);
+        if (cardSide === 1) {
+          renderPlayerHand(fight);
+        } else {
+          renderEnemyHand(fight);
+        }
+        break;
       }
-      break;
     }
     const baseSidetype = String(cardData["sidetype"] ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     const moveSidetype = Array.isArray(sidetype) && sidetype.length > 0 ? sidetype : baseSidetype;
@@ -2234,6 +2236,10 @@ async function cardeffect(side,type,effect,fight) {
       };
       for (let i = startStep;i < judgementSteps.length;i += 1) {
         const step = judgementSteps[i];
+        // ignore
+        if (ignoreSteps.has(step.name)) {
+          continue;
+        }
         // register 只作用于 startStep 指定的那一层（表示该层已判定到 register 为止，从下一项继续）；其后的层级必须从头判定，否则会错误跳过低索引来源
         const stepRegister = i === startStep ? initialRegister : -1;
         result = await runJudgementStep(step,result,fight,stepRegister,i);
