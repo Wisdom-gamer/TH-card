@@ -615,7 +615,17 @@ function renderFightEquip(fight,owner) {
 
     return true;
   }
-
+  /* 将卡牌移动到装备区 1 = 玩家 0 = 敌人 */
+  function movetoequip(fight,cardName,owner,sidetype,valuechange = {}) {
+    if (!fight || !cardName) {
+      return false;
+    }
+    owner = Number(owner) === 1 ? 1 : 0;
+    const equip = owner === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+    equip.push(createFightCardEntry(cardName,sidetype,valuechange));
+    renderFightEquip(fight,owner);
+    return true;
+  }
   /* 将场上所有卡牌移动到原持有者的坟场 */
     function moveSiteCardsToGrave(fight) {
     for (let index = 0;index < fight.fightsitecards.length;index += 1) {
@@ -1047,7 +1057,7 @@ function parseValueRead(expression, fight, side) {
     const tags = String(tag ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     return rules.some(function (value) { return tags.includes(value); });
   }
-  async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange) {
+  async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange,sourceCardName) {
     const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
     const stepCount = 8;
     const source = isObject(sourceData) ? sourceData : {};
@@ -1127,10 +1137,11 @@ function parseValueRead(expression, fight, side) {
             const triggerResult = await effectAPI(ownerSide,type,null,tag,sidetype,fight,register,stepIndex,triggerPart,ownerSide,sourceCount,sourceName,sourceValuechange);
             const triggerEffect = triggerResult && isObject(triggerResult.effect) ? prepareJudgementEffect(triggerResult.effect) : null;
             if (triggerEffect !== null && !fight.ended) {
-              /* new carduse */
+              /* new carduse；反制卡作为触发来源以自身卡名入链，由 carduse 移入场中 */
               const chainTag = sourceTag !== "" ? sourceTag : tag;
+              const chainCardName = String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
               const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
-              await carduse(ownerSide,type,triggerEffect,chainTag,null,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange);
+              await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange);
             }
           }
         }
@@ -1397,7 +1408,7 @@ function renderFightBags() {
       const sourceTag = sourceCard ? String(sourceCard["tag"] ?? "").trim() : "";
       const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange);
+      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
       effect = result.effect;
       if (fight.ended) break;
     }
@@ -1493,7 +1504,7 @@ function renderFightBags() {
       const sourceCard = getFightCardData(sourceCardName);
       const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange);
+      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
       effect = result.effect;
       /* 触发的新效果链已由 effectruleAPI 内部从触发位置开始结算，这里继续判定当前链 */
       if (fight.ended) break;
@@ -2074,25 +2085,24 @@ async function cardeffect(side,type,effect,fight) {
     return null;
   }
 
+  const cardData = cardName ? getFightCardData(cardName) : null;
+  const cardType = isObject(cardData) ? String(cardData["类型"] ?? "").trim() : "";
+
   let ignoreValue = ignore;
   if ((ignoreValue === null || ignoreValue === undefined || String(ignoreValue).trim() === "") && cardName) {
-    const card = getFightCardData(cardName);
-    ignoreValue = card ? card["ignore"] : "";
+    ignoreValue = cardData ? cardData["ignore"] : "";
   }
   const ignoreSteps = new Set(String(ignoreValue ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean));
 
   let effectList = [];
-  if (cardName) {
-    const cardData = getFightCardData(cardName);
-    if (isObject(cardData)) {
-      if (Object.prototype.hasOwnProperty.call(cardData,"效果")) {
-        effectList.push(cardData["效果"]);
-      }
-      let effectIndex = 2;
-      while (Object.prototype.hasOwnProperty.call(cardData,`效果_${effectIndex}`)) {
-        effectList.push(cardData[`效果_${effectIndex}`]);
-        effectIndex += 1;
-      }
+  if (isObject(cardData)) {
+    if (Object.prototype.hasOwnProperty.call(cardData,"效果")) {
+      effectList.push(cardData["效果"]);
+    }
+    let effectIndex = 2;
+    while (Object.prototype.hasOwnProperty.call(cardData,`效果_${effectIndex}`)) {
+      effectList.push(cardData[`效果_${effectIndex}`]);
+      effectIndex += 1;
     }
   }
   if (effectList.length === 0) {
@@ -2149,8 +2159,45 @@ async function cardeffect(side,type,effect,fight) {
   }
 
   let lastCardEffectResult = null;
-  let cardMoved = false;
   try {
+  /* 入场统一在使用开始时处理：反制卡/基本卡移入场中，装备卡移入装备区；若仍在本方手牌中则先移出 */
+  if (cardName && cardType !== "" && !fight.ended) {
+    const cardSide = Number(side) === 1 ? 1 : 0;
+    const moveHand = cardSide === 1 ? fight.playerhand : fight.enemyhand;
+    for (let handIndex = 0;handIndex < moveHand.length;handIndex += 1) {
+      if (parseFightCard(moveHand[handIndex]).name !== cardName) continue;
+      moveHand.splice(handIndex,1);
+      if (cardSide === 1) {
+        renderPlayerHand(fight);
+      } else {
+        renderEnemyHand(fight);
+      }
+      break;
+    }
+    const baseSidetype = String(cardData["sidetype"] ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
+    const moveSidetype = Array.isArray(sidetype) && sidetype.length > 0 ? sidetype : baseSidetype;
+    if (cardType === "反制卡" || cardType === "基本卡") {
+      movetosite(fight,cardName,cardSide,moveSidetype,1,valuechange);
+    } else if (cardType === "装备卡") {
+      movetoequip(fight,cardName,cardSide,moveSidetype,valuechange);
+      if (!fight.ended) {
+        /* 入场触发链：效果.装备.value = 卡名 */
+        lastCardEffectResult = await carduse(cardSide,type,{"装备":{value:cardName}},tag,null,fight,moveSidetype,-1,0,valuechange);
+      }
+      /* 含 startonadd:1 的效果（支持 效果_2 等）在 loops 检查前各自独立结算 */
+      for (let effectIndex = 0;effectIndex < effectList.length;effectIndex += 1) {
+        const addEffect = effectList[effectIndex];
+        if (!isObject(addEffect) || Number(addEffect["startonadd"]) !== 1 || fight.ended) {
+          continue;
+        }
+        const startEffect = {...addEffect};
+        delete startEffect["startonadd"];
+        lastCardEffectResult = await carduse(cardSide,type,startEffect,tag,null,fight,moveSidetype,-1,0,valuechange);
+      }
+      /* 其余效果留在装备区作为规则，不在使用时结算 */
+      return lastCardEffectResult;
+    }
+  }
   for (let effectIndex = 0;effectIndex < effectList.length;effectIndex += 1) {
     const currentEffect = effectList[effectIndex];
     let loopCount = 1;
@@ -2206,18 +2253,6 @@ async function cardeffect(side,type,effect,fight) {
 
       if (!result || result.effect === null || fight.ended) {
         continue;
-      }
-
-      const isLastLoop = iter === loopCount - 1;
-      if (result && cardName && isLastLoop && !cardMoved) {
-        if (result.type === "装备卡") {
-          const equip = result.side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
-          equip.push(createFightCardEntry(cardName,result.sidetype,valuechange));
-          renderFightEquip(fight,result.side);
-        } else {
-          movetosite(fight,cardName,result.side,result.sidetype,1,valuechange);
-        }
-        cardMoved = true;
       }
 
       exposeBattleGlobals(fight);
@@ -2299,6 +2334,7 @@ async function fightenemyactioncard(fight) {
     const parsedCard = parseFightCard(cardEntry);
     const cardName = parsedCard.name;
     const sidetype = parsedCard.sidetype;
+    const valuechange = parsedCard.valuechange;
     if (!cardName) continue;
     const card = getFightCardData(cardName);
     if (!card) continue;
@@ -2319,7 +2355,7 @@ async function fightenemyactioncard(fight) {
     index -= 1;
     renderEnemyHand(fight);
     exposeBattleGlobals(fight);
-    await carduse(0, type, effect, tag, cardName, fight, sidetype);
+    await carduse(0, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange);
     await new Promise(function (resolve) { setTimeout(resolve, 1000); });
   }
 }
@@ -2546,6 +2582,7 @@ window.fightmain = fightmain;
 window.fightenemyaction = fightenemyaction;
 window.fightenemyactioncard = fightenemyactioncard;
 window.movetosite = movetosite;
+window.movetoequip = movetoequip;
 window.carduse = carduse;
 window.cardeffect = cardeffect;
 window.modifyTagCount = modifyTagCount;
@@ -2554,4 +2591,5 @@ window.parseFightCard = parseFightCard;
 window.createFightCardEntry = createFightCardEntry;
 window.getFightCardData = getFightCardData;
 window.effectruleAPI = effectruleAPI;
+window.addcardtohand = addcardtohand;
 })();
