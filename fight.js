@@ -1564,7 +1564,7 @@ async function advvalue(config,side,fight,cardName,valuechange,sidetype,type,eff
       const params = inputText === "" ? [] : inputText.split(";").map(function (value) { return value.trim(); });
       if (!funcName || typeof window[funcName] !== "function") return 0;
       try {
-        const value = await window[funcName](...params,cardName ?? fight.currentCardName ?? "",isObject(valuechange) ? valuechange : (isObject(fight.currentCardValuechange) ? fight.currentCardValuechange : {}),sidetype,fight,side,type,effect);
+        const value = await window[funcName](...params,cardName ?? "",isObject(valuechange) ? valuechange : (isObject(fight.currentCardValuechange) ? fight.currentCardValuechange : {}),sidetype,fight,side,type,effect);
         return Number.isFinite(Number(value)) ? Number(value) : 0;
       } catch (error) {
         console.error(`Error calling ${funcName}:`,error);
@@ -2236,9 +2236,6 @@ async function fightenemyactioncard(fight) {
   async function fightenemyaction() {
      const fight = window.fight;
      const turnStartResult = await carduse(0,"event","event","turnstart",null,fight);
-     if (turnStartResult === "win" || turnStartResult === "lost") {
-       return turnStartResult;
-     }
      // 敌方能力：查找第一个可用（remaining === 0）的能力并使用
      if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
        for (let i = 0; i < fight.enemyability.length; i += 1) {
@@ -2282,10 +2279,6 @@ async function fightenemyactioncard(fight) {
          }
        }
      }
-
-     if (turnEndResult === "win" || turnEndResult === "lost") {
-       return turnEndResult;
-     }
       drawEnemyCards(2);
       renderEnemyHand(fight);
       const moreturnIdx = findMorereturnTag(fight, 1);
@@ -2293,9 +2286,6 @@ async function fightenemyactioncard(fight) {
         modifyTagCount(fight, 1, "额外回合", -1);
         fight.turn += 1;
         const turnStartResult = await carduse(1,"event","event","turnstart",null,fight);
-        if (turnStartResult === "win" || turnStartResult === "lost") {
-          return turnStartResult;
-        }
         exposeBattleGlobals(fight);
         return "moreturn";
       }
@@ -2316,10 +2306,6 @@ async function fightenemyactioncard(fight) {
     const outcomeAfterTurnstart = getFightOutcome(fight);
     if (outcomeAfterTurnstart === "win" || outcomeAfterTurnstart === "lost") {
       return finishFight(fight,outcomeAfterTurnstart);
-    }
-
-    if (turnStartResult === "win" || turnStartResult === "lost") {
-      return turnStartResult;
     }
     /* 发卡 */
     if(fight.turn === 1){
@@ -2374,9 +2360,6 @@ async function fightenemyactioncard(fight) {
   }
   drawPlayerCards(2);
   renderPlayerHand(fight);
-  if (turnEndResult === "win" || turnEndResult === "lost") {
-    return;
-  }
    const moreturnIdx = findMorereturnTag(fight, 1);
    if (moreturnIdx !== -1) {
      modifyTagCount(fight, 1, "额外回合", -1);
@@ -2445,8 +2428,7 @@ async function fightenemyactioncard(fight) {
  window.fightenemyequip = [];
     window.fight = fight;
 
- // 渲染战斗界面相关 UI（标签与背包）
- renderFightTags(window.currentFight);
+ // 渲染战斗界面相关 UI（背包）
  renderFightBags();
 
     fight.turn = 1;
