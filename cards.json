@@ -12,6 +12,18 @@
     "tag":"handcard;handcarddamage",
     "sidetype":"typeNormal"
   },
+  "测试卡牌kill":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":65535,
+	    "type":"普通"
+    }
+  },
+    "描述":"造成65535普通伤害",
+    "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
+  },
   "测试卡牌flood":{
   "image":"images/fight/测试卡牌flood.png",
   "类型":"基本卡",
@@ -297,7 +309,7 @@
     "卡牌选择":{
       "mode":"remove",
       "pick":"random",
-      "number":1,
+      "value":1,
 	    "side":"other"
     },
     "rule":"handcard",

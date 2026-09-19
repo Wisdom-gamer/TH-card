@@ -513,7 +513,8 @@ function renderFightEquip(fight,owner) {
       pick: String(config.pick || 'random').trim(),
       value: toInt(config.value, 1),
       side: String(config.side || 'other').trim(),
-      sidetypechange: String(config.sidetypechange || '').trim()
+      sidetypechange: String(config.sidetypechange || '').trim(),
+      newcardside: String(config.newcardside || 'self').trim().toLowerCase()
     };
   }
 
@@ -807,6 +808,8 @@ function renderFightEquip(fight,owner) {
 function drawPlayerCards(DCnumber) {
   const drawCount = DCnumber;
   for (let index = 0;index < drawCount;index += 1) {
+    /* 手牌已满则跳过本轮剩余抽牌，并且不消耗牌堆 */
+    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8) break;
     const cardEntry = fight.playercards.pop();
     if (!cardEntry) {
       break;
@@ -820,6 +823,8 @@ function drawPlayerCards(DCnumber) {
 function drawEnemyCards(DCnumber) {
   const drawCount = DCnumber;
   for (let index = 0;index < drawCount;index += 1) {
+    /* 手牌已满则跳过本轮剩余抽牌，并且不消耗牌堆 */
+    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8) break;
     const cardEntry = fight.enemycards.pop();
     if (!cardEntry) {
       break;
@@ -1029,7 +1034,7 @@ function parseValueRead(expression, fight, side) {
 
     if (Object.prototype.hasOwnProperty.call(nextEffect,"伤害")) {
       const damage = nextEffect["伤害"];
-      if (!isObject(damage) || (damage.value === null || damage.value === undefined) && !valuetypes.some(function (valueType) { return Object.prototype.hasOwnProperty.call(damage,valueType); }) || Object.prototype.hasOwnProperty.call(damage,"value") && !Number.isFinite(Number(damage.value)) || Object.prototype.hasOwnProperty.call(damage,"value") && Number(damage.value) === 0) {
+      if (!isObject(damage) || (damage.value === null || damage.value === undefined) && !valuetypes.some(function (valueType) { return Object.prototype.hasOwnProperty.call(damage,valueType); }) || Object.prototype.hasOwnProperty.call(damage,"value") && !Number.isFinite(Number(damage.value)) || Object.prototype.hasOwnProperty.call(damage,"value") && Number(damage.value) <= 0) {
         delete nextEffect["伤害"];
       }
     }
@@ -1102,7 +1107,7 @@ function parseValueRead(expression, fight, side) {
           for (const [effectName,effectConfig] of Object.entries(sourceEffect)) {
             if (isObject(effectConfig) && Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
               const random = Number(effectConfig.random);
-              if (Number.isFinite(random) && Math.random() < random) {
+              if (Number.isFinite(random) && Math.random() > random) {
                 continue;
               }
               const keptConfig = {...effectConfig};
@@ -1653,7 +1658,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
     continue;
   }
   const random = Number(effectConfig.random);
-  if (Number.isFinite(random) && Math.random() < random) {
+  if (Number.isFinite(random) && Math.random() > random) {
     delete source[effectName];
   } else {
     source[effectName] = {...effectConfig};
@@ -1795,6 +1800,22 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
       }
     }
   }
+    if (isObject(nextEffect) && isObject(nextEffect["卡牌选择"])) {
+    const cardSelectConfig = nextEffect["卡牌选择"];
+    if (!Object.prototype.hasOwnProperty.call(cardSelectConfig,"value")) {
+      for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
+        if (!Object.prototype.hasOwnProperty.call(cardSelectConfig,valuetypes[valueTypeIndex])) {
+          continue;
+        }
+        const value = await advvalue(cardSelectConfig,side,fight,cardName,valuechange,sidetype,type,effect);
+        nextEffect = {...nextEffect};
+        nextEffect["卡牌选择"] = {...cardSelectConfig,value:Number.isFinite(value) ? value : 0};
+        delete nextEffect["卡牌选择"].value_read;
+        delete nextEffect["卡牌选择"].value_js;
+        break;
+      }
+    }
+  }
   if (isObject(nextEffect) && isObject(nextEffect["获取卡"])) {
     nextEffect = {...nextEffect,"获取卡":{...nextEffect["获取卡"]}};
     for (const [getCardName,getCardConfig] of Object.entries(nextEffect["获取卡"])) {
@@ -1816,25 +1837,6 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
         }
       }
       nextEffect["获取卡"][getCardName] = nextGetCardConfig;
-    }
-  }
-    // Handle card selection
-  // Handle card selection from main effect
-  const cardSelection = isObject(nextEffect) ? nextEffect["卡牌选择"] : null;
-  if (isObject(cardSelection)) {
-    const selectConfig = parseCardSelection(cardSelection);
-    
-    if (selectConfig.pick === 'random') {
-      // Random selection - do it now
-      const selectSide = selectConfig.side === 'self' ? Number(side) : (1 - Number(side));
-      const selectedCard = randomSelectCard(fight, selectSide);
-      if (selectedCard) {
-        cardpick = selectedCard;
-      }
-      // Set pick to null to prevent re-selection
-      nextEffect = {...nextEffect};
-      nextEffect["卡牌选择"] = {...selectConfig};
-      nextEffect["卡牌选择"].pick = null;
     }
   }
   return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
@@ -1881,7 +1883,7 @@ async function cardeffect(side,type,effect,fight) {
   /* 攻击伤害 */
   const damage = isObject(effect) ? effect["伤害"] : null;
   const value = isObject(damage) ? Number(damage.value) : 0;
-  if (Number.isFinite(value) && value !== 0) {
+  if (Number.isFinite(value) && value > 0) {
     if (side === 1) {
       fight.enemy.HP = fight.enemy.HP - value;
     } else {
@@ -1996,11 +1998,13 @@ if (isObject(getCards)) {
   const cardSelection = isObject(effect) ? effect["卡牌选择"] : null;
   if (isObject(cardSelection)) {
     const selectConfig = parseCardSelection(cardSelection);
-    
-    if (cardSelection.pick !== null && cardSelection.pick !== undefined) {
-      // Need to perform selection
-      const selectSide = selectConfig.side === 'self' ? side : (1 - side);
-      
+    const selectCount = Math.max(0, toInt(selectConfig.value, 1));
+    const selectSide = selectConfig.side === 'self' ? side : (1 - side);
+
+    /* value对4种模式都生效：按数量重复"选择+处理"，每轮处理1张 */
+    for (let pickIndex = 0;pickIndex < selectCount;pickIndex += 1) {
+      /* 选择一律在处理时进行（random每轮各掷一次） */
+      cardpick = null;
       if (selectConfig.pick === 'random') {
         // Random selection
         cardpick = randomSelectCard(fight, selectSide);
@@ -2019,67 +2023,63 @@ if (isObject(getCards)) {
           cardpick = randomSelectCard(fight, selectSide);
         }
       }
-    }
-    
-    // Process cardpick based on mode
-    if (cardpick && Array.isArray(cardpick) && cardpick.length === 2) {
+
+      if (!cardpick || !Array.isArray(cardpick) || cardpick.length !== 2) {
+        break;
+      }
+
       const pickedSide = Number(cardpick[0]);
       const pickedIndex = Number(cardpick[1]);
       const hand = pickedSide === 1 ? fight.playerhand : fight.enemyhand;
-      
-      if (hand && hand[pickedIndex]) {
-        const pickedCardEntry = hand[pickedIndex];
-        const pickedCard = parseFightCard(pickedCardEntry);
-        const pickedCardName = pickedCard.name;
-        const pickedSidetype = pickedCard.sidetype;
-        const pickedValuechange = pickedCard.valuechange;
-        const mode = selectConfig.mode;
-        const newcardside = String(selectConfig.newcardside || 'self').trim();
-        
-        // Determine target hand for new cards (for 'get' and 'copy' modes)
-        const targetSide = newcardside === 'other' ? (1 - Number(side)) : Number(side);
-        const targetHand = targetSide === 1 ? fight.playerhand : fight.enemyhand;
-        
-        if (mode === 'get') {
-          // move to target side
-          hand.splice(pickedIndex, 1);
-          const newCardName = String(selectConfig.newcard || pickedCardName).trim();
-          const newSidetype = selectConfig.sidetypechange;
-          for (let i = 0; i < selectConfig.value; i += 1) {
-            addcardtohand(newCardName,targetSide,newSidetype,pickedValuechange);
-          }
-        } else if (mode === 'remove') {
-          // remove to side,not have effect
-          const cardName = pickedCardName;
-          const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
-          hand.splice(pickedIndex, 1);
-          movetosite(fight,cardName,pickedSide,newSidetype,1,pickedValuechange);
-        } else if (mode === 'delete') {
-          // deldte in the fight
-          hand.splice(pickedIndex, 1);
-        } else if (mode === 'copy') {
-          // Copy to target side
-          for (let i = 0; i < selectConfig.value; i += 1) {
-            addcardtohand(pickedCardName,targetSide,selectConfig.sidetypechange,pickedValuechange);
-          }
-        }
-        
-        // Render both hands if they changed
-        if (pickedSide === 1) {
+
+      if (!hand || !hand[pickedIndex]) {
+        break;
+      }
+
+      const pickedCardEntry = hand[pickedIndex];
+      const pickedCard = parseFightCard(pickedCardEntry);
+      const pickedCardName = pickedCard.name;
+      const pickedSidetype = pickedCard.sidetype;
+      const pickedValuechange = pickedCard.valuechange;
+      const mode = selectConfig.mode;
+      const newcardside = String(selectConfig.newcardside || 'self').trim().toLowerCase();
+
+      // Determine target hand for new cards (for 'get' and 'copy' modes)
+      const targetSide = newcardside === 'other' ? (1 - Number(side)) : Number(side);
+      /* all交给addcardtohand分发给双方 */
+      const newCardSide = newcardside === 'all' ? 'all' : targetSide;
+
+      if (mode === 'get') {
+        // move to target side
+        hand.splice(pickedIndex, 1);
+        const newCardName = String(selectConfig.newcard || pickedCardName).trim();
+        const newSidetype = selectConfig.sidetypechange;
+        addcardtohand(newCardName,newCardSide,newSidetype,pickedValuechange);
+      } else if (mode === 'remove') {
+        // remove to side,not have effect
+        const cardName = pickedCardName;
+        const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
+        hand.splice(pickedIndex, 1);
+        movetosite(fight,cardName,pickedSide,newSidetype,1,pickedValuechange);
+      } else if (mode === 'delete') {
+        // deldte in the fight
+        hand.splice(pickedIndex, 1);
+      } else if (mode === 'copy') {
+        // Copy to target side
+        addcardtohand(pickedCardName,newCardSide,selectConfig.sidetypechange,pickedValuechange);
+      }
+
+      // Render hands that may have changed
+      const renderSides = new Set(newcardside === 'all' ? [pickedSide, 0, 1] : [pickedSide, targetSide]);
+      for (const renderSide of renderSides) {
+        if (renderSide === 1) {
           renderPlayerHand(fight);
         } else {
           renderEnemyHand(fight);
         }
-        if (targetSide !== pickedSide) {
-          if (targetSide === 1) {
-            renderPlayerHand(fight);
-          } else {
-            renderEnemyHand(fight);
-          }
-        }
       }
-        cardpick = null;
     }
+    cardpick = null;
   }
   await new Promise(function (resolve) { setTimeout(resolve,1000); });
   return {side: side,type: type,effect: effect};
