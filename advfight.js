@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-    function readmapsideType(sideType, multiplier, typeMode, includeSelf, cardName, valuechange, sidetype, fight) {
+     function readmapsideType(sideType, multiplier, typeMode, includeSelf, cardName, valuechange, sidetype, fight) {
     if (!fight || !Array.isArray(fight.fightsitecards)) {
       return 0;
     }
@@ -9,17 +9,31 @@
     const targetSideType = String(sideType || "").trim();
     if (!targetSideType) return 0;
 
+    /* 定位传入卡（自身）：使用时它已被移入场中，同名卡里最后入场的那张就是自身；
+       统计时先排除自身，改由 includeSelf 单独决定是否计入，避免重复计数 */
+    const selfName = String(cardName ?? "").trim();
+    let selfIndex = -1;
+    if (selfName !== "") {
+      for (let i = fight.fightsitecards.length - 1; i >= 0; i -= 1) {
+        const parsed = window.parseFightCard(fight.fightsitecards[i]);
+        if (parsed && parsed.name === selfName) {
+          selfIndex = i;
+          break;
+        }
+      }
+    }
     let count = 0;
     for (let i = 0; i < fight.fightsitecards.length; i += 1) {
+      if (i === selfIndex) continue;
       const cardEntry = fight.fightsitecards[i];
       const parsed = window.parseFightCard(cardEntry);
       if (parsed && parsed.sidetype && parsed.sidetype.includes(targetSideType)) {
         count += 1;
       }
     }
-
+    /* 传入卡不匹配目标 sidetype 时，无论 includeSelf 为何都不计入传入卡 */
     const includeSelfVal = Number(includeSelf);
-    if (includeSelfVal === 1 && Array.isArray(sidetype)) {
+    if (selfIndex !== -1 && includeSelfVal === 1 && Array.isArray(sidetype)) {
       if (sidetype.includes(targetSideType)) {
         count += 1;
       }

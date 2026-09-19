@@ -1902,23 +1902,28 @@ async function cardeffect(side,type,effect,fight) {
   }
   exposeBattleGlobals(fight);
   /* 将指定卡添加到卡组 */
-  const getCards = isObject(effect) ? effect["获取卡"] : null;
-  if (isObject(getCards) && side === 1) {
-    for (const [cardName,cardConfig] of Object.entries(getCards)) {
-      const count = isObject(cardConfig) ? Number(cardConfig.value) : Number(cardConfig);
-      const sidetypeText = isObject(cardConfig) ? String(cardConfig.sidetype ?? "").trim() : "";
-      const sidetype = sidetypeText === "" ? [] : sidetypeText.split("|").map(function (value) { return value.trim(); }).filter(Boolean);
-      if (!Number.isFinite(count) || count <= 0) {
-        continue;
-      }
-      for (let index = 0;index < Math.floor(count);index += 1) {
-        addcardtohand(cardName,1,sidetypeText || undefined,undefined);
-      }
+const getCards = isObject(effect) ? effect["获取卡"] : null;
+if (isObject(getCards)) {
+  const selfSide = Number(side) === 1 ? 1 : 0;
+  for (const [cardName,cardConfig] of Object.entries(getCards)) {
+    const count = isObject(cardConfig) ? Number(cardConfig.value) : Number(cardConfig);
+    const sidetypeText = isObject(cardConfig) ? String(cardConfig.sidetype ?? "").trim() : "";
+    if (!Number.isFinite(count) || count <= 0) {
+      continue;
     }
+    for (let index = 0;index < Math.floor(count);index += 1) {
+      addcardtohand(cardName,selfSide,sidetypeText || undefined,undefined);
+    }
+  }
+  if (selfSide === 1) {
     window.fightplayerhand = fight.playerhand;
     renderPlayerHand(fight);
-    exposeBattleGlobals(fight);
+  } else {
+    window.fightenemyhand = fight.enemyhand;
+    renderEnemyHand(fight);
   }
+  exposeBattleGlobals(fight);
+}
   /* 标记处理 */
   const tagsEffect = isObject(effect) ? effect["标记"] : null;
   if (isObject(tagsEffect)) {
