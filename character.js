@@ -49,10 +49,14 @@
     if (window.startingNewGame) {
       localStorage.removeItem("TH_CARD_CHARACTER");
       localStorage.removeItem("TH_CARD_ADVENTURE_STATE");
+      localStorage.removeItem("TH_CARD_DECK");
+      localStorage.removeItem("TH_CARD_PLAYER_BAG");
       window.startingNewGame = false;
     }
-    
-    const state = saveCharacterState(characterName, character);
+
+    const existing = (function () { try { const s = localStorage.getItem(CHARACTER_STORAGE_KEY); if (!s) return null; const d = JSON.parse(s); return d && d.name === characterName ? d : null; } catch (e) { return null; } })();
+
+    const state = existing && !window.startingNewGame ? existing : saveCharacterState(characterName, character);
     
     if (image) {
       delete image.dataset.fallbackUsed;
@@ -400,9 +404,7 @@ document.addEventListener("th-card:start-new-game", function () {
       });
     }
 
-if (restoreSavedCharacter()) {
-  return;
-}
+const restored = restoreSavedCharacter();
 
 loadCharacters().catch(function (error) {
   console.error("角色选择界面初始化失败", error);
@@ -411,6 +413,7 @@ loadCharacters().catch(function (error) {
     nameButton.textContent = "角色数据读取失败";
   }
 });
+if (restored) return;
   });
 })();
 /* 接口 window.giveCardToPlayer("卡牌名", 数量); */
