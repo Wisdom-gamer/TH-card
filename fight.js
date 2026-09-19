@@ -1102,27 +1102,26 @@ function parseValueRead(expression, fight, side) {
           }
         }
         if (rulePassed) {
-          /* 复现 effectAPI 的 random 过滤（只掷一次，避免二次判定） */
-          const filteredSource = {};
-          for (const [effectName,effectConfig] of Object.entries(sourceEffect)) {
-            if (isObject(effectConfig) && Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
-              const random = Number(effectConfig.random);
-              if (Number.isFinite(random) && Math.random() > random) {
-                continue;
-              }
+          let filteredSource = sourceEffect;
+          for (const [effectName,effectConfig] of Object.entries(sourceEffect)) { // random,if not carduse
+            if (newEffectTypes.includes(effectName)) {
+              continue;
+            }
+            if (!isObject(effectConfig) || !Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
+              continue;
+            }
+            const random = Number(effectConfig.random);
+            if (filteredSource === sourceEffect) {
+              filteredSource = {...sourceEffect};
+            }
+            if (Number.isFinite(random) && Math.random() >= random) {
+              delete filteredSource[effectName];
+            } else {
               const keptConfig = {...effectConfig};
               delete keptConfig.random;
               filteredSource[effectName] = keptConfig;
-            } else {
-              filteredSource[effectName] = effectConfig;
             }
           }
-          /*
-            把规则效果拆成两部分：
-            - 可触发的新效果键（伤害/标记/抽卡/…）作为触发的新效果，
-              由一次新的 carduse 从触发位置开始单独结算；
-            - 其余部分（伤害修改等）按原逻辑作为修改量并入当前效果。
-          */
           const triggerPart = {};
           const mergePart = {};
           for (const [effectName,effectConfig] of Object.entries(filteredSource)) {
@@ -1653,18 +1652,6 @@ async function advvalue(config,side,fight,cardName,valuechange,sidetype,type,eff
 async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount,cardName,valuechange) {
 //  console.log(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceEffect,ownerSide,sourceCount);
   let source = isObject(sourceEffect) ? {...sourceEffect} : {};
-  for (const [effectName,effectConfig] of Object.entries(source)) {
-  if (!isObject(effectConfig) || !Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
-    continue;
-  }
-  const random = Number(effectConfig.random);
-  if (Number.isFinite(random) && Math.random() > random) {
-    delete source[effectName];
-  } else {
-    source[effectName] = {...effectConfig};
-    delete source[effectName].random;
-  }
-}
   const isFallbackSource = !isObject(effect);
   let nextEffect = effect;
     if (!isObject(nextEffect) && isObject(sourceEffect)) {
@@ -2210,17 +2197,17 @@ if (isObject(getCards)) {
     }
   }
   for (let effectIndex = 0;effectIndex < effectList.length;effectIndex += 1) {
-    const currentEffect = effectList[effectIndex];
+    const cardEffect = effectList[effectIndex];
     let loopCount = 1;
 
-    if (isObject(currentEffect) && isObject(currentEffect.loop)) {
-      const loopConfig = currentEffect.loop;
+    if (isObject(cardEffect) && isObject(cardEffect.loop)) {
+      const loopConfig = cardEffect.loop;
       if (!Object.prototype.hasOwnProperty.call(loopConfig,"value")) {
         for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
           if (!Object.prototype.hasOwnProperty.call(loopConfig,valuetypes[valueTypeIndex])) {
             continue;
           }
-          const loopValue = await advvalue(loopConfig,side,fight,cardName,valuechange,sidetype,type,currentEffect);
+          const loopValue = await advvalue(loopConfig,side,fight,cardName,valuechange,sidetype,type,cardEffect);
           loopCount = Math.max(1,toInt(loopValue,1));
           break;
         }
@@ -2231,6 +2218,26 @@ if (isObject(getCards)) {
 
     for (let iter = 0;iter < loopCount;iter += 1) {
       if (!fight || fight.ended) break;
+
+      /* random */
+      let currentEffect = cardEffect;
+      if (isObject(cardEffect)) {
+        const keptEffect = {};
+        for (const [effectName,effectConfig] of Object.entries(cardEffect)) {
+          if (!isObject(effectConfig) || !Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
+            keptEffect[effectName] = effectConfig;
+            continue;
+          }
+          const random = Number(effectConfig.random);
+          if (Number.isFinite(random) && Math.random() >= random) {
+            continue;
+          }
+          const keptConfig = {...effectConfig};
+          delete keptConfig.random;
+          keptEffect[effectName] = keptConfig;
+        }
+        currentEffect = keptEffect;
+      }
 
       const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,currentEffect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1,cardName,valuechange);
       // 每次使用时，先通过 effectAPI 进行一次基础效果解析，再进入判定链
