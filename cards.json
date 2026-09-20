@@ -373,6 +373,7 @@
     }
   },
     "描述":"获得2临时力量。你的临时力量本回合结束不清零",
+    "MP":1,
 	  "tag":"handcard;handcardaddtagself",
     "sidetype":"typeNormal"
   },

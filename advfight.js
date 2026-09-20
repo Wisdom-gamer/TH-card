@@ -88,6 +88,33 @@
     }
     return false;
   }
+  function checktag(compareValue,compareMode,tagRef,cardName,valuechange,sidetype,fight,side,type,effect) {
+    const mode = String(compareMode ?? "").trim();
+    const compare = Number(compareValue);
+    if (!Number.isFinite(compare)) {
+      return false;
+    }
+    const refMatch = String(tagRef ?? "").trim().match(/^<\s*(self|other)\s*\.\s*(.+?)\s*>$/);
+    if (!refMatch) {
+      return false;
+    }
+    const selfSide = Number(side) === 1 ? 1 : 0;
+    const checkSide = refMatch[1] === "self" ? selfSide : 1 - selfSide;
+    const count = typeof window.getTagCount === "function" ? Number(window.getTagCount(fight,checkSide,refMatch[2])) : NaN;
+    if (!Number.isFinite(count)) {
+      return false;
+    }
+    if (mode === ">") {
+      return count > compare;
+    }
+    if (mode === "=") {
+      return count === compare;
+    }
+    if (mode === "<") {
+      return count < compare;
+    }
+    return false;
+  }
     function checksidetype(checkSideType,checkMode,cardName,valuechange,sidetype,fight,side,type,effect) {
     const targetSideType = String(checkSideType ?? "").trim();
     const mode = String(checkMode ?? "").trim().toLowerCase();
@@ -185,5 +212,6 @@
   window.advvalueread = advvalueread;
   window.checksidetype = checksidetype;
   window.checkmp = checkmp;
+  window.checktag = checktag;
   window.readmapsideType = readmapsideType;
 })();
