@@ -1851,7 +1851,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   }
   return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
 }
-async function cardeffect(side,type,effect,fight) {
+async function cardeffect(side,type,effect,fight,cardName = "") {
 //  console.log(side,type,effect,fight);
   /* 数值修改 */
   const valueModify = isObject(effect) ? effect["数值修改"] : null;
@@ -2014,6 +2014,7 @@ if (isObject(getCards)) {
     const selectValue = Math.max(1,toInt(selectConfig.value,1));
     const newCardSide = selectConfig.newcardside === "self" ? side : (1 - side);
     const selectSide = selectConfig.side === "self" ? side : (1 - side);
+    const selfName = String(cardName ?? "").trim() !== "" ? String(cardName).trim() : (parseFightCard(String(type ?? "")).name || "");
 
     /* 来源：默认手牌；fightcards=卡组，grave=坟场，site=场地，
        sitenoself=场地但跳过自身（不跳过场地上自身之外的同名牌） */
@@ -2353,7 +2354,7 @@ if (isObject(getCards)) {
 
       exposeBattleGlobals(fight);
 
-      const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight);
+      const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight,cardName);
       lastCardEffectResult = cardeffectResult;
     }
   }  } finally {
