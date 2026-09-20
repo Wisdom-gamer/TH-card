@@ -346,9 +346,7 @@
       }
     },
     "抽卡":{
-      "fight.<selfside>.HP":{ /* 为自己增加 */
-      "value":2
-      }
+      "value":5
     }
   },
     "描述":"造成5点伤害，获得5点护甲，回复5HP，抽5张卡",
@@ -375,6 +373,54 @@
     "描述":"获得2临时力量。你的临时力量本回合结束不清零",
     "MP":1,
 	  "tag":"handcard;handcardaddtagself",
+    "sidetype":"typeNormal"
+  },
+  "妖怪破坏者":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":3,
+	  "type":"普通"
+    },
+	  "loop":{
+	    "value":2
+	  }
+  },
+    "描述":"造成3普通伤害，重复2次",
+    "MP":1,
+	  "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "诱导护符":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":1,
+	  "type":"普通"
+    },
+	  "抽卡":{
+	    "value":1
+	  }
+  },
+    "描述":"造成1普通伤害，抽1张卡",
+	  "tag":"handcard;handcarddamage;handcardaddcard",
+    "sidetype":"typeNormal"
+  },
+  "问神":{
+  "类型":"基本卡",
+  "效果":{
+    "卡牌选择":{
+      "mode":"copy",
+      "pick":"top",
+      "source":"fightcards",
+      "value":1,
+	    "side":"self",
+	    "sidetypechange":"+|temp",
+	    "newcardside":"self"
+    }
+  },
+    "tag":"handcard;handcardaddcard",
+    "描述":"将出牌顶的牌的一张临时复制置入手牌",
     "sidetype":"typeNormal"
   },
   /* NPC */
