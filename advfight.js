@@ -118,6 +118,7 @@
 
     // value_read
     text = text.replace(/<(self|other)\.tags\.([^>]+)>/g, function (match, owner, tagName) {
+      
       const targetSide = owner === "self" ? Number(side) : 1 - Number(side);
 
       const tagList = targetSide === 1 ? (fight && Array.isArray(fight.playerfighttags) ? fight.playerfighttags : []) : (fight && Array.isArray(fight.enemyfighttags) ? fight.enemyfighttags : []);
@@ -133,6 +134,20 @@
         }
       }
       return Number.isFinite(count) ? String(count) : "0";
+    });
+    text = text.replace(/<(self|other)\.(HP|maxHP|MP|maxMP|handcard)>/g,function (match,owner,key) {
+      const targetSide = owner === "self" ? Number(side) : 1 - Number(side);
+      const player = targetSide === 1 ? fight.player : fight.enemy;
+      if (!player) return "0";
+      if (key === "HP") return String(Number(player.HP ?? 0));
+      if (key === "maxHP") return String(Number(player.MAXHP ?? player.maxHP ?? 0));
+      if (key === "MP") return String(Number(player.MP ?? 0));
+      if (key === "maxMP") return String(Number(player.MAXMP ?? player.maxMP ?? 0));
+      if (key === "handcard") {
+        const hand = targetSide === 1 ? fight.playerhand : fight.enemyhand;
+        return String(Array.isArray(hand) ? hand.length : 0);
+      }
+      return "0";
     });
     // 将替换后的算式求值（与 fight.js parseValueRead 一致），例如 "10/10"
     try {

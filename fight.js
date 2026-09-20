@@ -1013,6 +1013,21 @@ function parseValueRead(expression, fight, side) {
     const count = getTagCount(fight, targetSide, tagName);
     return String(count);
   });
+  const valuePattern = /<(self|other)\.(HP|maxHP|MP|maxMP|handcard)>/g;
+  result = result.replace(valuePattern,function (match,owner,key) {
+    const targetSide = owner === "self" ? Number(side) : 1 - Number(side);
+    const player = targetSide === 1 ? fight.player : fight.enemy;
+    if (!player) return "0";
+    if (key === "HP") return String(Number(player.HP ?? 0));
+    if (key === "maxHP") return String(Number(player.MAXHP ?? player.maxHP ?? 0));
+    if (key === "MP") return String(Number(player.MP ?? 0));
+    if (key === "maxMP") return String(Number(player.MAXMP ?? player.maxMP ?? 0));
+    if (key === "handcard") {
+      const hand = targetSide === 1 ? fight.playerhand : fight.enemyhand;
+      return String(Array.isArray(hand) ? hand.length : 0);
+    }
+    return "0";
+  });
   try {
     const calculated = Function('"use strict"; return (' + result + ')')();
     return Number.isFinite(calculated) ? calculated : Number(expression);
