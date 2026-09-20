@@ -213,7 +213,8 @@
   },
     "描述":"造成4普通伤害",
     "MP":1,
-	  "tag":"handcard;handcarddamage"
+	  "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
   },
   "札弹2":{
   "类型":"基本卡",
@@ -228,7 +229,8 @@
   },
     "描述":"造成4普通伤害，重复2次",
     "MP":2,
-	  "tag":"handcard;handcarddamage"
+	  "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
   },
   "札弹3":{
   "类型":"基本卡",
@@ -243,7 +245,8 @@
   },
     "描述":"造成4普通伤害，重复4次",
     "MP":4,
-	  "tag":"handcard;handcarddamage"
+	  "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
   },
   "升天脚":{
   "类型":"基本卡",
@@ -257,10 +260,121 @@
         "value":1
         }
     }
-    },
-    "描述":"抽1张卡，获得1力量"
+    }
   },
-	  "tag":"handcard;handcardaddtagself;handcardaddcard"
+    "描述":"抽1张卡，获得1力量",
+	  "tag":"handcard;handcardaddtagself;handcardaddcard",
+    "sidetype":"typeNormal"
+  },
+  "封魔针":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":8,
+      "type":"普通"
+      },
+    "标记":{
+      "noability":{
+        "other":{
+          "value":2
+          }
+        }
+      }
+  },
+    "描述":"造成8点伤害，对方2回合内无法使用技能",
+    "MP":1,
+	  "tag":"handcard;handcardaddtagother;handcarddamage",
+    "sidetype":"typeNormal;selfdeleteonsite" /* 打出后自我删除 */
+  },
+  "阴阳玉1":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":4,
+      "type":"普通"
+      },
+    "标记":{
+      "护甲":{
+        "self":{
+          "value":2
+          }
+        }
+      }
+  },
+    "描述":"造成4点伤害，获得2点护甲",
+    "MP":1,
+	  "tag":"handcard;handcardaddtagself;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "阴阳玉2":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":6,
+      "type":"普通"
+      },
+    "标记":{
+      "护甲":{
+        "self":{
+          "value":4
+          }
+        }
+      }
+  },
+    "描述":"造成6点伤害，获得4点护甲",
+    "MP":2,
+	  "tag":"handcard;handcardaddtagself;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "宝具「阴阳飞鸟井」":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":5,
+      "type":"普通"
+      },
+    "标记":{
+      "护甲":{
+        "self":{
+          "value":5
+          }
+        }
+      },
+    "数值修改":{
+      "fight.<selfside>.HP":{ /* 为自己增加 */
+        "value":5
+      }
+    },
+    "抽卡":{
+      "fight.<selfside>.HP":{ /* 为自己增加 */
+      "value":2
+      }
+    }
+  },
+    "描述":"造成5点伤害，获得5点护甲，回复5HP，抽5张卡",
+    "MP":2,
+	  "tag":"handcard;handcardaddtagself;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "召神术":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+    "临时力量":{
+      "self":{
+        "value":2
+      }
+    },
+    "临时力量保护":{
+      "self":{
+        "value":1
+      }
+    }
+    }
+  },
+    "描述":"获得2临时力量。你的临时力量本回合结束不清零",
+	  "tag":"handcard;handcardaddtagself",
+    "sidetype":"typeNormal"
   },
   /* NPC */
   /* 毛玉 */
