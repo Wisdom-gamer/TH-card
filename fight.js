@@ -1105,105 +1105,192 @@ function parseValueRead(expression, fight, side) {
   }
   return true;
 }
-  async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange,sourceCardName) {
-    const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
-    const stepCount = 8;
-    const source = isObject(sourceData) ? sourceData : {};
-    let nextEffect = effect;
-    let effectIndex = 1;
-    const sourceName = String(cardName ?? "");
-    const sourceValuechange = isObject(valuechange) ? valuechange : {};
-    const sourceTag = String(source["tag"] ?? "").trim();
-    while (true) {
-      const effectKey = effectIndex === 1 ? "效果" : `效果_${effectIndex}`;
-      if (!Object.prototype.hasOwnProperty.call(source,effectKey)) {
-        break;
+async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange,sourceCardName) {
+  const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
+  const stepCount = 8;
+  const source = isObject(sourceData) ? sourceData : {};
+  let nextEffect = effect;
+  let effectIndex = 1;
+  let anyRulePassed = false;
+  const sourceName = String(cardName ?? "");
+  const sourceValuechange = isObject(valuechange) ? valuechange : {};
+  const sourceTag = String(source["tag"] ?? "").trim();
+
+  while (true) {
+    const effectKey = effectIndex === 1 ? "效果" : `效果_${effectIndex}`;
+    if (!Object.prototype.hasOwnProperty.call(source,effectKey)) {
+      break;
+    }
+
+    const sourceEffect = source[effectKey];
+    if (isObject(sourceEffect)) {
+      // 效果内规则，如无则使用外层，否则跳过
+      const ruleSource = {...source,...sourceEffect};
+      let rulePassed = true;
+
+      if (Object.prototype.hasOwnProperty.call(ruleSource,"rule")) {
+        const rules = String(ruleSource.rule ?? "").split(";").map(function (value) {
+          return value.trim();
+        }).filter(Boolean);
+        const tags = String(tag ?? "").split(";").map(function (value) {
+          return value.trim();
+        }).filter(Boolean);
+        rulePassed = rules.some(function (value) {
+          return tags.includes(value);
+        });
       }
-      const sourceEffect = source[effectKey];
-      if (isObject(sourceEffect)) {
-        const ruleSource = {...source,...sourceEffect};
-        if (!equipRuleMatch(ruleSource["rule"],tag)) {
-          effectIndex += 1;
-          continue;
+
+      if (rulePassed && Object.prototype.hasOwnProperty.call(ruleSource,"siderule")) {
+        const sideRule = String(ruleSource.siderule ?? "").trim();
+        if (sideRule === "self") {
+          rulePassed = Number(side) === Number(ownerSide);
+        } else if (sideRule === "other") {
+          rulePassed = Number(side) !== Number(ownerSide);
         }
-        if (!sideruleMatches(ruleSource["siderule"],side,ownerSide)) {
-          effectIndex += 1;
-          continue;
-        }
-        if (Object.prototype.hasOwnProperty.call(ruleSource,"valuerule") && !valueruleMatches(ruleSource.valuerule,effect)) {
-          effectIndex += 1;
-          continue;
-        }
-        let rulePassed = true;
-        if (Object.prototype.hasOwnProperty.call(ruleSource,"rule_js")) {
-          const funcName = String(ruleSource.rule_js ?? "").trim();
-          const inputText = String(ruleSource.input ?? "").trim();
-          const params = inputText === "" ? [] : inputText.split(";").map(function (value) { return value.trim(); });
-          if (funcName && typeof window[funcName] === "function") {
-            try {
-              rulePassed = !!(await window[funcName](...params,sourceName,sourceValuechange,sidetype,fight,side,type,effect));
-            } catch (error) {
-              console.error(`Error calling ${funcName}:`,error);
+      }
+
+      if (rulePassed && Object.prototype.hasOwnProperty.call(ruleSource,"valuerule")) {
+        const valueRules = ruleSource.valuerule;
+        if (!isObject(valueRules)) {
+          rulePassed = false;
+        } else {
+          for (const [reference,expression] of Object.entries(valueRules)) {
+            const match = reference.trim().match(/^<inputeffect\.([^<>]+)>$/);
+            if (!match || typeof expression !== "string" || expression.trim() === "") {
               rulePassed = false;
+              break;
             }
-          }
-        }
-        if (rulePassed) {
-          let filteredSource = sourceEffect;
-          for (const [effectName,effectConfig] of Object.entries(sourceEffect)) { // random,if not carduse
-            if (newEffectTypes.includes(effectName)) {
-              continue;
+
+            let data = effect;
+            for (const key of match[1].split(".")) {
+              if (!key || data === null || data === undefined || !Object.prototype.hasOwnProperty.call(data,key)) {
+                rulePassed = false;
+                break;
+              }
+              data = data[key];
             }
-            if (!isObject(effectConfig) || !Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
-              continue;
+
+            if (!rulePassed) break;
+            if (data === null || data === undefined) {
+              rulePassed = false;
+              break;
             }
-            const random = Number(effectConfig.random);
-            if (filteredSource === sourceEffect) {
-              filteredSource = {...sourceEffect};
-            }
-            if (Number.isFinite(random) && Math.random() >= random) {
-              delete filteredSource[effectName];
-            } else {
-              const keptConfig = {...effectConfig};
-              delete keptConfig.random;
-              filteredSource[effectName] = keptConfig;
-            }
-          }
-          const triggerPart = {};
-          const mergePart = {};
-          for (const [effectName,effectConfig] of Object.entries(filteredSource)) {
-            if (newEffectTypes.includes(effectName)) {
-              triggerPart[effectName] = effectConfig;
-            } else {
-              mergePart[effectName] = effectConfig;
-            }
-          }
-          const hasTrigger = Object.keys(triggerPart).length > 0;
-          const mergeResult = await effectAPI(side,type,nextEffect,tag,sidetype,fight,register,stepIndex,hasTrigger ? mergePart : filteredSource,ownerSide,sourceCount,sourceName,sourceValuechange);
-          if (mergeResult && Object.prototype.hasOwnProperty.call(mergeResult,"effect")) {
-            nextEffect = mergeResult.effect;
-          }
-          if (hasTrigger && !fight.ended) {
-            /* 以 ownerSide 为 self，解析触发效果的动态取值 */
-            const triggerResult = await effectAPI(ownerSide,type,null,tag,sidetype,fight,register,stepIndex,triggerPart,ownerSide,sourceCount,sourceName,sourceValuechange);
-            const triggerEffect = triggerResult && isObject(triggerResult.effect) ? prepareJudgementEffect(triggerResult.effect) : null;
-            if (triggerEffect !== null && !fight.ended) {
-              /* new carduse；反制卡作为触发来源以自身卡名入链，由 carduse 移入场中 */
-              const chainTag = sourceTag !== "" ? sourceTag : tag;
-              const chainCardName = String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
-              const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
-              await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange);
+
+            try {
+              const literal = typeof data === "number"
+                ? String(data)
+                : typeof data === "bigint"
+                  ? `${data}n`
+                  : JSON.stringify(data);
+
+              if (literal === undefined) {
+                rulePassed = false;
+                break;
+              }
+
+              const condition = expression.replace(/\$\{data\}/g,function () {
+                return `(${literal})`;
+              });
+              // if 
+              if (!Function('"use strict"; if (' + condition + ') { return true; } return false;')()) {
+                rulePassed = false;
+                break;
+              }
+            } catch (error) {
+              rulePassed = false;
+              break;
             }
           }
         }
       }
-      effectIndex += 1;
-      if (fight.ended) {
-        break;
+
+      if (rulePassed && Object.prototype.hasOwnProperty.call(ruleSource,"rule_js")) {
+        rulePassed = false;
+        const funcName = String(ruleSource.rule_js ?? "").trim();
+        const inputText = String(ruleSource.input ?? "").trim();
+        const params = inputText === "" ? [] : inputText.split(";").map(function (value) {
+          return value.trim();
+        });
+
+        if (funcName && typeof window[funcName] === "function") {
+          try {
+            rulePassed = !!(await window[funcName](
+              ...params,sourceName,sourceValuechange,sidetype,fight,side,type,effect
+            ));
+          } catch (error) {
+            console.error(`Error calling ${funcName}:`,error);
+            rulePassed = false;
+          }
+        }
+      }
+
+      if (rulePassed) {
+        anyRulePassed = true;
+        let filteredSource = sourceEffect;
+
+        for (const [effectName,effectConfig] of Object.entries(sourceEffect)) {
+          // random,if not carduse
+          if (newEffectTypes.includes(effectName)) {
+            continue;
+          }
+          if (!isObject(effectConfig) || !Object.prototype.hasOwnProperty.call(effectConfig,"random")) {
+            continue;
+          }
+
+          const random = Number(effectConfig.random);
+          if (filteredSource === sourceEffect) {
+            filteredSource = {...sourceEffect};
+          }
+
+          if (Number.isFinite(random) && Math.random() >= random) {
+            delete filteredSource[effectName];
+          } else {
+            const keptConfig = {...effectConfig};
+            delete keptConfig.random;
+            filteredSource[effectName] = keptConfig;
+          }
+        }
+
+        const triggerPart = {};
+        const mergePart = {};
+        for (const [effectName,effectConfig] of Object.entries(filteredSource)) {
+          if (newEffectTypes.includes(effectName)) {
+            triggerPart[effectName] = effectConfig;
+          } else {
+            mergePart[effectName] = effectConfig;
+          }
+        }
+
+        const hasTrigger = Object.keys(triggerPart).length > 0;
+        const mergeResult = await effectAPI(side,type,nextEffect,tag,sidetype,fight,register,stepIndex,hasTrigger ? mergePart : filteredSource,ownerSide,sourceCount,sourceName,sourceValuechange);
+
+        if (mergeResult && Object.prototype.hasOwnProperty.call(mergeResult,"effect")) {
+          nextEffect = mergeResult.effect;
+        }
+
+        if (hasTrigger && !fight.ended) {
+          const triggerResult = await effectAPI(ownerSide,type,null,tag,sidetype,fight,register,stepIndex,triggerPart,ownerSide,sourceCount,sourceName,sourceValuechange);
+          const triggerEffect = triggerResult && isObject(triggerResult.effect) ? prepareJudgementEffect(triggerResult.effect) : null;
+
+          if (triggerEffect !== null && !fight.ended) {
+            // 反制卡
+            const chainTag = sourceTag !== "" ? sourceTag : tag;
+            const chainCardName = String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
+            const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
+            await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true);
+          }
+        }
       }
     }
-    return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1,newEffectChain:false};
+
+    effectIndex += 1;
+    if (fight.ended) {
+      break;
+    }
   }
+
+  return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1,newEffectChain:false,rulePassed:anyRulePassed};
+}
   function sideruleMatches(siderule,incomingSide,equipOwnerSide) {
     const rule = String(siderule ?? "").trim();
     if (!rule || rule === "" || rule === "all") return true;
@@ -2314,11 +2401,11 @@ if (isObject(getCards)) {
             continue;
           }
           const loopValue = await advvalue(loopConfig,side,fight,cardName,valuechange,sidetype,type,cardEffect);
-          loopCount = Math.max(1,toInt(loopValue,1));
+          loopCount = Math.max(0,toInt(loopValue,1));
           break;
         }
       } else if (Number.isFinite(Number(loopConfig.value))) {
-        loopCount = Math.max(1,toInt(loopConfig.value,1));
+        loopCount = Math.max(0,toInt(loopConfig.value,1));
       }
     }
 

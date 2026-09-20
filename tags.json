@@ -76,7 +76,8 @@
       }
     },
     "rule":"turnend",
-    "siderule":"self"
+    "siderule":"self",
+    "描述":"本回合结束时临时力量不消失"
   },
   "冻结":{
     "效果":{
