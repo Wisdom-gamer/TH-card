@@ -514,7 +514,8 @@ function renderFightEquip(fight,owner) {
       value: toInt(config.value, 1),
       side: String(config.side || 'other').trim(),
       sidetypechange: String(config.sidetypechange || '').trim(),
-      newcardside: String(config.newcardside || 'self').trim().toLowerCase()
+      newcardside: String(config.newcardside || 'self').trim().toLowerCase(),
+      source: String(config.source || 'hand').trim().toLowerCase()
     };
   }
 
@@ -1803,6 +1804,13 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
     }
   }
     if (isObject(nextEffect) && isObject(nextEffect["卡牌选择"])) {
+    /* pick:pick only hand,other fallback to random */
+    const rawCardSelectConfig = nextEffect["卡牌选择"];
+    const rawCardSelectSource = String(rawCardSelectConfig.source ?? "hand").trim().toLowerCase();
+    if (String(rawCardSelectConfig.pick ?? "").trim().toLowerCase() === "pick" && rawCardSelectSource !== "hand") {
+      console.warn(`[${cardName}]在不支持的source使用了pick:pick`);
+      nextEffect = {...nextEffect,"卡牌选择":{...rawCardSelectConfig,pick:"random"}};
+    }
     const cardSelectConfig = nextEffect["卡牌选择"];
     if (!Object.prototype.hasOwnProperty.call(cardSelectConfig,"value")) {
       for (let valueTypeIndex = 0;valueTypeIndex < valuetypes.length;valueTypeIndex += 1) {
@@ -1996,92 +2004,143 @@ if (isObject(getCards)) {
     }
   }
 
-    /* 卡牌选择处理 */
+  /* 卡牌选择处理 */
   const cardSelection = isObject(effect) ? effect["卡牌选择"] : null;
   if (isObject(cardSelection)) {
     const selectConfig = parseCardSelection(cardSelection);
-    const selectCount = Math.max(0, toInt(selectConfig.value, 1));
-    const selectSide = selectConfig.side === 'self' ? side : (1 - side);
+    const selectMode = String(selectConfig.mode ?? "").trim().toLowerCase();
+    const selectPick = String(selectConfig.pick ?? "").trim().toLowerCase();
+    const selectSource = String(selectConfig.source ?? "hand").trim().toLowerCase();
+    const selectValue = Math.max(1,toInt(selectConfig.value,1));
+    const newCardSide = selectConfig.newcardside === "self" ? side : (1 - side);
+    const selectSide = selectConfig.side === "self" ? side : (1 - side);
 
-    /* value对4种模式都生效：按数量重复"选择+处理"，每轮处理1张 */
-    for (let pickIndex = 0;pickIndex < selectCount;pickIndex += 1) {
-      /* 选择一律在处理时进行（random每轮各掷一次） */
-      cardpick = null;
-      if (selectConfig.pick === 'random') {
-        // Random selection
-        cardpick = randomSelectCard(fight, selectSide);
-      } else if (selectConfig.pick === 'pick') {
-        // Manual selection only for player
-        if (side === 1) {
-          // Wait for manual selection
-          await new Promise(function(resolve) {
-            setupManualCardSelection(fight, selectSide, function(picked) {
-              cardpick = picked;
-              resolve();
-            });
+    /* 来源：默认手牌；fightcards=卡组，grave=坟场，site=场地，
+       sitenoself=场地但跳过自身（不跳过场地上自身之外的同名牌） */
+    let sourceCards;
+    let sourceOwners = null;
+    if (selectSource === "fightcards") {
+      sourceCards = selectSide === 1 ? fight.playercards : fight.enemycards;
+    } else if (selectSource === "grave") {
+      sourceCards = selectSide === 1 ? fight.fightplayergrave : fight.fightenemygrave;
+    } else if (selectSource === "site" || selectSource === "sitenoself") {
+      sourceCards = fight.fightsitecards;
+      sourceOwners = fight.fightsitecardsow;
+    } else {
+      sourceCards = selectSide === 1 ? fight.playerhand : fight.enemyhand;
+    }
+    if (!Array.isArray(sourceCards)) {
+      sourceCards = [];
+    }
+
+    /* 选择池：默认等于来源；sitenoself 时剔除自身（最后一个同名场地牌） */
+    let pickPool = sourceCards;
+    if (selectSource === "sitenoself" && selfName !== "") {
+      let selfIndex = -1;
+      for (let index = sourceCards.length - 1;index >= 0;index -= 1) {
+        if (parseFightCard(sourceCards[index]).name === selfName) {
+          selfIndex = index;
+          break;
+        }
+      }
+      if (selfIndex !== -1) {
+        pickPool = sourceCards.filter(function (cardEntry,index) { return index !== selfIndex; });
+      }
+    }
+
+    let pickedCards = [];
+    if (selectPick === "random") {
+      if (pickPool.length > 0) {
+        pickedCards.push(pickPool[Math.floor(Math.random() * pickPool.length)]);
+      }
+    } else if (selectPick === "top") {
+      if (pickPool.length > 0) {
+        pickedCards.push(pickPool[0]);
+      }
+    } else if (selectPick === "end") {
+      if (pickPool.length > 0) {
+        pickedCards.push(pickPool[pickPool.length - 1]);
+      }
+    } else if (selectPick === "topnext") {
+      pickedCards = pickPool.slice(0,selectValue);
+    } else if (selectPick === "endnext") {
+      pickedCards = pickPool.slice(Math.max(0,pickPool.length - selectValue));
+    } else if (selectPick === "pick") {
+      /* 手动选择仅支持手牌来源：玩家手动点选，敌方随机 */
+      if (side === 1) {
+        await new Promise(function(resolve) {
+          setupManualCardSelection(fight, selectSide, function(picked) {
+            cardpick = picked;
+            resolve();
           });
-        } else {
-          // Enemy uses random
-          cardpick = randomSelectCard(fight, selectSide);
+        });
+      } else {
+        cardpick = randomSelectCard(fight,selectSide);
+      }
+      const pickHand = selectSide === 1 ? fight.playerhand : fight.enemyhand;
+      if (Array.isArray(cardpick) && cardpick.length === 2 && Array.isArray(pickHand) && pickHand[Number(cardpick[1])] !== undefined) {
+        pickedCards.push(pickHand[Number(cardpick[1])]);
+      }
+    }
+
+    for (let pickIndex = 0;pickIndex < pickedCards.length;pickIndex += 1) {
+      const pickedCard = pickedCards[pickIndex];
+      if (pickedCard === null || pickedCard === undefined) {
+        continue;
+      }
+      const pickedInfo = parseFightCard(pickedCard);
+      const pickedName = pickedInfo.name;
+      if (!pickedName) {
+        continue;
+      }
+
+      /* site/sitenoself can not with remove */
+      if ((selectSource === "site" || selectSource === "sitenoself") && selectMode === "remove") {
+        continue;
+      }
+
+      /* top/end 单选模式下，value 表示 get/copy 给出的牌数 */
+      let giveCount = 1;
+      if ((selectPick === "top" || selectPick === "end") && (selectMode === "get" || selectMode === "copy")) {
+        giveCount = selectValue;
+      }
+
+      if (selectMode === "copy" || selectMode === "get") {
+        for (let addIndex = 0;addIndex < giveCount;addIndex += 1) {
+          if (selectConfig.sidetypechange !== "") {
+            /* 沿用原 sidetypechange 语义（如顺走 "+|other"） */
+            addcardtohand(pickedName,newCardSide,selectConfig.sidetypechange,pickedInfo.valuechange);
+          } else {
+            /* 完整保留被选卡实例的 sidetype 与 valuechange */
+            const targetHand = newCardSide === 1 ? fight.playerhand : fight.enemyhand;
+            if (Array.isArray(targetHand) && targetHand.length < 8) {
+              targetHand.push(createFightCardEntry(pickedName,pickedInfo.sidetype,pickedInfo.valuechange));
+            }
+          }
         }
       }
 
-      if (!cardpick || !Array.isArray(cardpick) || cardpick.length !== 2) {
-        break;
-      }
-
-      const pickedSide = Number(cardpick[0]);
-      const pickedIndex = Number(cardpick[1]);
-      const hand = pickedSide === 1 ? fight.playerhand : fight.enemyhand;
-
-      if (!hand || !hand[pickedIndex]) {
-        break;
-      }
-
-      const pickedCardEntry = hand[pickedIndex];
-      const pickedCard = parseFightCard(pickedCardEntry);
-      const pickedCardName = pickedCard.name;
-      const pickedSidetype = pickedCard.sidetype;
-      const pickedValuechange = pickedCard.valuechange;
-      const mode = selectConfig.mode;
-      const newcardside = String(selectConfig.newcardside || 'self').trim().toLowerCase();
-
-      // Determine target hand for new cards (for 'get' and 'copy' modes)
-      const targetSide = newcardside === 'other' ? (1 - Number(side)) : Number(side);
-      /* all交给addcardtohand分发给双方 */
-      const newCardSide = newcardside === 'all' ? 'all' : targetSide;
-
-      if (mode === 'get') {
-        // move to target side
-        hand.splice(pickedIndex, 1);
-        const newCardName = String(selectConfig.newcard || pickedCardName).trim();
-        const newSidetype = selectConfig.sidetypechange;
-        addcardtohand(newCardName,newCardSide,newSidetype,pickedValuechange);
-      } else if (mode === 'remove') {
-        // remove to side,not have effect
-        const cardName = pickedCardName;
-        const newSidetype = applySidetypeChange(pickedSidetype, selectConfig.sidetypechange);
-        hand.splice(pickedIndex, 1);
-        movetosite(fight,cardName,pickedSide,newSidetype,1,pickedValuechange);
-      } else if (mode === 'delete') {
-        // deldte in the fight
-        hand.splice(pickedIndex, 1);
-      } else if (mode === 'copy') {
-        // Copy to target side
-        addcardtohand(pickedCardName,newCardSide,selectConfig.sidetypechange,pickedValuechange);
-      }
-
-      // Render hands that may have changed
-      const renderSides = new Set(newcardside === 'all' ? [pickedSide, 0, 1] : [pickedSide, targetSide]);
-      for (const renderSide of renderSides) {
-        if (renderSide === 1) {
-          renderPlayerHand(fight);
-        } else {
-          renderEnemyHand(fight);
+      if (selectMode === "get" || selectMode === "remove" || selectMode === "delete") {
+        const removeIndex = sourceCards.indexOf(pickedCard);
+        if (removeIndex !== -1) {
+          sourceCards.splice(removeIndex,1);
+          if (Array.isArray(sourceOwners)) {
+            sourceOwners.splice(removeIndex,1);
+          }
+        }
+        /* remove：从来源移除并移入场中（沿用原卡牌选择 remove 语义） */
+        if (selectMode === "remove") {
+          movetosite(fight,pickedName,selectSide,applySidetypeChange(pickedInfo.sidetype,selectConfig.sidetypechange),1,pickedInfo.valuechange);
         }
       }
     }
     cardpick = null;
+
+    window.fightplayerhand = fight.playerhand;
+    window.fightenemyhand = fight.enemyhand;
+    renderPlayerHand(fight);
+    renderEnemyHand(fight);
+    exposeBattleGlobals(fight);
   }
   await new Promise(function (resolve) { setTimeout(resolve,1000); });
   return {side: side,type: type,effect: effect};
