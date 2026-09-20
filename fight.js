@@ -1004,7 +1004,7 @@ function renderAbilityButton(fight, owner) {
 
 const valuetypes = ["value_js","value_read"]; // 动态取值关键字,无value时按此顺序查找并调用advvalue 
   /* 规则元数据关键字：只用于规则匹配，不属于效果本身 */
-  const ruleMetaKeys = ["rule","siderule","rule_js"];
+  const ruleMetaKeys = ["rule","siderule","rule_js","valuerule"];
 function parseValueRead(expression, fight, side) {
   if (typeof expression !== "string") return Number(expression);
   let result = String(expression).trim();
@@ -1078,6 +1078,33 @@ function parseValueRead(expression, fight, side) {
     const tags = String(tag ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     return rules.some(function (value) { return tags.includes(value); });
   }
+  function valueruleMatches(rules,inputeffect) {
+  if (!isObject(rules)) return false;
+  for (const [reference,expression] of Object.entries(rules)) {
+    const match = reference.trim().match(/^<inputeffect\.([^<>]+)>$/);
+    if (!match || typeof expression !== "string" || expression.trim() === "") return false;
+    let data = inputeffect;
+    for (const key of match[1].split(".")) {
+      if (!key || data === null || data === undefined || !Object.prototype.hasOwnProperty.call(data,key)) {
+        return false;
+      }
+      data = data[key];
+    }
+    if (data === null || data === undefined) return false;
+    try {
+      const literal = typeof data === "number" ? String(data) : typeof data === "bigint" ? `${data}n` : JSON.stringify(data);
+      if (literal === undefined) return false;
+      const condition = expression.replace(/\$\{data\}/g,function () { return `(${literal})`; });
+      // if
+      if (!Function('"use strict"; if (' + condition + ') { return true; } return false;')()) {
+        return false;
+      }
+    } catch (error) {
+      return false;
+    }
+  }
+  return true;
+}
   async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange,sourceCardName) {
     const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
     const stepCount = 8;
@@ -1094,12 +1121,16 @@ function parseValueRead(expression, fight, side) {
       }
       const sourceEffect = source[effectKey];
       if (isObject(sourceEffect)) {
-        const ruleSource = sourceEffect["siderule"] !== undefined ? sourceEffect : source;
+        const ruleSource = {...source,...sourceEffect};
         if (!equipRuleMatch(ruleSource["rule"],tag)) {
           effectIndex += 1;
           continue;
         }
         if (!sideruleMatches(ruleSource["siderule"],side,ownerSide)) {
+          effectIndex += 1;
+          continue;
+        }
+        if (Object.prototype.hasOwnProperty.call(ruleSource,"valuerule") && !valueruleMatches(ruleSource.valuerule,effect)) {
           effectIndex += 1;
           continue;
         }

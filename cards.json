@@ -412,9 +412,8 @@
     "卡牌选择":{
       "mode":"copy",
       "pick":"top",
-      "source":"fightcards",
+      "source":"site",
       "value":1,
-	    "side":"self",
 	    "sidetypechange":"+|temp",
 	    "newcardside":"self"
     }
