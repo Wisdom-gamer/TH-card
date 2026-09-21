@@ -2226,16 +2226,7 @@ if (isObject(getCards)) {
 
       if (selectMode === "copy" || selectMode === "get") {
         for (let addIndex = 0;addIndex < giveCount;addIndex += 1) {
-          if (selectConfig.sidetypechange !== "") {
-            /* 沿用原 sidetypechange 语义（如顺走 "+|other"） */
-            addcardtohand(pickedName,newCardSide,selectConfig.sidetypechange,pickedInfo.valuechange);
-          } else {
-            /* 完整保留被选卡实例的 sidetype 与 valuechange */
-            const targetHand = newCardSide === 1 ? fight.playerhand : fight.enemyhand;
-            if (Array.isArray(targetHand) && targetHand.length < 8) {
-              targetHand.push(createFightCardEntry(pickedName,pickedInfo.sidetype,pickedInfo.valuechange));
-            }
-          }
+          addcardtohand(pickedName,newCardSide,selectConfig.sidetypechange,pickedInfo.valuechange);
         }
       }
 
@@ -2247,7 +2238,7 @@ if (isObject(getCards)) {
             sourceOwners.splice(removeIndex,1);
           }
         }
-        /* remove：从来源移除并移入场中（沿用原卡牌选择 remove 语义） */
+        /* remove */
         if (selectMode === "remove") {
           movetosite(fight,pickedName,selectSide,applySidetypeChange(pickedInfo.sidetype,selectConfig.sidetypechange),1,pickedInfo.valuechange);
         }
