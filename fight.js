@@ -1275,8 +1275,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
           const triggerEffect = triggerResult && isObject(triggerResult.effect) ? prepareJudgementEffect(triggerResult.effect) : null;
 
           if (triggerEffect !== null && !fight.ended) {
-            // 反制卡
-            const chainTag = String(sourceTag !== "" ? sourceTag : (tag ?? "")) .split(";").map(function (value) { return value.trim(); }) .filter(function (value) { return value !== "turnend"; }).join(";");
+            const chainTag = String(sourceTag ?? "").trim();
             const chainCardName = String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
             const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
             await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true);
