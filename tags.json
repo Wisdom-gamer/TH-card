@@ -166,6 +166,26 @@
     "siderule":"self"
     },
     "描述":"无法使用技能"
+  },
+  "mpneedless":{
+  "效果":{
+    "数值修改":{
+      "fight.<selfside>.cardmpchange":{
+        "value_read":"<self.tags.mpneedless>"
+      }
+    }
+  },
+  "效果_2":{
+    "标记":{
+      "mpneedless":{
+        "self":{
+          "value":-65535
+        }
+      }
+    }
+  },
+  "rule":"turnend",
+  "siderule":"self",
   }
   
 }
