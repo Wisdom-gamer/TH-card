@@ -394,6 +394,26 @@
     "tag":"handcard;handcarddamage;handcarduseMP",
     "sidetype":"typeNormal"
   },
+  "【飞翔于空中程度的能力】":{
+  "类型":"基本卡",
+  "效果":{
+    "数值修改":{
+      "fight.<selfside>.cardmpchange":{ /* 减少MP消耗 */
+      "value":-1
+    },
+    "标记":{
+    "mpneedless":{
+      "self":{
+      "value":1
+      }
+    }
+    }
+  },
+    "描述":"本回合所有牌费用-1",
+    "MP":2,
+	  "tag":"handcard;handcardaddtagself;handcardlessneedmpself",
+    "sidetype":"typeNormal"
+  },
   "召神术":{
   "类型":"基本卡",
   "效果":{

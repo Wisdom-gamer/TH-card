@@ -755,7 +755,8 @@ function renderFightEquip(fight,owner) {
         MAXHP: enemyHP,
 
         MP: enemyMP,
-        MAXMP: enemyMP
+        MAXMP: enemyMP,
+        cardmpchange: 0
       },
 
       playerability: pc && pc.ability ? [[String(pc.ability.name || ""), toInt(pc.ability.turn, 0), 0]] : [],
@@ -767,7 +768,8 @@ function renderFightEquip(fight,owner) {
         HP:adventureStats.HP,
         MAXHP:adventureStats.MAXHP,
         MP:adventureStats.MAXMP,
-        MAXMP:adventureStats.MAXMP
+        MAXMP:adventureStats.MAXMP,
+        cardmpchange:0
       },
 
       /* 玩家牌组 */
@@ -1274,7 +1276,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
 
           if (triggerEffect !== null && !fight.ended) {
             // 反制卡
-            const chainTag = sourceTag !== "" ? sourceTag : tag;
+            const chainTag = String(sourceTag !== "" ? sourceTag : (tag ?? "")) .split(";").map(function (value) { return value.trim(); }) .filter(function (value) { return value !== "turnend"; }).join(";");
             const chainCardName = String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
             const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
             await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true);
@@ -1578,8 +1580,10 @@ function renderFightBags() {
     if (!tagList || tagList.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
     const tagDefs = await loadTagsDatabase();
     const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
-    for (let index = startIndex;index < tagList.length;index += 1) {
-      const entry = tagList[index];
+    // lock tags
+    for (const entry of tagList.slice(startIndex)) {
+      const index = tagList.indexOf(entry);
+      if (index === -1) continue;
       const tagName = String(entry[0] ?? "");
       const tagCount = Number(entry[1] ?? 0);
       if (!tagName || tagCount <= 0) continue;
@@ -1598,8 +1602,10 @@ function renderFightBags() {
     if (!tagList || tagList.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
     const tagDefs = await loadTagsDatabase();
     const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
-    for (let index = startIndex;index < tagList.length;index += 1) {
-      const entry = tagList[index];
+    // lock tags
+    for (const entry of tagList.slice(startIndex)) {
+      const index = tagList.indexOf(entry);
+      if (index === -1) continue;
       const tagName = String(entry[0] ?? "");
       const tagCount = Number(entry[1] ?? 0);
       if (!tagName || tagCount <= 0) continue;
@@ -1650,7 +1656,7 @@ function renderFightBags() {
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 // 卡牌可用性检查
-function checkCardCanUse(cardEntry, player) {
+function checkCardCanUse(cardEntry,player,isHandCard = false) {
   const parsedCard = parseFightCard(cardEntry);
   const cardName = parsedCard.name;
   const card = getFightCardData(cardName);
@@ -1664,7 +1670,9 @@ function checkCardCanUse(cardEntry, player) {
   }
   
   // 检查MP不足
-  const mpCost = Number(parsedCard.valuechange ? parsedCard.valuechange.MP : 0);
+  const baseCost = Number(parsedCard.valuechange.MP ?? card.MP ?? 0);
+  const costChange = isHandCard && isObject(player) ? Number(player.cardmpchange ?? 0) : 0;
+  const mpCost = Math.max(0,(Number.isFinite(baseCost) ? baseCost : 0) + (Number.isFinite(costChange) ? costChange : 0));
   if (Number.isFinite(mpCost) && mpCost > 0) {
     const playerMP = isObject(player) ? Number(player.MP) : 0;
     if (playerMP < mpCost) {
@@ -1693,7 +1701,7 @@ function playerCardCanUse(fight, cardEntry, isBackpack) {
   }
   
   // 检查卡牌是否可用
-  if (!checkCardCanUse(cardEntry, fight.player)) {
+  if (!checkCardCanUse(cardEntry,fight.player,true)) {
     return false;
   }
   
@@ -2256,7 +2264,7 @@ if (isObject(getCards)) {
   return {side: side,type: type,effect: effect};
 }
 
-  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {},nextto = null){
+  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {},nextto = null,rulesChecked = false,usedMP = null){
   let ignore = "";
   fight = fight || window.fight;
 
@@ -2424,7 +2432,7 @@ if (isObject(getCards)) {
       }
 
       const initialEffectResult = await effectAPI(Number(side) === 1 ? 1 : 0,type,currentEffect,tag,sidetype,fight,-1,-1,null,Number(side) === 1 ? 1 : 0,1,cardName,valuechange);
-      // 每次使用时，先通过 effectAPI 进行一次基础效果解析，再进入判定链
+      // 先通过 effectAPI 进行一次基础效果解析，再进入判定链
       let result = {
         side:Number(side) === 1 ? 1 : 0,
         type:type,
@@ -2440,7 +2448,7 @@ if (isObject(getCards)) {
         if (ignoreSteps.has(step.name)) {
           continue;
         }
-        // register 只作用于 startStep 指定的那一层（表示该层已判定到 register 为止，从下一项继续）；其后的层级必须从头判定，否则会错误跳过低索引来源
+        // register 只作用于 startStep 指定的那一层（表示该层已判定到 register 为止，从下一项继续）；其后的层级必须从头判定
         const stepRegister = i === startStep ? initialRegister : -1;
         result = await runJudgementStep(step,result,fight,stepRegister,i);
 
@@ -2491,7 +2499,7 @@ function bindPlayerHandActions(fight) {
     const parsedCard = parseFightCard(cardEntry);
     const cardName = parsedCard.name;
     
-    // 使用新的卡牌可用性检查
+    // 卡牌可用性检查
     button.disabled = !playerCardCanUse(fight, cardEntry, false);
     
     button.onclick = async function () {
@@ -2512,7 +2520,9 @@ function bindPlayerHandActions(fight) {
       const effect = card ? card["效果"] : null;
       const tagValue = card ? String(card["tag"] ?? "").trim() : "";
       const tag = tagValue;
-      const mpCost = Number(valuechange ? valuechange.MP : 0);
+      const baseCost = Number(valuechange.MP ?? card?.MP ?? 0);
+      const costChange = Number(fight.player.cardmpchange ?? 0);
+      const mpCost = Math.max(0,(Number.isFinite(baseCost) ? baseCost : 0) + (Number.isFinite(costChange) ? costChange : 0));
       if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) {
         updatePlayerHandUI(fight);
         return;
@@ -2524,7 +2534,7 @@ function bindPlayerHandActions(fight) {
       if (Number.isFinite(mpCost) && mpCost > 0) {
         fight.player.MP -= mpCost;
       }
-      const res = await carduse(1, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange);
+      const res = await carduse(1, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange, null, false, mpCost);
       const outcome = getFightOutcome(fight);
       if (outcome === "win" || outcome === "lost") {
         finishFight(fight,outcome);
@@ -2556,12 +2566,16 @@ async function fightenemyactioncard(fight) {
     } else if (type === "装备卡") {
       shouldUse = true;
     }
-    if (!shouldUse) continue;
+    if (!shouldUse || !checkCardCanUse(cardEntry,fight.enemy,true)) continue;
+    const baseCost = Number(valuechange.MP ?? card.MP ?? 0);
+    const costChange = Number(fight.enemy.cardmpchange ?? 0);
+    const mpCost = Math.max(0,(Number.isFinite(baseCost) ? baseCost : 0) + (Number.isFinite(costChange) ? costChange : 0));
     fight.enemyhand.splice(index, 1);
     index -= 1;
     renderEnemyHand(fight);
     exposeBattleGlobals(fight);
-    await carduse(0, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange);
+    fight.enemy.MP -= mpCost;
+    await carduse(0, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange, null, false, mpCost);
     await new Promise(function (resolve) { setTimeout(resolve, 1000); });
   }
 }
