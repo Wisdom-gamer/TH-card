@@ -185,7 +185,7 @@
     }
   },
   "rule":"turnend",
-  "siderule":"self",
+  "siderule":"self"
   }
   
 }

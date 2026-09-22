@@ -400,6 +400,7 @@
     "数值修改":{
       "fight.<selfside>.cardmpchange":{ /* 减少MP消耗 */
       "value":-1
+      }
     },
     "标记":{
     "mpneedless":{
@@ -464,6 +465,26 @@
   },
     "描述":"造成1普通伤害，抽1张卡",
 	  "tag":"handcard;handcarddamage;handcardaddcard",
+    "sidetype":"typeNormal"
+  },
+  "亚空点穴":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":6,
+	  "type":"普通"
+    },
+    "卡牌选择":{
+      "mode":"get",
+      "source":"site",
+      "value":3,
+	    "newcardside":"self",
+	    "filler_js":"fillerformpneed",
+	    "input":"0;random;force" /* MP;pick;mode*/
+    }
+  },
+    "tag":"handcard;handcardaddcard",
+    "描述":"将出牌顶3张0费牌拿回手牌",
     "sidetype":"typeNormal"
   },
   "问神":{
