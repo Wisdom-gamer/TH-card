@@ -931,7 +931,7 @@ function renderAbilityButton(fight, owner) {
         const type = card["类型"] ?? "技能卡";
         const tagValue = String(card["tag"] ?? "").trim();
 
-        await carduse(1,type,effect,tagValue,cardName,fight,["ability"]);
+        await carduse(1,type,card,tagValue,cardName,fight,["ability"]);
 
         // set remaining cooldown to total
         const totalVal = toInt(abilityEntry[1], 0);
@@ -1117,6 +1117,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
   let nextEffect = effect;
   let effectIndex = 1;
   let anyRulePassed = false;
+  let chainCardUsed = false;
   const sourceName = String(cardName ?? "");
   const sourceValuechange = isObject(valuechange) ? valuechange : {};
   const sourceTag = String(source["tag"] ?? "").trim();
@@ -1259,7 +1260,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
         const triggerPart = {};
         const mergePart = {};
         for (const [effectName,effectConfig] of Object.entries(filteredSource)) {
-          if (newEffectTypes.includes(effectName)) {
+          if (newEffectTypes.includes(effectName) || effectName === "loop") {
             triggerPart[effectName] = effectConfig;
           } else {
             mergePart[effectName] = effectConfig;
@@ -1279,7 +1280,8 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
 
           if (triggerEffect !== null && !fight.ended) {
             const chainTag = String(sourceTag ?? "").trim();
-            const chainCardName = String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
+            const chainCardName = !chainCardUsed && String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
+            chainCardUsed = chainCardUsed || chainCardName !== null;
             const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
             await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true);
           }
@@ -1462,7 +1464,7 @@ function renderFightBags() {
           fight.player.MP -= mpCost;
         }
         
-        await carduse(1, type, effect, tag, cardName, fight, [], -1, 0, {});
+        await carduse(1,type,card,tag,cardName,fight,[],-1,0,{});
         const outcome = getFightOutcome(fight);
         if (outcome === "win" || outcome === "lost") {
           finishFight(fight, outcome);
@@ -1542,15 +1544,16 @@ function renderFightBags() {
     const counterSide = side === 1 ? 1 : 0;
     const hand = counterSide === 1 ? fight.playerhand : fight.enemyhand;
     const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
-    for (let index = startIndex;index < hand.length;index += 1) {
-      const cardEntry = hand[index];
+    for (const cardEntry of hand.slice(startIndex)) {
+      const handIndex = hand.indexOf(cardEntry);
+      if (handIndex === -1) continue;
       const parsedCard = parseFightCard(cardEntry);
       const sourceCardName = parsedCard.name;
       const sourceCard = getFightCardData(sourceCardName);
       const sourceTag = sourceCard ? String(sourceCard["tag"] ?? "").trim() : "";
       const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
+      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,handIndex,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
       effect = result.effect;
       if (fight.ended) break;
     }
@@ -1643,16 +1646,16 @@ function renderFightBags() {
     const counterSide = side === 1 ? 0 : 1;
     const hand = counterSide === 1 ? fight.playerhand : fight.enemyhand;
     const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
-    for (let index = startIndex;index < hand.length;index += 1) {
-      const cardEntry = hand[index];
+    for (const cardEntry of hand.slice(startIndex)) {
+      const handIndex = hand.indexOf(cardEntry);
+      if (handIndex === -1) continue;
       const parsedCard = parseFightCard(cardEntry);
       const sourceCardName = parsedCard.name;
       const sourceCard = getFightCardData(sourceCardName);
       const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
       if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
+      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,handIndex,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
       effect = result.effect;
-      /* 触发的新效果链已由 effectruleAPI 内部从触发位置开始结算，这里继续判定当前链 */
       if (fight.ended) break;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
@@ -2304,13 +2307,15 @@ if (isObject(getCards)) {
   const ignoreSteps = new Set(String(ignoreValue ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean));
 
   let effectList = [];
-  if (isObject(cardData)) {
-    if (Object.prototype.hasOwnProperty.call(cardData,"效果")) {
-      effectList.push(cardData["效果"]);
+  if (isObject(effect) && (Object.prototype.hasOwnProperty.call(effect,"效果") || Object.prototype.hasOwnProperty.call(effect,"效果_2"))) {
+    if (isObject(effect["效果"])) {
+      effectList.push(effect["效果"]);
     }
     let effectIndex = 2;
-    while (Object.prototype.hasOwnProperty.call(cardData,`效果_${effectIndex}`)) {
-      effectList.push(cardData[`效果_${effectIndex}`]);
+    while (Object.prototype.hasOwnProperty.call(effect,`效果_${effectIndex}`)) {
+      if (isObject(effect[`效果_${effectIndex}`])) {
+        effectList.push(effect[`效果_${effectIndex}`]);
+      }
       effectIndex += 1;
     }
   }
@@ -2556,7 +2561,7 @@ function bindPlayerHandActions(fight) {
       if (Number.isFinite(mpCost) && mpCost > 0) {
         fight.player.MP -= mpCost;
       }
-      const res = await carduse(1, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange, null, false, mpCost);
+      const res = await carduse(1,type,card,tag,cardName,fight,sidetype,-1,0,valuechange,null,false,mpCost);
       const outcome = getFightOutcome(fight);
       if (outcome === "win" || outcome === "lost") {
         finishFight(fight,outcome);
@@ -2597,7 +2602,7 @@ async function fightenemyactioncard(fight) {
     renderEnemyHand(fight);
     exposeBattleGlobals(fight);
     fight.enemy.MP -= mpCost;
-    await carduse(0, type, effect, tag, cardName, fight, sidetype, -1, 0, valuechange, null, false, mpCost);
+    await carduse(0,type,card,tag,cardName,fight,sidetype, -1, 0, valuechange, null, false, mpCost);
     await new Promise(function (resolve) { setTimeout(resolve, 1000); });
   }
 }
@@ -2624,7 +2629,7 @@ async function fightenemyactioncard(fight) {
                const effect = abilityCard ? abilityCard["效果"] : null;
                const type = abilityCard ? abilityCard["类型"] : null;
                const tagValue = abilityCard ? String(abilityCard["tag"] ?? "").trim() : "";
-               await carduse(0,type,effect,tagValue,name,fight,["ability"]);
+               carduse(0,type,abilityCard,tagValue,name,fight,["ability"]);
                // set remaining cooldown to total
                entry[2] = Math.max(0, total);
                await new Promise(function (resolve) { setTimeout(resolve, 1000); });
