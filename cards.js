@@ -28,7 +28,7 @@
       return {
         name: targetName,
         description: String(card["描述"] ?? ""),
-        data: card
+        data:card.MP === null || card.MP === undefined || (typeof card.MP === "string" && card.MP.trim() === "") ? {...card,MP:0} : card
       };
     }
 

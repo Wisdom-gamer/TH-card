@@ -477,10 +477,9 @@
     "卡牌选择":{
       "mode":"get",
       "source":"site",
-      "value":3,
 	    "newcardside":"self",
 	    "filler_js":"fillerformpneed",
-	    "input":"0;random;force" /* MP;pick;mode*/
+	    "input":"0;random;force;3" /* MP;pick;mode;value*/
     }
   },
     "tag":"handcard;handcardaddcard",

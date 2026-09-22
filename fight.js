@@ -511,6 +511,9 @@ function renderFightEquip(fight,owner) {
     return {
       mode: String(config.mode || 'get').trim(),
       pick: String(config.pick || 'random').trim(),
+      hasFiller: Object.prototype.hasOwnProperty.call(config, 'filler_js'),
+      filler_js: String(config.filler_js ?? '').trim(),
+      input: String(config.input ?? ''),
       value: toInt(config.value, 1),
       side: String(config.side || 'other').trim(),
       sidetypechange: String(config.sidetypechange || '').trim(),
@@ -2175,7 +2178,27 @@ if (isObject(getCards)) {
     }
 
     let pickedCards = [];
-    if (selectPick === "random") {
+    if (selectConfig.hasFiller) {
+      // js
+      const filler = window[selectConfig.filler_js];
+      if (typeof filler === "function") {
+        const params = selectConfig.input === "" ? [] : selectConfig.input.split(";").map(function (value) { return value.trim(); });
+        try {
+          const selected = await filler(pickPool.slice(),...params);
+          const remaining = pickPool.slice();
+          if (Array.isArray(selected)) {
+            for (const entry of selected) {
+              const index = remaining.indexOf(entry);
+              if (index === -1) continue;
+              pickedCards.push(entry);
+              remaining.splice(index,1);
+            }
+          }
+        } catch (error) {
+          console.error(`Error calling ${selectConfig.filler_js}:`,error);
+        }
+      }
+    } else if (selectPick === "random") {
       if (pickPool.length > 0) {
         pickedCards.push(pickPool[Math.floor(Math.random() * pickPool.length)]);
       }
@@ -2225,9 +2248,9 @@ if (isObject(getCards)) {
         continue;
       }
 
-      /* top/end 单选模式下，value 表示 get/copy 给出的牌数 */
+      // filler
       let giveCount = 1;
-      if ((selectPick === "top" || selectPick === "end") && (selectMode === "get" || selectMode === "copy")) {
+      if ((selectConfig.hasFiller ? pickedCards.length === 1 : (selectPick === "top" || selectPick === "end")) && (selectMode === "get" || selectMode === "copy")) {
         giveCount = selectValue;
       }
 

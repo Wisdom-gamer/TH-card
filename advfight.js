@@ -176,7 +176,7 @@
       }
       return "0";
     });
-    // 将替换后的算式求值（与 fight.js parseValueRead 一致），例如 "10/10"
+    // 将替换后的算式求值
     try {
       const calculated = Function('"use strict"; return (' + text + ')')();
       result = Number.isFinite(Number(calculated)) ? Number(calculated) : Number(text);
@@ -208,7 +208,60 @@
 
   return result;
 }
+  function fillerformpneed(candidates, mpNeed, pick, mode, count = 1, source = "base") {
+    if (!Array.isArray(candidates)) return [];
+    const start = Number(mpNeed);
+    const selection = String(pick ?? "").trim().toLowerCase();
+    const fillMode = String(mode ?? "").trim().toLowerCase();
+    const mpSource = String(source ?? "").trim().toLowerCase() || "base";
+    if (mpNeed === null || mpNeed === undefined || String(mpNeed).trim() === "" || !Number.isFinite(start)) return [];
+    if (!["random","top","topnext","end","endnext"].includes(selection)) return [];
+    if (!["force","autoh","autol"].includes(fillMode) || !["base","use"].includes(mpSource)) return [];
+    const requested = count === "" ? 1 : Number(count);
+    const limit = selection === "top" || selection === "end" ? 1 : Math.floor(requested);
+    if (!Number.isFinite(limit) || limit <= 0) return [];
 
+    const cards = candidates.map(function (entry) {
+      const parsed = window.parseFightCard(entry);
+      let value;
+      if (mpSource === "use") {
+        value = parsed.valuechange.MP;
+      } else {
+        const info = window.cardinfoAPI(1,parsed.name);
+        value = info && info.data ? info.data.MP : undefined;
+      }
+      const valid = value !== null && value !== undefined && String(value).trim() !== "" && Number.isFinite(Number(value));
+      return {entry:entry,MP:valid ? Number(value) : NaN};
+    });
+    // 空费用档可直接跳过，仍按±1可到达的档位依次补选，避免异常大输入造成长循环。
+    const values = fillMode === "force" ? [start] : [...new Set(cards.map(function (card) { return card.MP; }))]
+      .filter(function (value) {
+        const steps = fillMode === "autoh" ? value - start : start - value;
+        return Number.isFinite(value) && Number.isInteger(steps) && steps >= 0 && (fillMode === "autoh" ? value <= 10 : value >= 0);
+      }).sort(function (a,b) { return fillMode === "autoh" ? a - b : b - a; });
+    const selected = [];
+    for (const value of values) {
+      const matches = cards.filter(function (card) { return card.MP === value; });
+      const needed = limit - selected.length;
+      let picked;
+      if (selection === "random") {
+        picked = [];
+        while (picked.length < needed && matches.length > 0) {
+          const index = Math.floor(Math.random() * matches.length);
+          picked.push(matches.splice(index,1)[0]);
+        }
+      } else if (selection === "end" || selection === "endnext") {
+        picked = matches.slice(Math.max(0,matches.length - needed));
+      } else {
+        picked = matches.slice(0,needed);
+      }
+      for (const card of picked) selected.push(card.entry);
+      if (selected.length >= limit || fillMode === "force") break;
+    }
+    return selected;
+  }
+
+  window.fillerformpneed = fillerformpneed;
   window.advvalueread = advvalueread;
   window.checksidetype = checksidetype;
   window.checkmp = checkmp;
