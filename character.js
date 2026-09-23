@@ -289,21 +289,13 @@ function mergePCData(base, target) {
   for (const [key, value] of Object.entries(target || {})) {
     if (key === "level" && isObject(value) && isObject(result.level)) {
       result.level = {
-        ...result.level
+        ...result.level,
+        ...value
       };
-
-      for (const [levelName, levelData] of Object.entries(value)) {
-        if (!Object.prototype.hasOwnProperty.call(result.level, levelName)) {
-          result.level[levelName] = levelData;
-        }
-      }
-
       continue;
     }
 
-    if (!Object.prototype.hasOwnProperty.call(result, key)) {
       result[key] = value;
-    }
   }
 
   return result;

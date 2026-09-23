@@ -1038,7 +1038,7 @@
     }
 
     if (result === false) {
-      keys.add("lose");
+      keys.add("lost");
       return Array.from(keys);
     }
 
@@ -1079,6 +1079,10 @@
 
     return Array.from(keys);
   }
+function getLevelUpAdd(pc,key,fromLevel) { // pcname.levelupadd*
+  const list = pc && Array.isArray(pc[key]) ? pc[key] : [];
+  return toInt(list[fromLevel - 1],0);
+}
 function PCLevelUP() {
   const character = readCharacterState();
 
@@ -1102,12 +1106,21 @@ function PCLevelUP() {
 
   character.XP = stats.XP;
   character.Level = currentLevel + 1;
+  stats.maxHP += getLevelUpAdd(pc, "levelupaddmaxHP", currentLevel);
+  stats.maxMP += getLevelUpAdd(pc, "levelupaddmaxMP", currentLevel);
+  window.maxHP = stats.maxHP;
+  window.maxMP = stats.maxMP;
+  character.maxHP = stats.maxHP;
+  character.maxMP = stats.maxMP;
+  character.MB = Math.max(0,toInt(character.MB,0) + getLevelUpAdd(pc,"levelupaddmaxMB",currentLevel));
+  character.ME = Math.max(0,toInt(character.ME,0) + getLevelUpAdd(pc,"levelupaddmaxME",currentLevel));
+  
+  localStorage.setItem(CHARACTER_KEY,JSON.stringify(character));
+  if (window.playerBag && typeof window.playerBag.setLimits === "function") {
+    window.playerBag.setLimits(character.ME, character.MB);
+  }
 
-  localStorage.setItem(
-    CHARACTER_KEY,
-    JSON.stringify(character)
-  );
-
+  syncStatsToDom(true);
   showLevelUpChoice(character.name);
 }
 function showLevelUpChoice(pcName) {
@@ -1201,18 +1214,16 @@ function showLevelUpChoice(pcName) {
     for (const outcome of outcomes) {
       const ops = cardData.reaction[outcome];
       if (ops.XP !== undefined) {
+      if (!isObject(ops)) continue;
         const xp = Number(ops.XP);
 
         if (Number.isFinite(xp)) {
-
           stats.XP += Math.floor(xp);
-
           changed = true;
-
+          syncStatsToDom(true); 
           PCLevelUP();
         }
       }
-      if (!isObject(ops)) continue;
 
       if (ops.delete !== undefined) {
         const target = String(ops.delete);
