@@ -50,6 +50,24 @@
   }
 
   window.cardinfoAPI = cardinfoAPI;
+  function fightcardImage(cardName) {
+    const name = String(cardName ?? "").trim();
+
+    if (name === "") {
+      return "null.png";
+    }
+
+    const database = window.cardDatabase;
+    const card = (database && typeof database === "object") ? database[name] : null;
+
+    if (card && card["image"]) {
+      return String(card["image"]);
+    }
+
+    return `images/fight/${name}.png`;
+  }
+
+  window.fightcardImage = fightcardImage;
   let pcDatabase = {};
   function stripJsonComments(text) {
     let result = "";

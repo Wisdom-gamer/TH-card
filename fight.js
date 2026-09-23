@@ -215,23 +215,7 @@ function parseFightCard(cardEntry) {
     return {HP: hp,MAXHP: maxHP,MP: mp,MAXMP: maxMP};
   }
 
-  function getPlayerCardImage(cardName) {
-    const database = window.cardDatabase;
-
-    const card = isObject(database) ? database[cardName] : null;
-
-    return card && card["image"];
-  }
-
-  function getEnemyCardImage(cardName) {
-    const database = window.adventureCardsDatabase;
-
-    const card = isObject(database) ? database[cardName] : null;
-
-    return card && card["image"];
-  }
-
-  function renderSlots(slotSelector,cards,imageResolver,labelPrefix) {
+  function renderSlots(slotSelector,cards,labelPrefix) {
     const slots = Array.from(document.querySelectorAll(slotSelector));
 
     slots.forEach(
@@ -253,7 +237,7 @@ function parseFightCard(cardEntry) {
           button.setAttribute("aria-label",cardName);
 
           if (img) {
-            img.src = imageResolver(cardName);
+            img.src = window.fightcardImage(cardName);
             img.alt = cardName;
           }
         } else {
@@ -369,8 +353,6 @@ function renderFightSite(fight) {
       function (cardEntry, index) {
         const cardName = parseFightCard(cardEntry).name;
 
-        const owner = fight.fightsitecardsow[index];
-
         const button = document.createElement("button");
 
         const img = document.createElement("img");
@@ -384,8 +366,7 @@ function renderFightSite(fight) {
 
         button.setAttribute("aria-label",cardName);
         bindFightCardInfo(button,1,cardName);
-        /* 1 = 玩家 0 = 敌人 */
-        img.src = owner === 1 ? getPlayerCardImage(cardName) : getEnemyCardImage(cardName);
+        img.src = window.fightcardImage(cardName);
 
         img.alt = cardName;
 
@@ -405,8 +386,6 @@ function renderFightEquip(fight,owner) {
 
     const cards = owner === 1 ? fight.fightplayerequip : fight.fightenemyequip;
 
-    const imageResolver = owner === 1 ? getPlayerCardImage : getEnemyCardImage;
-
     box.innerHTML = "";
 
     cards.forEach(
@@ -421,7 +400,7 @@ function renderFightEquip(fight,owner) {
 
         slot.setAttribute("aria-label",cardName);
         bindFightCardInfo(slot,1,cardName);
-        img.src = imageResolver(cardName);
+        img.src = window.fightcardImage(cardName);
         img.alt = cardName;
 
         slot.appendChild(img);
@@ -808,7 +787,7 @@ function renderFightEquip(fight,owner) {
 
   function renderEnemyHand(fight) {
     const cards = fight.enemyhand;
-    renderSlots(".game-area .player.top .slots .card-slot",cards,getEnemyCardImage,"敌人");
+    renderSlots(".game-area .player.top .slots .card-slot",cards,"敌人");
   }
 
 function drawPlayerCards(DCnumber) {
@@ -842,7 +821,7 @@ function drawEnemyCards(DCnumber) {
   updateFightPileCounts(fight);
 }
   function renderPlayerHand(fight) {
-    renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,getPlayerCardImage,"玩家");
+    renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,"玩家");
   }
   function positionFightAbility(fight,owner) {
   const containerId = owner === 1 ? "fightplayerability" : "fightenemyability";
@@ -890,7 +869,7 @@ function renderAbilityButton(fight, owner) {
     btn.setAttribute("aria-label", cardName + (remaining > 0 ? `（冷却${remaining}回合）` : ""));
 
     const img = document.createElement("img");
-    img.src = encodeURI(`images/fight/${cardName}.png`);
+    img.src = window.fightcardImage(cardName);
     img.alt = cardName;
     btn.appendChild(img);
 
@@ -1433,7 +1412,7 @@ function renderFightBags() {
       btn.setAttribute("aria-label", cardName);
       btn.disabled = !playerCardCanUse(fight, null, true);
       const img = document.createElement("img");
-      img.src = window.cardDatabase[cardName]["image"];
+      img.src = window.fightcardImage(cardName);
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
@@ -1492,7 +1471,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = card["image"];
+      img.src = window.fightcardImage(cardName);
       img.alt = cardName;
       btn.appendChild(img);
       btn.addEventListener("mouseenter", function () {
@@ -1502,7 +1481,7 @@ function renderFightBags() {
     });
   }
 
-  // 敌人背包（展示占位，暂不从存档读取）
+  // 敌人背包
   const enemyBagEl = document.getElementById("fightenemybag");
   if (enemyBagEl) {
     enemyBagEl.innerHTML = "";
@@ -1513,7 +1492,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = window.cardDatabase[cardName]["图片"];
+      img.src = window.fightcardImage(cardName);
       img.alt = cardName;
       bindFightCardInfo(btn,1,cardName);
       btn.appendChild(img);
@@ -1521,7 +1500,7 @@ function renderFightBags() {
     });
   }
 
-  // 敌人装备（战斗专用 equip 区），保持为空或按数组渲染
+  // 敌人装备
   const enemyEquipEl = document.getElementById("fightenemyequip");
   if (enemyEquipEl) {
     enemyEquipEl.innerHTML = "";
@@ -1532,7 +1511,7 @@ function renderFightBags() {
       btn.dataset.card = cardName;
       btn.setAttribute("aria-label", cardName);
       const img = document.createElement("img");
-      img.src = window.cardDatabase[cardName]["图片"];
+      img.src = window.fightcardImage(cardName);
       img.alt = cardName;
       bindFightCardInfo(btn,1,cardName);
       btn.appendChild(img);
@@ -2629,7 +2608,7 @@ async function fightenemyactioncard(fight) {
                const effect = abilityCard ? abilityCard["效果"] : null;
                const type = abilityCard ? abilityCard["类型"] : null;
                const tagValue = abilityCard ? String(abilityCard["tag"] ?? "").trim() : "";
-               carduse(0,type,abilityCard,tagValue,name,fight,["ability"]);
+               await carduse(0,type,abilityCard,tagValue,name,fight,["ability"]);
                // set remaining cooldown to total
                entry[2] = Math.max(0, total);
                await new Promise(function (resolve) { setTimeout(resolve, 1000); });
