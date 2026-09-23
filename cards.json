@@ -639,6 +639,7 @@
     }
   },
     "MP":1,
+    "描述":"对方获得2黑暗标记",
     "tag":"handcard;handcardaddtagother"
   },
   "偷袭":{
@@ -664,6 +665,7 @@
     }
   },
     "MP":2,
+    "描述":"双方获得2黑暗标记",
     "tag":"handcard;handcardaddtagother;handcardaddtagself"
   },
   "月亮光":{
