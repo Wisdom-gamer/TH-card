@@ -1130,7 +1130,8 @@ async function PCLevelUP() {
   if (window.playerBag && typeof window.playerBag.setLimits === "function") {
     window.playerBag.setLimits(character.ME,character.MB);
   }
-
+  stats.HP = stats.maxHP;
+  stats.MP = stats.maxMP;
   syncStatsToDom(true);
   await showLevelUpChoice(character.name);
   return true;
@@ -1181,13 +1182,12 @@ function showLevelUpChoice(pcName) {
   clearShopCards();
 
   return new Promise(function (resolve) {
-    let renderedCount = 0;
     let resolved = false;
 
     function finishChoice() {
       if (resolved) return;
       resolved = true;
-      levelUpChoicePending = false;
+      blockshop = false;
       clearShopCards();
       syncStatsToDom(true);
       resolve();
@@ -1203,21 +1203,11 @@ function showLevelUpChoice(pcName) {
 
       const button = box.querySelector("button");
       if (!button) return;
-
-      renderedCount += 1;
       button.addEventListener("click",function () {
         addCardToAdventureDeck(cardName);
         finishChoice();
       },{once:true});
     });
-
-    box.querySelector("button")
-      .addEventListener("click",function(){
-          addCardToAdventureDeck(cardName);
-          clearShopCards();
-          syncStatsToDom(true);
-        }
-      );
   });
 }
 async function handleReaction(cardState, cardData, result) {
@@ -1348,10 +1338,11 @@ async function runAction(cardState, action) {
       setBattleScene(false);
     }
 
-    if (result !== null && result !== undefined) {
-      handleReaction(cardState, cardData, result);
+    if (result !== "win") {
+      return;
     }
 
+    await handleReaction(cardState,cardData,result);
     syncAfterMutation(index);
   }
 }
