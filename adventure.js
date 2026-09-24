@@ -15,6 +15,7 @@
   let activeIndex = -1;
   let handSlots = [];
   let activated = false;
+  let blockshop = false;
 
   let stats = {
     HP: 0,
@@ -468,6 +469,7 @@
   }
 
   function shopaddcard(cardData) {
+    if (blockshop) return;
     clearShopCards();
 
     const shopData = getShopDataForCurrentCharacter(cardData);
@@ -889,7 +891,9 @@
       const focusInfo = function () {
         if (button.classList.contains("is-empty")) return;
         showCardInfo(index);
-        shopaddcard(getCardData(hand[index].name));
+        if (!blockshop) {
+          shopaddcard(getCardData(hand[index].name));
+        }
       };
 
       button.addEventListener("mouseenter", focusInfo);
@@ -1083,31 +1087,38 @@ function getLevelUpAdd(pc,key,fromLevel) { // pcname.levelupadd*
   const list = pc && Array.isArray(pc[key]) ? pc[key] : [];
   return toInt(list[fromLevel - 1],0);
 }
-function PCLevelUP() {
+function applyFightWinReturnStats() {
+  const fightState = window.fight;
+  const player = fightState && isObject(fightState.player)
+    ? fightState.player
+    : null;
+  const remainingHP = player ? Number(player.HP) : NaN;
+  if (Number.isFinite(remainingHP) && stats.HP > remainingHP) {
+    stats.HP = Math.max(0,Math.floor(remainingHP));
+  }
+  stats.MP = stats.maxMP;
+  syncStatsToDom(true);
+}
+async function PCLevelUP() {
   const character = readCharacterState();
 
-  if (!character) return;
+  if (!character) return false;
 
-  const pc = window.PCAPI
-    ? window.PCAPI(character.name)
-    : null;
+  const pc = window.PCAPI ? window.PCAPI(character.name) : null;
 
-  if (!pc || !Array.isArray(pc.levelup)) return;
+  if (!pc || !Array.isArray(pc.levelup)) return false;
 
   const currentLevel = Number(character.Level) || 1;
-
   const needXP = pc.levelup[currentLevel - 1];
-
-  if (!Number.isFinite(needXP)) return;
-
-  if (stats.XP < needXP) return;
+  if (!Number.isFinite(needXP)) return false;
+  if (stats.XP < needXP) return false;
 
   stats.XP -= needXP;
 
   character.XP = stats.XP;
   character.Level = currentLevel + 1;
-  stats.maxHP += getLevelUpAdd(pc, "levelupaddmaxHP", currentLevel);
-  stats.maxMP += getLevelUpAdd(pc, "levelupaddmaxMP", currentLevel);
+  stats.maxHP += getLevelUpAdd(pc,"levelupaddmaxHP",currentLevel);
+  stats.maxMP += getLevelUpAdd(pc,"levelupaddmaxMP",currentLevel);
   window.maxHP = stats.maxHP;
   window.maxMP = stats.maxMP;
   character.maxHP = stats.maxHP;
@@ -1117,34 +1128,30 @@ function PCLevelUP() {
   
   localStorage.setItem(CHARACTER_KEY,JSON.stringify(character));
   if (window.playerBag && typeof window.playerBag.setLimits === "function") {
-    window.playerBag.setLimits(character.ME, character.MB);
+    window.playerBag.setLimits(character.ME,character.MB);
   }
 
   syncStatsToDom(true);
-  showLevelUpChoice(character.name);
+  await showLevelUpChoice(character.name);
+  return true;
+  
 }
 function showLevelUpChoice(pcName) {
   const pc = window.PCAPI ? window.PCAPI(pcName) : null;
 
-  if (!pc || !isObject(pc.level)) return;
-
-  const level = Number(
-    readCharacterState().Level
-  );
-
+  if (!pc || !isObject(pc.level)) return Promise.resolve();
+  const savedCharacter = readCharacterState();
+  const level = savedCharacter ? Number(savedCharacter.Level) : 0;
   const choices = [];
 
-  for (const [cardName, levelData] of Object.entries(pc.level)) {
-
+  for (const [cardName,levelData] of Object.entries(pc.level)) {
+    if (!isObject(levelData)) continue;
     const weight = Number(levelData[level]);
 
-    if (!Number.isFinite(weight) || weight <= 0) {
-      continue;
-    }
+    if (!Number.isFinite(weight) || weight <= 0) continue;
 
     choices.push({name:cardName,weight:weight});
   }
-
 
   const result = [];
 
@@ -1157,92 +1164,118 @@ function showLevelUpChoice(pcName) {
     });
 
 
-    let random=Math.random()*total;
-
-    for(let i=0;i<choices.length;i++){
-
-      random-=choices[i].weight;
-
-      if(random<=0){
-
-        result.push(choices[i].name);
-        choices.splice(i,1);
-
+    let random = Math.random() * total;
+    for (let index = 0;index < choices.length;index += 1) {
+      random -= choices[index].weight;
+      if (random <= 0) {
+        result.push(choices[index].name);
+        choices.splice(index,1);
         break;
       }
     }
   }
-
-
+  if (result.length === 0) {
+    return Promise.resolve();
+  }
+  blockshop = true;
   clearShopCards();
 
-  result.forEach(function(cardName,index){
+  return new Promise(function (resolve) {
+    let renderedCount = 0;
+    let resolved = false;
 
-    const box=$(`#adventurenewcard${index+1}`);
+    function finishChoice() {
+      if (resolved) return;
+      resolved = true;
+      levelUpChoicePending = false;
+      clearShopCards();
+      syncStatsToDom(true);
+      resolve();
+    }
+    result.forEach(function (cardName,index) {
+      const box = $(`#adventurenewcard${index + 1}`);
+      if (!box) return;
+      box.hidden = false;
+      box.innerHTML =
+        `<button data-card="${escapeHtml(cardName)}">
+          <img src="images/fight/${escapeHtml(cardName)}.png">
+        </button>`;
 
-    if(!box)return;
+      const button = box.querySelector("button");
+      if (!button) return;
 
-
-    box.hidden=false;
-
-    box.innerHTML=
-    `<button data-card="${escapeHtml(cardName)}">
-      <img src="images/fight/${escapeHtml(cardName)}.png">
-    </button>`;
-
+      renderedCount += 1;
+      button.addEventListener("click",function () {
+        addCardToAdventureDeck(cardName);
+        finishChoice();
+      },{once:true});
+    });
 
     box.querySelector("button")
-      .addEventListener(
-        "click",
-        function(){
-
+      .addEventListener("click",function(){
           addCardToAdventureDeck(cardName);
-
           clearShopCards();
-
           syncStatsToDom(true);
         }
       );
   });
 }
-  function handleReaction(cardState, cardData, result) {
-    if (!cardData || !isObject(cardData.reaction)) return false;
-
-    const outcomes = extractOutcomeKeys(result);
-    let changed = false;
-
-    for (const outcome of outcomes) {
-      const ops = cardData.reaction[outcome];
-      if (ops.XP !== undefined) {
-      if (!isObject(ops)) continue;
-        const xp = Number(ops.XP);
-
-        if (Number.isFinite(xp)) {
-          stats.XP += Math.floor(xp);
-          changed = true;
-          syncStatsToDom(true); 
-          PCLevelUP();
-        }
-      }
-
-      if (ops.delete !== undefined) {
-        const target = String(ops.delete);
-        if (removeHandCardByName(target, hand.indexOf(cardState))) {
-          changed = true;
-        }
-      }
-
-      if (ops.addgroup !== undefined) {
-        if (addGroupToBottom(String(ops.addgroup))) {
-          changed = true;
-        }
-      }
-
-      break;
-    }
-
-    return changed;
+async function handleReaction(cardState, cardData, result) {
+  if (result !== "win") {
+    return false;
   }
+  applyFightWinReturnStats();
+
+  if (!cardData || !isObject(cardData.reaction)) {
+    return true;
+  }
+
+  const ops = cardData.reaction.win;
+
+  if (!isObject(ops)) {
+    return true;
+  }
+
+  let changed = true;
+  let hasXPReward = false;
+
+  if (ops.XP !== undefined) {
+    const xp = Number(ops.XP);
+
+    if (Number.isFinite(xp)) {
+      stats.XP += Math.floor(xp);
+      hasXPReward = true;
+    }
+  }
+
+  if (ops.Gold !== undefined) {
+    const gold = Number(ops.Gold);
+
+    if (Number.isFinite(gold)) {
+      stats.Gold += Math.floor(gold);
+    }
+  }
+  syncStatsToDom(true);
+
+  if (hasXPReward) {
+    while (await PCLevelUP()) {
+    }
+  }
+
+  if (ops.delete !== undefined) {
+    const target = String(ops.delete);
+
+    if (removeHandCardByName(target,hand.indexOf(cardState))) {
+      changed = true;
+    }
+  }
+  if (ops.addgroup !== undefined) {
+    if (addGroupToBottom(String(ops.addgroup))) {
+      changed = true;
+    }
+  }
+  return changed;
+}
 
   function syncAfterMutation(focusIndex) {
     fillHandToFive();
