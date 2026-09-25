@@ -665,7 +665,7 @@
         }
       },
       "getcardturnstart":{
-        "other":{
+        "self":{
         "value":2
         }
       }
@@ -717,7 +717,7 @@
       "mode":"get",
       "pick":"end",
       "value":1,
-      "source":"site"
+      "source":"sitenoself"
     }
   },
     "tag":"handcard;handcardaddcard",
@@ -731,7 +731,7 @@
     "卡牌选择":{
       "mode":"get",
       "pick":"endnext",
-      "value":1,
+      "value":2,
       "source":"fightcards",
       "sidetypechange":"+|other",
 	    "newcardside":"self"

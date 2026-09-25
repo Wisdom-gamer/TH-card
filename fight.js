@@ -1606,8 +1606,7 @@ function renderFightBags() {
 
   async function startsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex,cardName,valuechange) {
     const ownerSide = side === 1 ? 1 : 0;
-    const startIndex = (typeof register === "number" && register >= 0) ? (register + 1) : 0;
-        const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+    const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
     if (!Array.isArray(equips) || equips.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
     if (!Array.isArray(fight.judgeLocks)) fight.judgeLocks = [];
     if (!Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog = [];

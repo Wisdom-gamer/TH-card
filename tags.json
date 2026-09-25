@@ -149,6 +149,42 @@
     "siderule":"self",
     "描述":"有50%概率无法造成伤害"
   },
+    "getHPturnstart":{
+    "效果":{
+      "数值修改":{
+        "fight.<selfside>.HP":{
+          "value_read":"<self.tags.getHPturnstart>"
+        }
+      },
+      "标记":{
+        "getHPturnstart":{
+          "self":{
+            "value":-65535
+          }
+        }
+      }
+    },
+    "rule":"turnstart",
+    "siderule":"self",
+    "描述":"下回合开始时恢复标记层数HP"
+  },
+  "getcardturnstart":{
+    "效果":{
+      "抽卡":{
+        "value_read":"<self.tags.getcardturnstart>"
+      },
+      "标记":{
+        "getcardturnstart":{
+          "self":{
+            "value":-65535
+          }
+        }
+      }
+    },
+    "rule":"turnstart",
+    "siderule":"self",
+    "描述":"下回合开始时抽取标记层数的牌"
+  },
   "额外回合":{
     "ID":"moreturn",
     "描述":"额外回合"
