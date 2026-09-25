@@ -782,6 +782,8 @@ function renderFightEquip(fight,owner) {
       carduseLocked: false,
       /* carduse 嵌套深度：0 表示当前没有正在解析的效果链 */
       carduseDepth: 0,
+      judgeLocks: [],
+      judgeRemoveLog: [],
     };
   }
 
@@ -897,7 +899,7 @@ function renderAbilityButton(fight, owner) {
       // re-read entry by index in case abilities array mutated
       const abilityEntry = (Array.isArray(fight.playerability) && fight.playerability[idx]) ? fight.playerability[idx] : entry;
       const abilityRemaining = Number(abilityEntry[2] ?? 0);
-      if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked || abilityRemaining > 0) return;
+      if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked || fight.sideturn === "enemy" || abilityRemaining > 0) return;
       if (Number.isFinite(mpCost) && mpCost > 0 && fight.player.MP < mpCost) return;
 
       fight.carduseLocked = true;
@@ -1100,6 +1102,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
   const sourceName = String(cardName ?? "");
   const sourceValuechange = isObject(valuechange) ? valuechange : {};
   const sourceTag = String(source["tag"] ?? "").trim();
+  const sourceIgnore = String(source["ignore"] ?? "").trim();
 
   while (true) {
     const effectKey = effectIndex === 1 ? "效果" : `效果_${effectIndex}`;
@@ -1262,7 +1265,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
             const chainCardName = !chainCardUsed && String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
             chainCardUsed = chainCardUsed || chainCardName !== null;
             const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
-            await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true);
+            await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true,null,sourceIgnore);
           }
         }
       }
@@ -1273,7 +1276,12 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
       break;
     }
   }
-
+  // 反制卡
+  if (anyRulePassed && !chainCardUsed && !fight.ended && String(sourceCardName ?? "").trim() !== "") {
+    chainCardUsed = true;
+    const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
+    await carduse(ownerSide,type,{"效果":{"move":"site"}},sourceTag,String(sourceCardName).trim(),fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true,null,sourceIgnore);
+  }
   return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1,newEffectChain:false,rulePassed:anyRulePassed};
 }
   function sideruleMatches(siderule,incomingSide,equipOwnerSide) {
@@ -1522,34 +1530,153 @@ function renderFightBags() {
   async function startsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex,cardName,valuechange) {
     const counterSide = side === 1 ? 1 : 0;
     const hand = counterSide === 1 ? fight.playerhand : fight.enemyhand;
-    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
-    for (const cardEntry of hand.slice(startIndex)) {
-      const handIndex = hand.indexOf(cardEntry);
-      if (handIndex === -1) continue;
-      const parsedCard = parseFightCard(cardEntry);
-      const sourceCardName = parsedCard.name;
-      const sourceCard = getFightCardData(sourceCardName);
-      const sourceTag = sourceCard ? String(sourceCard["tag"] ?? "").trim() : "";
-      const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
-      if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,handIndex,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
-      effect = result.effect;
-      if (fight.ended) break;
+    if (!Array.isArray(hand) || hand.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
+    if (!Array.isArray(fight.judgeLocks)) fight.judgeLocks = [];
+    if (!Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog = [];
+    const locks = fight.judgeLocks;
+    const removeLog = fight.judgeRemoveLog;
+    for (const lock of locks) {
+      for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+        const record = removeLog[lock.logPos];
+        if (record.list !== lock.list) continue;
+        for (const slot of lock.slots) {
+          if (!slot.alive) continue;
+          if (slot.index === record.index) {
+            slot.alive = false;
+          } else if (slot.index > record.index) {
+            slot.index -= 1;
+          }
+        }
+      }
+    }
+    let startIndex = 0;
+    if (typeof register === "number" && register >= 0) {
+      startIndex = register + 1;
+      for (let lockIndex = locks.length - 1;lockIndex >= 0;lockIndex -= 1) {
+        const current = locks[lockIndex].list === hand ? locks[lockIndex].current : null;
+        if (!current) continue;
+        startIndex = current.alive ? current.index + 1 : current.index;
+        break;
+      }
+    }
+    // lock hand
+    const lock = {list:hand,slots:[],current:null,logPos:removeLog.length};
+    for (let index = startIndex;index < hand.length;index += 1) {
+      lock.slots.push({entry:hand[index],index:index,alive:true});
+    }
+    locks.push(lock);
+    try {
+      for (const slot of lock.slots) {
+        for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+          const record = removeLog[lock.logPos];
+          if (record.list !== hand) continue;
+          for (const other of lock.slots) {
+            if (!other.alive) continue;
+            if (other.index === record.index) {
+              other.alive = false;
+            } else if (other.index > record.index) {
+              other.index -= 1;
+            }
+          }
+        }
+        if (!slot.alive) continue;
+        if (hand[slot.index] !== slot.entry) {
+          const foundIndex = hand.indexOf(slot.entry);
+          if (foundIndex === -1) continue;
+          slot.index = foundIndex;
+        }
+        const index = slot.index;
+        lock.current = slot;
+        const sourceCardName = parseFightCard(hand[index]).name;
+        const sourceCard = getFightCardData(sourceCardName);
+        const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
+        if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
+        const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
+        effect = result.effect;
+        if (fight.ended) break;
+      }
+    } finally {
+      lock.current = null;
+      const lockIndex = locks.indexOf(lock);
+      if (lockIndex !== -1) locks.splice(lockIndex,1);
+      if (locks.length === 0) removeLog.length = 0;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
 
   async function startsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex,cardName,valuechange) {
-    const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
     const ownerSide = side === 1 ? 1 : 0;
     const startIndex = (typeof register === "number" && register >= 0) ? (register + 1) : 0;
+        const equips = side === 1 ? fight.fightplayerequip : fight.fightenemyequip;
+    if (!Array.isArray(equips) || equips.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
+    if (!Array.isArray(fight.judgeLocks)) fight.judgeLocks = [];
+    if (!Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog = [];
+    const locks = fight.judgeLocks;
+    const removeLog = fight.judgeRemoveLog;
+    for (const lock of locks) {
+      for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+        const record = removeLog[lock.logPos];
+        if (record.list !== lock.list) continue;
+        for (const slot of lock.slots) {
+          if (!slot.alive) continue;
+          if (slot.index === record.index) {
+            slot.alive = false;
+          } else if (slot.index > record.index) {
+            slot.index -= 1;
+          }
+        }
+      }
+    }
+    let startIndex = 0;
+    if (typeof register === "number" && register >= 0) {
+      startIndex = register + 1;
+      for (let lockIndex = locks.length - 1;lockIndex >= 0;lockIndex -= 1) {
+        const current = locks[lockIndex].list === equips ? locks[lockIndex].current : null;
+        if (!current) continue;
+        startIndex = current.alive ? current.index + 1 : current.index;
+        break;
+      }
+    }
+    // lock equips
+    const lock = {list:equips,slots:[],current:null,logPos:removeLog.length};
     for (let index = startIndex;index < equips.length;index += 1) {
-      const sourceCardName = parseFightCard(equips[index]).name;
-      const sourceCard = getFightCardData(sourceCardName);
-      if (!isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,ownerSide,1,cardName,valuechange);
-      effect = result.effect;
-      if (fight.ended) break;
+      lock.slots.push({entry:equips[index],index:index,alive:true});
+    }
+    locks.push(lock);
+    try {
+      for (const slot of lock.slots) {
+        for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+          const record = removeLog[lock.logPos];
+          if (record.list !== equips) continue;
+          for (const other of lock.slots) {
+            if (!other.alive) continue;
+            if (other.index === record.index) {
+              other.alive = false;
+            } else if (other.index > record.index) {
+              other.index -= 1;
+            }
+          }
+        }
+        if (!slot.alive) continue;
+        if (equips[slot.index] !== slot.entry) {
+          const foundIndex = equips.indexOf(slot.entry);
+          if (foundIndex === -1) continue;
+          slot.index = foundIndex;
+        }
+        const index = slot.index;
+        lock.current = slot;
+        const sourceCardName = parseFightCard(equips[index]).name;
+        const sourceCard = getFightCardData(sourceCardName);
+        if (!isObject(sourceCard)) continue;
+        const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,ownerSide,1,cardName,valuechange);
+        effect = result.effect;
+        if (fight.ended) break;
+      }
+    } finally {
+      lock.current = null;
+      const lockIndex = locks.indexOf(lock);
+      if (lockIndex !== -1) locks.splice(lockIndex,1);
+      if (locks.length === 0) removeLog.length = 0;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1607,16 +1734,77 @@ function renderFightBags() {
   }
 
   async function nsideequip(side,type,effect,tag,sidetype,fight,register,stepIndex,cardName,valuechange) {
-    const equips = side === 1 ? fight.fightenemyequip : fight.fightplayerequip;
     const ownerSide = side === 1 ? 0 : 1;
-    const startIndex = (typeof register === "number" && register >= 0) ? (register + 1) : 0;
+    const equips = side === 1 ? fight.fightenemyequip : fight.fightplayerequip;
+    if (!Array.isArray(equips) || equips.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
+    if (!Array.isArray(fight.judgeLocks)) fight.judgeLocks = [];
+    if (!Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog = [];
+    const locks = fight.judgeLocks;
+    const removeLog = fight.judgeRemoveLog;
+    for (const lock of locks) {
+      for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+        const record = removeLog[lock.logPos];
+        if (record.list !== lock.list) continue;
+        for (const slot of lock.slots) {
+          if (!slot.alive) continue;
+          if (slot.index === record.index) {
+            slot.alive = false;
+          } else if (slot.index > record.index) {
+            slot.index -= 1;
+          }
+        }
+      }
+    }
+    let startIndex = 0;
+    if (typeof register === "number" && register >= 0) {
+      startIndex = register + 1;
+      for (let lockIndex = locks.length - 1;lockIndex >= 0;lockIndex -= 1) {
+        const current = locks[lockIndex].list === equips ? locks[lockIndex].current : null;
+        if (!current) continue;
+        startIndex = current.alive ? current.index + 1 : current.index;
+        break;
+      }
+    }
+    // lock equips
+    const lock = {list:equips,slots:[],current:null,logPos:removeLog.length};
     for (let index = startIndex;index < equips.length;index += 1) {
-      const sourceCardName = parseFightCard(equips[index]).name;
-      const sourceCard = getFightCardData(sourceCardName);
-      if (!isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,ownerSide,1,cardName,valuechange);
-      effect = result.effect;
-      if (fight.ended) break;
+      lock.slots.push({entry:equips[index],index:index,alive:true});
+    }
+    locks.push(lock);
+    try {
+      for (const slot of lock.slots) {
+        for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+          const record = removeLog[lock.logPos];
+          if (record.list !== equips) continue;
+          for (const other of lock.slots) {
+            if (!other.alive) continue;
+            if (other.index === record.index) {
+              other.alive = false;
+            } else if (other.index > record.index) {
+              other.index -= 1;
+            }
+          }
+        }
+        if (!slot.alive) continue;
+        if (equips[slot.index] !== slot.entry) {
+          const foundIndex = equips.indexOf(slot.entry);
+          if (foundIndex === -1) continue;
+          slot.index = foundIndex;
+        }
+        const index = slot.index;
+        lock.current = slot;
+        const sourceCardName = parseFightCard(equips[index]).name;
+        const sourceCard = getFightCardData(sourceCardName);
+        if (!isObject(sourceCard)) continue;
+        const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,ownerSide,1,cardName,valuechange);
+        effect = result.effect;
+        if (fight.ended) break;
+      }
+    } finally {
+      lock.current = null;
+      const lockIndex = locks.indexOf(lock);
+      if (lockIndex !== -1) locks.splice(lockIndex,1);
+      if (locks.length === 0) removeLog.length = 0;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -1624,18 +1812,76 @@ function renderFightBags() {
   async function nsidecounter(side,type,effect,tag,sidetype,fight,register,stepIndex,cardName,valuechange) {
     const counterSide = side === 1 ? 0 : 1;
     const hand = counterSide === 1 ? fight.playerhand : fight.enemyhand;
-    const startIndex = (typeof register === "number" && register >= 0) ? register + 1 : 0;
-    for (const cardEntry of hand.slice(startIndex)) {
-      const handIndex = hand.indexOf(cardEntry);
-      if (handIndex === -1) continue;
-      const parsedCard = parseFightCard(cardEntry);
-      const sourceCardName = parsedCard.name;
-      const sourceCard = getFightCardData(sourceCardName);
-      const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
-      if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
-      const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,handIndex,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
-      effect = result.effect;
-      if (fight.ended) break;
+    if (!Array.isArray(hand) || hand.length === 0) return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
+    if (!Array.isArray(fight.judgeLocks)) fight.judgeLocks = [];
+    if (!Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog = [];
+    const locks = fight.judgeLocks;
+    const removeLog = fight.judgeRemoveLog;
+    for (const lock of locks) {
+      for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+        const record = removeLog[lock.logPos];
+        if (record.list !== lock.list) continue;
+        for (const slot of lock.slots) {
+          if (!slot.alive) continue;
+          if (slot.index === record.index) {
+            slot.alive = false;
+          } else if (slot.index > record.index) {
+            slot.index -= 1;
+          }
+        }
+      }
+    }
+    let startIndex = 0;
+    if (typeof register === "number" && register >= 0) {
+      startIndex = register + 1;
+      for (let lockIndex = locks.length - 1;lockIndex >= 0;lockIndex -= 1) {
+        const current = locks[lockIndex].list === hand ? locks[lockIndex].current : null;
+        if (!current) continue;
+        startIndex = current.alive ? current.index + 1 : current.index;
+        break;
+      }
+    }
+    // lock hand
+    const lock = {list:hand,slots:[],current:null,logPos:removeLog.length};
+    for (let index = startIndex;index < hand.length;index += 1) {
+      lock.slots.push({entry:hand[index],index:index,alive:true});
+    }
+    locks.push(lock);
+    try {
+      for (const slot of lock.slots) {
+        for (;lock.logPos < removeLog.length;lock.logPos += 1) {
+          const record = removeLog[lock.logPos];
+          if (record.list !== hand) continue;
+          for (const other of lock.slots) {
+            if (!other.alive) continue;
+            if (other.index === record.index) {
+              other.alive = false;
+            } else if (other.index > record.index) {
+              other.index -= 1;
+            }
+          }
+        }
+        if (!slot.alive) continue;
+        if (hand[slot.index] !== slot.entry) {
+          const foundIndex = hand.indexOf(slot.entry);
+          if (foundIndex === -1) continue;
+          slot.index = foundIndex;
+        }
+        const index = slot.index;
+        lock.current = slot;
+        const sourceCardName = parseFightCard(hand[index]).name;
+        const sourceCard = getFightCardData(sourceCardName);
+        const sourceType = sourceCard ? String(sourceCard["类型"] ?? "").trim() : "";
+        if (!sourceCardName || sourceType !== "反制卡" || !isObject(sourceCard)) continue;
+        const result = await effectruleAPI(side,type,effect,tag,sidetype,fight,index,stepIndex,sourceCard,counterSide,1,cardName,valuechange,sourceCardName);
+        effect = result.effect;
+        if (fight.ended) break;
+      }
+    } finally {
+      lock.current = null;
+      const lockIndex = locks.indexOf(lock);
+      if (lockIndex !== -1) locks.splice(lockIndex,1);
+      if (locks.length === 0) removeLog.length = 0;
     }
     return {side:side,type:type,effect:effect,tag:tag,sidetype:sidetype,register:-1};
   }
@@ -2126,8 +2372,7 @@ if (isObject(getCards)) {
     const selectSide = selectConfig.side === "self" ? side : (1 - side);
     const selfName = String(cardName ?? "").trim() !== "" ? String(cardName).trim() : (parseFightCard(String(type ?? "")).name || "");
 
-    /* 来源：默认手牌；fightcards=卡组，grave=坟场，site=场地，
-       sitenoself=场地但跳过自身（不跳过场地上自身之外的同名牌） */
+    /* source 默认/hand=手牌；fightcards=卡组，grave=坟场，site=场地，equip=装备 sitenoself=场地但跳过自身 */
     let sourceCards;
     let sourceOwners = null;
     if (selectSource === "fightcards") {
@@ -2137,6 +2382,8 @@ if (isObject(getCards)) {
     } else if (selectSource === "site" || selectSource === "sitenoself") {
       sourceCards = fight.fightsitecards;
       sourceOwners = fight.fightsitecardsow;
+    } else if (selectSource === "equip") {
+      sourceCards = selectSide === 1 ? fight.fightplayerequip : fight.fightenemyequip;
     } else {
       sourceCards = selectSide === 1 ? fight.playerhand : fight.enemyhand;
     }
@@ -2145,7 +2392,7 @@ if (isObject(getCards)) {
     }
 
     /* 选择池：默认等于来源；sitenoself 时剔除自身（最后一个同名场地牌） */
-    let pickPool = sourceCards;
+    let poolIndices = sourceCards.map(function (cardEntry,index) { return index; });
     if (selectSource === "sitenoself" && selfName !== "") {
       let selfIndex = -1;
       for (let index = sourceCards.length - 1;index >= 0;index -= 1) {
@@ -2155,11 +2402,11 @@ if (isObject(getCards)) {
         }
       }
       if (selfIndex !== -1) {
-        pickPool = sourceCards.filter(function (cardEntry,index) { return index !== selfIndex; });
+        poolIndices = poolIndices.filter(function (index) { return index !== selfIndex; });
       }
     }
-
-    let pickedCards = [];
+    const pickPool = poolIndices.map(function (index) { return sourceCards[index]; });
+    let pickedIndices = [];
     if (selectConfig.hasFiller) {
       // js
       const filler = window[selectConfig.filler_js];
@@ -2167,12 +2414,12 @@ if (isObject(getCards)) {
         const params = selectConfig.input === "" ? [] : selectConfig.input.split(";").map(function (value) { return value.trim(); });
         try {
           const selected = await filler(pickPool.slice(),...params);
-          const remaining = pickPool.slice();
+          const remaining = poolIndices.slice();
           if (Array.isArray(selected)) {
             for (const entry of selected) {
-              const index = remaining.indexOf(entry);
+              const index = remaining.findIndex(function (sourceIndex) { return sourceCards[sourceIndex] === entry; });
               if (index === -1) continue;
-              pickedCards.push(entry);
+              pickedIndices.push(remaining[index]);
               remaining.splice(index,1);
             }
           }
@@ -2181,21 +2428,21 @@ if (isObject(getCards)) {
         }
       }
     } else if (selectPick === "random") {
-      if (pickPool.length > 0) {
-        pickedCards.push(pickPool[Math.floor(Math.random() * pickPool.length)]);
+      if (poolIndices.length > 0) {
+        pickedIndices.push(poolIndices[Math.floor(Math.random() * poolIndices.length)]);
       }
     } else if (selectPick === "top") {
-      if (pickPool.length > 0) {
-        pickedCards.push(pickPool[0]);
+      if (poolIndices.length > 0) {
+        pickedIndices.push(poolIndices[0]);
       }
     } else if (selectPick === "end") {
-      if (pickPool.length > 0) {
-        pickedCards.push(pickPool[pickPool.length - 1]);
+      if (poolIndices.length > 0) {
+        pickedIndices.push(poolIndices[poolIndices.length - 1]);
       }
     } else if (selectPick === "topnext") {
-      pickedCards = pickPool.slice(0,selectValue);
+      pickedIndices = poolIndices.slice(0,selectValue);
     } else if (selectPick === "endnext") {
-      pickedCards = pickPool.slice(Math.max(0,pickPool.length - selectValue));
+      pickedIndices = poolIndices.slice(Math.max(0,poolIndices.length - selectValue));
     } else if (selectPick === "pick") {
       /* 手动选择仅支持手牌来源：玩家手动点选，敌方随机 */
       if (side === 1) {
@@ -2208,14 +2455,14 @@ if (isObject(getCards)) {
       } else {
         cardpick = randomSelectCard(fight,selectSide);
       }
-      const pickHand = selectSide === 1 ? fight.playerhand : fight.enemyhand;
-      if (Array.isArray(cardpick) && cardpick.length === 2 && Array.isArray(pickHand) && pickHand[Number(cardpick[1])] !== undefined) {
-        pickedCards.push(pickHand[Number(cardpick[1])]);
+      if (Array.isArray(cardpick) && cardpick.length === 2 && sourceCards[Number(cardpick[1])] !== undefined) {
+        pickedIndices.push(Number(cardpick[1]));
       }
     }
 
-    for (let pickIndex = 0;pickIndex < pickedCards.length;pickIndex += 1) {
-      const pickedCard = pickedCards[pickIndex];
+    const pickedList = pickedIndices.map(function (index) { return {entry:sourceCards[index],index:index}; });
+    for (let pickIndex = 0;pickIndex < pickedList.length;pickIndex += 1) {
+      const pickedCard = pickedList[pickIndex].entry;
       if (pickedCard === null || pickedCard === undefined) {
         continue;
       }
@@ -2232,7 +2479,7 @@ if (isObject(getCards)) {
 
       // filler
       let giveCount = 1;
-      if ((selectConfig.hasFiller ? pickedCards.length === 1 : (selectPick === "top" || selectPick === "end")) && (selectMode === "get" || selectMode === "copy")) {
+      if ((selectConfig.hasFiller ? pickedList.length === 1 : (selectPick === "top" || selectPick === "end")) && (selectMode === "get" || selectMode === "copy")) {
         giveCount = selectValue;
       }
 
@@ -2243,11 +2490,20 @@ if (isObject(getCards)) {
       }
 
       if (selectMode === "get" || selectMode === "remove" || selectMode === "delete") {
-        const removeIndex = sourceCards.indexOf(pickedCard);
+        let removeIndex = pickedList[pickIndex].index;
+        if (sourceCards[removeIndex] !== pickedCard) {
+          removeIndex = sourceCards.indexOf(pickedCard);
+        }
         if (removeIndex !== -1) {
           sourceCards.splice(removeIndex,1);
+          if (Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog.push({list:sourceCards,index:removeIndex});
           if (Array.isArray(sourceOwners)) {
             sourceOwners.splice(removeIndex,1);
+          }
+          for (let laterIndex = pickIndex + 1;laterIndex < pickedList.length;laterIndex += 1) {
+            if (pickedList[laterIndex].index > removeIndex) {
+              pickedList[laterIndex].index -= 1;
+            }
           }
         }
         /* remove */
@@ -2255,6 +2511,10 @@ if (isObject(getCards)) {
           movetosite(fight,pickedName,selectSide,applySidetypeChange(pickedInfo.sidetype,selectConfig.sidetypechange),1,pickedInfo.valuechange);
         }
       }
+    }
+    if (selectSource === "equip") {
+      renderFightEquip(fight,1);
+      renderFightEquip(fight,0);
     }
     cardpick = null;
 
@@ -2268,8 +2528,8 @@ if (isObject(getCards)) {
   return {side: side,type: type,effect: effect};
 }
 
-  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {},nextto = null,rulesChecked = false,usedMP = null){
-  let ignore = "";
+  async function carduse(side,type,effect,tag,cardName,fight,sidetype = [],register = -1,startStep = 0,valuechange = {},nextto = null,rulesChecked = false,usedMP = null,ignoreOverride = null){
+  let ignore = ignoreOverride === null || ignoreOverride === undefined ? "" : String(ignoreOverride);
   fight = fight || window.fight;
 
   if (!fight || fight.ended) {
@@ -2304,13 +2564,6 @@ if (isObject(getCards)) {
 
   const judgementSteps = [startsidecounter,startsideequip,startsidetrait,startsidetag,nsidetag,nsidetrait,nsideequip,nsidecounter];
 
-  /*
-    续判位置（供触发的新效果发起的嵌套 carduse 使用）：
-    - 字符串 "层级:register"：从判定链第「层级」层、该层 register+1 处
-      （即紧跟触发来源之后）继续往下判定；
-    - 对象 {层级名: register}：按层级名定位的兼容写法；
-    - 都不传时从第一层、第一个来源开始完整判定。
-  */
   let initialRegister = typeof register === "number" ? register : -1;
   if (typeof nextto === "string") {
     const nextData = nextto.split(":");
@@ -2356,29 +2609,45 @@ if (isObject(getCards)) {
   /* 入场统一在使用开始时处理：反制卡/基本卡移入场中，装备卡移入装备区 */
   if (cardName && cardType !== "" && !fight.ended) {
     const cardSide = Number(side) === 1 ? 1 : 0;
+    let movedCounter = null;
     /* 反制卡移出手牌*/
     if (cardType === "反制卡") {
       const moveHand = cardSide === 1 ? fight.playerhand : fight.enemyhand;
-      for (let handIndex = 0;handIndex < moveHand.length;handIndex += 1) {
-        if (parseFightCard(moveHand[handIndex]).name !== cardName) continue;
-        moveHand.splice(handIndex,1);
+      let moveIndex = -1;
+      const locks = Array.isArray(fight.judgeLocks) ? fight.judgeLocks : [];
+      for (let lockIndex = locks.length - 1;lockIndex >= 0;lockIndex -= 1) {
+        const current = locks[lockIndex].list === moveHand ? locks[lockIndex].current : null;
+        if (!current) continue;
+        if (current.alive && moveHand[current.index] === current.entry && parseFightCard(current.entry).name === cardName) {
+          moveIndex = current.index;
+        }
+        break;
+      }
+      if (moveIndex === -1) {
+        moveIndex = moveHand.findIndex(function (entry) { return parseFightCard(entry).name === cardName; });
+      }
+      if (moveIndex !== -1) {
+        movedCounter = parseFightCard(moveHand[moveIndex]);
+        moveHand.splice(moveIndex,1);
+        if (Array.isArray(fight.judgeRemoveLog)) fight.judgeRemoveLog.push({list:moveHand,index:moveIndex});
         if (cardSide === 1) {
           renderPlayerHand(fight);
         } else {
           renderEnemyHand(fight);
         }
-        break;
       }
     }
     const baseSidetype = String(cardData["sidetype"] ?? "").split(";").map(function (value) { return value.trim(); }).filter(Boolean);
     const moveSidetype = Array.isArray(sidetype) && sidetype.length > 0 ? sidetype : baseSidetype;
-    if (cardType === "反制卡" || cardType === "基本卡") {
+    if (movedCounter) { // save valuechange and sidetype
+      movetosite(fight,cardName,cardSide,movedCounter.sidetype,1,movedCounter.valuechange);
+    } else if (cardType === "反制卡" || cardType === "基本卡") {
       movetosite(fight,cardName,cardSide,moveSidetype,1,valuechange);
     } else if (cardType === "装备卡") {
       movetoequip(fight,cardName,cardSide,moveSidetype,valuechange);
       if (!fight.ended) {
         /* 入场触发链：效果.装备.value = 卡名 */
-        lastCardEffectResult = await carduse(cardSide,type,{"装备":{value:cardName}},tag,null,fight,moveSidetype,-1,0,valuechange);
+        lastCardEffectResult = await carduse(cardSide,type,{"装备":{value:cardName}},tag,null,fight,moveSidetype,-1,0,valuechange,null,false,null,ignoreValue);
       }
       /* 含 startonadd:1 的效果（支持 效果_2 等）在 loops 检查前各自独立结算 */
       for (let effectIndex = 0;effectIndex < effectList.length;effectIndex += 1) {
@@ -2388,7 +2657,7 @@ if (isObject(getCards)) {
         }
         const startEffect = {...addEffect};
         delete startEffect["startonadd"];
-        lastCardEffectResult = await carduse(cardSide,type,startEffect,tag,null,fight,moveSidetype,-1,0,valuechange);
+        lastCardEffectResult = await carduse(cardSide,type,startEffect,tag,null,fight,moveSidetype,-1,0,valuechange,null,false,null,ignoreValue);
       }
       /* 其余效果留在装备区作为规则，不在使用时结算 */
       return lastCardEffectResult;
@@ -2509,7 +2778,7 @@ function bindPlayerHandActions(fight) {
     button.disabled = !playerCardCanUse(fight, cardEntry, false);
     
     button.onclick = async function () {
-      if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked) {
+      if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked || fight.sideturn === "enemy") {
         return;
       }
       const index = Number(button.dataset.index);
@@ -2691,7 +2960,7 @@ async function fightenemyactioncard(fight) {
 
       
           endTurnButton.onclick = async function () {
-  if (!window.fight || window.fight !== fight || fight.ended) {
+  if (!window.fight || window.fight !== fight || fight.ended || fight.carduseLocked) {
     return;
   }
   endTurnButton.disabled = true;
@@ -2772,12 +3041,12 @@ async function fightenemyactioncard(fight) {
     const fight = createBattleState(enemyId);
     
     /* 处理背包和装备 */
-       window.fightplayerbag = adventurebagitem;
+       window.fightplayerbag = Array.isArray(window.adventurebagitem) ? window.adventurebagitem.slice() : [];
        fight.fightplayerbag = window.fightplayerbag;
-       window.fightplayerequip = window.adventureequip;
+       window.fightplayerequip = Array.isArray(window.adventureequip) ? window.adventureequip.slice() : [];
        fight.fightplayerequip = window.fightplayerequip;
 
- // 敌人背包与装备置空（战斗开始前清理）
+ // 敌人背包与装备置空
  window.fightenemybag = [];
  window.fightenemyequip = [];
     window.fight = fight;

@@ -597,6 +597,27 @@
     "MP":2,
     "tag":"handcard;handcarddamage"
   },
+  /* 阴阳玉(enemy) */
+  "阴阳玉":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":4,
+      "type":"普通"
+      },
+    "标记":{
+      "护甲":{
+        "self":{
+          "value":2
+          }
+        }
+      }
+  },
+    "描述":"造成4点伤害，获得2点护甲",
+    "MP":1,
+	  "tag":"handcard;handcardaddtagself;handcarddamage",
+    "sidetype":"typeNormal"
+  },
   /* 妖精A */
   "香蕉皮陷阱":{
   "类型":"反制卡",
@@ -631,6 +652,94 @@
   },
     "tag":"countercard;countercarddamage",
     "描述":"打出普通卡时触发，造成4伤害",
+    "sidetype":"typeNormal"
+  },
+  /* 妖精B */  
+  "繁茂":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+      "getHPturnstart":{
+        "self":{
+        "value":3
+        }
+      },
+      "getcardturnstart":{
+        "other":{
+        "value":2
+        }
+      }
+    }
+  },
+    "tag":"handcard;handcardaddtagself",
+    "MP":2,
+    "描述":"下个自己的回合开始时，抽2，恢复3HP",
+    "sidetype":"typeNormal"
+  },
+  "快速治疗":{
+  "类型":"基本卡",
+  "效果":{
+    "数值修改":{
+      "fight.<selfside>.HP":{
+        "value":5
+      }
+    }
+  },
+    "描述":"回复5HP",
+    "MP":1,
+	  "tag":"handcard",
+    "sidetype":"typeNormal"
+  },
+  /* 妖怪兔 */
+  
+  "缴械":{
+  "类型":"基本卡",
+  "效果":{
+    "卡牌选择":{
+      "mode":"remove",
+      "pick":"random",
+      "value":1,
+      "source":"equip",
+	    "side":"other"
+    },
+    "抽卡":{
+      "value":1      
+      }
+  },
+    "tag":"handcard;handcardremoveotherequip;handcardaddcard",
+    "描述":"将对方装备栏一张装备弃置，自己抽1",
+    "sidetype":"typeNormal"
+  },
+  "取回":{
+  "类型":"基本卡",
+  "效果":{
+    "卡牌选择":{
+      "mode":"get",
+      "pick":"end",
+      "value":1,
+      "source":"site"
+    }
+  },
+    "tag":"handcard;handcardaddcard",
+    "MP":1,
+    "描述":"将场上最后一张牌移回手牌",
+    "sidetype":"typeNormal"
+  },
+  "窃取":{
+  "类型":"基本卡",
+  "效果":{
+    "卡牌选择":{
+      "mode":"get",
+      "pick":"endnext",
+      "value":1,
+      "source":"fightcards",
+      "sidetypechange":"+|other",
+	    "newcardside":"self"
+    }
+  },
+    "tag":"handcard;handcardaddcard",
+    "MP":1,
+    "描述":"从对方牌组中窃取两张牌",
     "sidetype":"typeNormal"
   },
   /* 露米娅 */
