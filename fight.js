@@ -89,7 +89,19 @@ function parseFightCard(cardEntry) {
     }
     return result;
   }
-
+  function resolveCardSidetype(cardName,sidetypeText,cardData) {
+    let data = isObject(cardData) ? cardData : null;
+    if (!data && typeof window.cardinfoAPI === "function") {
+      const info = window.cardinfoAPI(1,cardName);
+      data = info && isObject(info.data) ? info.data : null;
+    }
+    const baseSidetype = String(isObject(data) ? (data.sidetype ?? "") : "").trim();
+    let finalSidetype = baseSidetype === "" ? [] : baseSidetype.split(";").map(function (value) { return value.trim(); }).filter(Boolean);
+    if (sidetypeText !== undefined && sidetypeText !== null && String(sidetypeText).trim() !== "") {
+      finalSidetype = applySidetypeChange(finalSidetype,String(sidetypeText).trim());
+    }
+    return finalSidetype;
+  }
   function addcardtohand(cardname,side,sidetype,valuechange) {
     const valuechangelist = [["MP","MP"]];
     const name = String(cardname ?? "").trim();
@@ -97,11 +109,7 @@ function parseFightCard(cardEntry) {
     const info = typeof window.cardinfoAPI === "function" ? window.cardinfoAPI(1,name) : null;
     const cardData = info && isObject(info.data) ? info.data : null;
     if (!cardData) return false;
-    const baseSidetype = String(cardData.sidetype ?? "").trim();
-    let finalSidetype = baseSidetype === "" ? [] : baseSidetype.split(";").map(function (value) { return value.trim(); }).filter(Boolean);
-    if (sidetype !== undefined && sidetype !== null && String(sidetype).trim() !== "") {
-      finalSidetype = applySidetypeChange(finalSidetype,String(sidetype).trim());
-    }
+    const finalSidetype = resolveCardSidetype(name,sidetype,cardData);
     const finalValuechange = readvaluechange(name,valuechange,valuechangelist);
     const targetSides = String(side ?? "").trim().toLowerCase() === "all" ? [0,1] : [Number(side)];
     let added = false;
@@ -619,38 +627,69 @@ function renderFightEquip(fight,owner) {
     renderFightEquip(fight,owner);
     return true;
   }
+    /* 将卡牌移动到坟场 */
+  function movetograve(cardName,side) {
+    const name = String(cardName ?? "").trim();
+    if (!name) {
+      return false;
+    }
+    const battle = window.fight;
+    if (!battle) {
+      return false;
+    }
+    const targetSide = Number(side) === 1 ? 1 : 0;
+    const grave = targetSide === 1 ? battle.fightplayergrave : battle.fightenemygrave;
+    if (!Array.isArray(grave)) {
+      return false;
+    }
+    grave.push(name);
+    exposeBattleGlobals(battle);
+    return true;
+  }
+  /* 将卡牌洗入卡组 */
+  function movetofightcards(cardName,side) {
+    const name = String(cardName ?? "").trim();
+    if (!name) {
+      return false;
+    }
+    const battle = window.fight;
+    if (!battle) {
+      return false;
+    }
+    const targetSide = Number(side) === 1 ? 1 : 0;
+    const deck = targetSide === 1 ? battle.playercards : battle.enemycards;
+    if (!Array.isArray(deck)) {
+      return false;
+    }
+    deck.push(name);
+    shuffle(deck);
+    exposeBattleGlobals(battle);
+    return true;
+  }
   /* 将场上所有卡牌移动到原持有者的坟场 */
-    function moveSiteCardsToGrave(fight) {
-    for (let index = 0;index < fight.fightsitecards.length;index += 1) {
-      const cardEntry = fight.fightsitecards[index];
+  function moveSiteCardsToGrave(fight) {
+    /* 每次循环都处理场地数组第1张卡：先实时删除，再确认是否移动到坟场 */
+    while (Array.isArray(fight.fightsitecards) && fight.fightsitecards.length > 0) {
+      const cardEntry = fight.fightsitecards[0];
 
-      const owner = fight.fightsitecardsow[index];
+      const owner = Array.isArray(fight.fightsitecardsow) ? fight.fightsitecardsow[0] : 0;
 
+      /* 实时删除场地数组与所有者数组的第1个 */
+      fight.fightsitecards.shift();
+      if (Array.isArray(fight.fightsitecardsow)) {
+        fight.fightsitecardsow.shift();
+      }
+
+      /* 临时卡牌不能移动到坟场，直接删除并继续处理新的场地第1张卡 */
       if (fightCardHasSideType(cardEntry,"temp")) {
         continue;
       }
       const moveToOtherGrave = fightCardHasSideType(cardEntry,"other");
-      const parsedCard = parseFightCard(cardEntry);
-      const graveCardEntry = createFightCardEntry(parsedCard.name,[],{});
-      // 带有other的卡牌会移动到另一方的坟场
-      if (owner === 0) {
-        if (moveToOtherGrave){
-        fight.fightplayergrave.push(graveCardEntry);
-        }else{
-        fight.fightenemygrave.push(graveCardEntry);
-        }
-      } else {
-        if (moveToOtherGrave){
-        fight.fightenemygrave.push(graveCardEntry);
-        }else{
-        fight.fightplayergrave.push(graveCardEntry);
-        }
-      }
+      const graveSide = owner === 0
+        ? (moveToOtherGrave ? 1 : 0)
+        : (moveToOtherGrave ? 0 : 1);
+      movetograve(parseFightCard(cardEntry).name,graveSide);
     }
-
-    /* 清空场上两组数组。 */
-    fight.fightsitecards.length = 0;
-    fight.fightsitecardsow.length = 0;
 
     renderFightSite(fight);
   }
@@ -1110,7 +1149,6 @@ function parseValueRead(expression, fight, side) {
 }
 async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,sourceData,ownerSide,sourceCount,cardName,valuechange,sourceCardName) {
   const newEffectTypes = ["获取卡","抽卡","伤害","标记","卡牌选择","数值修改"];
-  const stepCount = 8;
   const source = isObject(sourceData) ? sourceData : {};
   let nextEffect = effect;
   let effectIndex = 1;
@@ -1283,8 +1321,9 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
             const chainTag = String(sourceTag ?? "").trim();
             const chainCardName = !chainCardUsed && String(sourceCardName ?? "").trim() !== "" ? String(sourceCardName).trim() : null;
             chainCardUsed = chainCardUsed || chainCardName !== null;
-            const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
-            await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true,null,sourceIgnore);
+            // 深度恢复
+            const resumeStep = stepIndex + 1;
+            await carduse(ownerSide,type,triggerEffect,chainTag,chainCardName,fight,[],-1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true,null,sourceIgnore);
           }
         }
       }
@@ -1298,8 +1337,9 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
   // 反制卡
   if (anyRulePassed && !chainCardUsed && !fight.ended && String(sourceCardName ?? "").trim() !== "") {
     chainCardUsed = true;
-    const resumeStep = Number(ownerSide) === Number(side) ? stepIndex : stepCount - 1 - stepIndex;
-    await carduse(ownerSide,type,{"效果":{"move":"site"}},sourceTag,String(sourceCardName).trim(),fight,[],typeof register === "number" ? register : -1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true,null,sourceIgnore);
+    // 深度恢复
+    const resumeStep = stepIndex + 1;
+    await carduse(ownerSide,type,{"效果":{"move":"site"}},sourceTag,String(sourceCardName).trim(),fight,[],-1,Number.isFinite(resumeStep) ? resumeStep : 0,sourceValuechange,null,true,null,sourceIgnore);
   }
   return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1,newEffectChain:false,rulePassed:anyRulePassed};
 }
@@ -2342,23 +2382,57 @@ async function cardeffect(side,type,effect,fight,cardName = "",sidetype = []) {
 const getCards = isObject(effect) ? effect["获取卡"] : null;
 if (isObject(getCards)) {
   const selfSide = Number(side) === 1 ? 1 : 0;
+  /* newloc: 放置位置。不填默认handcard(手牌)，支持fightcards(卡组)/grave(坟场)/site(场地)/equip(装备) */
+  const getCardLocs = ["handcard","fightcards","grave","site","equip"];
+  /* newcardside: 给谁。不填默认self(自身)，支持all(双方)/other(对方)；场地无效 */
+  const getCardSides = ["self","all","other"];
   for (const [cardName,cardConfig] of Object.entries(getCards)) {
     const count = isObject(cardConfig) ? Number(cardConfig.value) : Number(cardConfig);
     const sidetypeText = isObject(cardConfig) ? String(cardConfig.sidetype ?? "").trim() : "";
     if (!Number.isFinite(count) || count <= 0) {
       continue;
     }
-    for (let index = 0;index < Math.floor(count);index += 1) {
-      addcardtohand(cardName,selfSide,sidetypeText || undefined,undefined);
+    let newLoc = isObject(cardConfig) ? String(cardConfig.newloc ?? "").trim().toLowerCase() : "";
+    if (!getCardLocs.includes(newLoc)) {
+      newLoc = "handcard";
+    }
+    let newCardSide = isObject(cardConfig) ? String(cardConfig.newcardside ?? "").trim().toLowerCase() : "";
+    if (!getCardSides.includes(newCardSide)) {
+      newCardSide = "self";
+    }
+    /* 场地不支持newcardside，固定放到自身场地 */
+    let targetSides;
+    if (newLoc === "site") {
+      targetSides = [selfSide];
+    } else if (newCardSide === "all") {
+      targetSides = [0,1];
+    } else if (newCardSide === "other") {
+      targetSides = [1 - selfSide];
+    } else {
+      targetSides = [selfSide];
+    }
+    const addCount = Math.floor(count);
+    for (let sideIndex = 0;sideIndex < targetSides.length;sideIndex += 1) {
+      const targetSide = targetSides[sideIndex];
+      for (let index = 0;index < addCount;index += 1) {
+        if (newLoc === "handcard") {
+          addcardtohand(cardName,targetSide,sidetypeText || undefined,undefined);
+        } else if (newLoc === "fightcards") {        // ← 死蝶之舞走这一支
+          movetofightcards(cardName,targetSide);     // ← 洗入自身牌组
+        } else if (newLoc === "grave") {
+          movetograve(cardName,targetSide);
+        } else if (newLoc === "site") {
+          movetosite(fight,cardName,targetSide,resolveCardSidetype(cardName,sidetypeText),1,{});
+        } else if (newLoc === "equip") {
+          movetoequip(fight,cardName,targetSide,resolveCardSidetype(cardName,sidetypeText),{});
+        }
+      }
     }
   }
-  if (selfSide === 1) {
-    window.fightplayerhand = fight.playerhand;
-    renderPlayerHand(fight);
-  } else {
-    window.fightenemyhand = fight.enemyhand;
-    renderEnemyHand(fight);
-  }
+  window.fightplayerhand = fight.playerhand;
+  window.fightenemyhand = fight.enemyhand;
+  renderPlayerHand(fight);
+  renderEnemyHand(fight);
   exposeBattleGlobals(fight);
 }
   /* 标记处理 */
@@ -3161,4 +3235,6 @@ window.createFightCardEntry = createFightCardEntry;
 window.getFightCardData = getFightCardData;
 window.effectruleAPI = effectruleAPI;
 window.addcardtohand = addcardtohand;
+window.movetograve = movetograve;
+window.movetofightcards = movetofightcards;
 })();

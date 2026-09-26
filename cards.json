@@ -869,7 +869,7 @@
     "获取卡":{
     "樱桃":{
       "value":5,
-      "stdetype":"+|temp"
+      "sidetype":"+|temp"
     }
     }
   },
