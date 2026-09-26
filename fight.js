@@ -694,37 +694,42 @@ function renderFightEquip(fight,owner) {
     renderFightSite(fight);
   }
 
-  /*
-    回合结束后：
-    如果指定牌组数量为 0，
-    则把对应坟场全部加入牌组，
-    然后清空坟场。
-  */
-  function recycleGraveIfDeckEmpty(fight,owner) {
+  /* 把对应坟场全部加入牌组 */
+  function ensureDeckHasCards(fight,owner) {
     const deck = owner === 1 ? fight.playercards : fight.enemycards;
 
     const grave = owner === 1 ? fight.fightplayergrave : fight.fightenemygrave;
 
-    if (
-      deck.length !== 0 ||
-      grave.length === 0
-    ) {
-      return;
+    /* 牌组本来就有牌，无需回收 */
+    if (Array.isArray(deck) && deck.length !== 0) {
+      return true;
+    }
+
+    /* 牌组为空且坟场也为空：无牌可抽 */
+    if (!Array.isArray(deck) || !Array.isArray(grave) || grave.length === 0) {
+      return false;
     }
 
     deck.push(...grave);
 
     grave.length = 0;
+
+    /* 全部坟场洗入牌组后打乱，避免回收顺序可预测 */
+    shuffle(deck);
+
+    updateFightPileCounts(fight);
+
+    return true;
   }
 
   /*
     玩家牌库 / 敌人牌库
-    都在回合结束时检查。
+    都在回合结束时检查：牌组为空则用坟场补充。
   */
   function recycleGraves(fight) {
-    recycleGraveIfDeckEmpty(fight,1);
+    ensureDeckHasCards(fight,1);
 
-    recycleGraveIfDeckEmpty(fight,0);
+    ensureDeckHasCards(fight,0);
 
     updateFightPileCounts(fight);
   }
@@ -844,14 +849,20 @@ function renderFightEquip(fight,owner) {
 
 async function drawPlayerCards(DCnumber) {
   const drawCount = DCnumber;
+  let drewAll = true;
   for (let index = 0;index < drawCount;index += 1) {
     /* 手牌已满则跳过本轮剩余抽牌，并且不消耗牌堆 */
-    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8 || !Array.isArray(fight.playercards) || fight.playercards.length === 0) break;
+    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8) break;
+    if (!ensureDeckHasCards(fight,1)) {
+      drewAll = false;
+      break;
+    }
     await carduse(1,"event",{"event":{"drawcard":{"value":1}}},"drawcard",null,fight,["drawcard"]);
     if (fight.ended) break;
-    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8 || !Array.isArray(fight.playercards) || fight.playercards.length === 0) break;
+    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8) break;
     const cardEntry = fight.playercards.pop();
     if (!cardEntry) {
+      drewAll = false;
       break;
     }
     const cardName = String(cardEntry).trim();
@@ -859,17 +870,23 @@ async function drawPlayerCards(DCnumber) {
   }
   window.fightplayerhand = fight.playerhand;
   updateFightPileCounts(fight);
+  return drewAll;
 }
 async function drawEnemyCards(DCnumber) {
   const drawCount = DCnumber;
+  let drewAll = true;
   for (let index = 0;index < drawCount;index += 1) {
-    /* 手牌已满则跳过本轮剩余抽牌，并且不消耗牌堆 */
-    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8 || !Array.isArray(fight.enemycards) || fight.enemycards.length === 0) break;
+    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8) break;
+    if (!ensureDeckHasCards(fight,0)) {
+      drewAll = false;
+      break;
+    }
     await carduse(0,"event",{"event":{"drawcard":{"value":1}}},"drawcard",null,fight,["drawcard"]);
     if (fight.ended) break;
-    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8 || !Array.isArray(fight.enemycards) || fight.enemycards.length === 0) break;
+    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8) break;
     const cardEntry = fight.enemycards.pop();
     if (!cardEntry) {
+      drewAll = false;
       break;
     }
     const cardName = String(cardEntry).trim();
@@ -877,6 +894,7 @@ async function drawEnemyCards(DCnumber) {
   }
   window.fightenemyhand = fight.enemyhand;
   updateFightPileCounts(fight);
+  return drewAll;
 }
   function renderPlayerHand(fight) {
     renderSlots(".game-area .player.bottom .slots .card-slot",fight.playerhand,"玩家");

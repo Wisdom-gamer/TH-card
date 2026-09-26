@@ -49,26 +49,16 @@
       "测试卡牌1":10,
       "测试卡牌2":1
       },
-/*    "ability":{
+    "ability":{
       "name":"测试卡牌1",
       "turn":1
-    },*/
+    },
     "reaction":{
       "win":{
         "delete":"测试敌人1",
         "XP":10
         }
     }
-  },
-  "测试敌人2":{
-    "action":"战斗",
-    "ID":"test2",
-    "reaction":{
-      "win":{
-        "addgroup":"L58",
-        "delete":"测试敌人2"
-        }
-      }
   },
   "测试敌人3":{
     "action":"战斗",
@@ -137,7 +127,9 @@
       },
     "reaction":{
       "win":{
-        "delete":"毛玉"
+        "delete":"毛玉",
+        "XP":1,
+        "Gold":3
         }
     }
   },
@@ -152,7 +144,25 @@
       },
     "reaction":{
       "win":{
-        "delete":"游魂"
+        "delete":"游魂",
+        "XP":1,
+        "Gold":3
+        }
+    }
+  },
+  "阴阳玉":{
+    "action":"战斗",
+    "ID":"rLV1enemy2",
+    "HP":7,
+    "MP":2,
+    "cards":{
+      "阴阳玉":8
+      },
+    "reaction":{
+      "win":{
+        "delete":"阴阳玉",
+        "XP":1,
+        "Gold":3
         }
     }
   },
@@ -169,13 +179,72 @@
       },
     "reaction":{
       "win":{
-        "delete":"妖精A"
+        "delete":"妖精A",
+        "XP":3,
+        "Gold":7
+        }
+    }
+  },
+  "妖精B":{
+    "action":"战斗",
+    "ID":"rLV2enemy2",
+    "HP":10,
+    "MP":3,
+    "cards":{
+      "打击":6,
+      "繁茂":1,
+      "快速治疗":1
+      },
+    "reaction":{
+      "win":{
+        "delete":"妖精B",
+        "XP":3,
+        "Gold":7
+        }
+    }
+  },
+  "妖怪兔":{
+    "action":"战斗",
+    "ID":"rLV2enemy3",
+    "HP":14,
+    "MP":3,
+    "cards":{
+      "缴械":1,
+      "取回":1,
+      "窃取":1,
+      "打击":5
+      },
+    "reaction":{
+      "win":{
+        "delete":"妖怪兔",
+        "XP":3,
+        "Gold":7
+        }
+    }
+  },
+  "黑谷山女":{
+    "action":"战斗",
+    "ID":"rLV3enemy1",
+    "HP":20,
+    "MP":4,
+    "cards":{
+      "瘴气场":1,
+      "毒雾":3,
+      "猛毒雾":1,
+      "猛击":2,
+      "捕捉之网":1
+      },
+    "reaction":{
+      "win":{
+        "delete":"黑谷山女",
+        "XP":6,
+        "Gold":15
         }
     }
   },
   "露米娅":{
     "action":"战斗",
-    "ID":"rLV3enemy1",
+    "ID":"rLV3enemy2",
     "HP":20,
     "MP":4,
     "cards":{
@@ -186,7 +255,26 @@
       },
     "reaction":{
       "win":{
-        "delete":"露米娅"
+        "delete":"露米娅",
+        "XP":6,
+        "Gold":15
+        }
+    }
+  },
+  "西行寺幽幽子":{
+    "action":"战斗",
+    "ID":"rLV3enemy3",
+    "HP":20,
+    "MP":4,
+    "cards":{
+      "死蝶之舞":6,
+      "樱吹雪地狱":2
+      },
+    "reaction":{
+      "win":{
+        "delete":"西行寺幽幽子",
+        "XP":6,
+        "Gold":15
         }
     }
   },
@@ -208,7 +296,10 @@
     },
     "reaction":{
       "win":{
-        "delete":"琪露诺"
+        "addgroup":"L58",
+        "delete":"琪露诺",
+        "XP":20,
+        "Gold":45
         }
     }
   }
