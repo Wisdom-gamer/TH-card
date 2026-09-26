@@ -1,0 +1,13 @@
+{
+  "name": "th-card-fight-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "TH-card 战斗模块测试（从 fightAPI 进入）",
+  "type": "module",
+  "scripts": {
+    "test": "node fight.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}

@@ -15,3 +15,5 @@
 
 卡牌效果:
 生成 获得对应数量和名称的卡
+  newloc 放置位置，不填默认handcard(手牌)，支持fightcards(卡组)/grave(坟场)/site(场地)/equip(装备)，非手牌位置由对应的moveto函数执行
+  newcardside 给予对象，不填默认self(自身)，支持all(双方)/other(对方)，场地(site)无效
