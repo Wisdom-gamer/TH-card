@@ -742,6 +742,41 @@
     "描述":"从对方牌组中窃取两张牌",
     "sidetype":"typeNormal"
   },
+  /* 黑谷山女 */
+  "瘴气场":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+    "瘴气":{
+      "self":{
+      "value":3
+      }
+    }
+    }
+  },
+    "描述":"自身获得3瘴气",
+    "MP":3,
+	  "tag":"handcard;handcardaddtagself",
+    "sidetype":"typeNormal"
+  },
+  "捕捉之网":{
+  "类型":"反制卡",
+  "效果":{
+    "effectchange":{
+	  "delete":"event"
+    },
+    "数值修改":{
+      "fight.<otherside>.giveothercardondraw":{
+      "value":1
+	    }
+    }
+  },
+    "rule":"drawcard",
+	  "siderule":"other",
+    "tag":"countercard;countercardgetothercard",
+    "描述":"在对方抽牌时，将那张牌加入自己的手牌",
+    "sidetype":"typeNormal"
+  },
   /* 露米娅 */
   
   "黑暗":{ /* 技能 */
@@ -806,6 +841,54 @@
     "描述":"驱散自身所有黑暗，然后造成8点伤害",
     "tag":"handcard;handcarddamage;handcarddeletetagself",
     "sidetype":"typeDark"
+  },
+  /* 西行寺幽幽子 */
+  "死蝶之舞":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":5,
+      "type":"普通"
+      },
+    "获取卡":{
+    "死蝶之舞":{
+      "value":1,
+      "newloc":"fightcards",
+      "newcardside":"self"
+    }
+    }
+  },
+    "描述":"造成5伤害，将一张“死蝶之舞”洗入牌组",
+    "MP":2,
+    "tag":"handcard;handcarddamage;handcardaddcardself",
+    "sidetype":"typeNormal"
+  },
+  "樱吹雪地狱":{
+  "类型":"基本卡",
+  "效果":{
+    "获取卡":{
+    "樱桃":{
+      "value":5,
+      "stdetype":"+|temp"
+    }
+    }
+  },
+    "描述":"将5张“*樱弹”置入你的手牌",
+    "MP":3,
+    "tag":"handcard;handcardaddcardself",
+    "sidetype":"typeNormal"
+  },
+  "樱桃":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":2,
+      "type":"普通"
+      }
+  },
+    "描述":"造成2普通伤害",
+    "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
   },
   /* 琪露诺 */
   "智慧":{
@@ -939,6 +1022,50 @@
   },
     "描述":"造成2普通伤害",
     "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "猛击":{
+  "类型":"基本卡",
+  "效果":{
+    "伤害":{
+      "value":4,
+	    "type":"普通"
+    }
+  },
+    "描述":"造成4普通伤害",
+    "tag":"handcard;handcarddamage",
+    "sidetype":"typeNormal"
+  },
+  "毒雾":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+    "中毒":{
+      "other":{
+      "value":3
+      }
+    }
+    }
+  },
+    "描述":"对方获得3中毒",
+    "MP":1,
+	  "tag":"handcard;handcardaddtagother",
+    "sidetype":"typeNormal"
+  },
+  "猛毒雾":{
+  "类型":"基本卡",
+  "效果":{
+    "标记":{
+    "中毒":{
+      "other":{
+      "value":6
+      }
+    }
+    }
+  },
+    "描述":"对方获得6中毒",
+    "MP":2,
+	  "tag":"handcard;handcardaddtagother",
     "sidetype":"typeNormal"
   }
   

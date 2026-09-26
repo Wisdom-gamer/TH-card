@@ -110,6 +110,15 @@ function parseFightCard(cardEntry) {
       if (targetSide !== 0 && targetSide !== 1) continue;
       const targetHand = targetSide === 1 ? fight.playerhand : fight.enemyhand;
       if (!Array.isArray(targetHand) || targetHand.length >= 8) continue;
+      // giveothercardondraw
+      const targetState = targetSide === 1 ? fight.player : fight.enemy;
+      const otherHand = targetSide === 1 ? fight.enemyhand : fight.playerhand;
+      if (isObject(targetState) && Number(targetState.giveothercardondraw) > 0 && Array.isArray(otherHand) && otherHand.length < 8) {
+        targetState.giveothercardondraw = Number(targetState.giveothercardondraw) - 1;
+        otherHand.push(createFightCardEntry(name,finalSidetype,finalValuechange));
+        added = true;
+        continue;
+      }
       targetHand.push(createFightCardEntry(name,finalSidetype,finalValuechange));
       added = true;
     }
@@ -738,7 +747,8 @@ function renderFightEquip(fight,owner) {
 
         MP: enemyMP,
         MAXMP: enemyMP,
-        cardmpchange: 0
+        cardmpchange: 0,
+        giveothercardondraw: 0
       },
 
       playerability: pc && pc.ability ? [[String(pc.ability.name || ""), toInt(pc.ability.turn, 0), 0]] : [],
@@ -751,7 +761,8 @@ function renderFightEquip(fight,owner) {
         MAXHP:adventureStats.MAXHP,
         MP:adventureStats.MAXMP,
         MAXMP:adventureStats.MAXMP,
-        cardmpchange:0
+        cardmpchange: 0,
+        giveothercardondraw: 0
       },
 
       /* 玩家牌组 */
@@ -792,11 +803,14 @@ function renderFightEquip(fight,owner) {
     renderSlots(".game-area .player.top .slots .card-slot",cards,"敌人");
   }
 
-function drawPlayerCards(DCnumber) {
+async function drawPlayerCards(DCnumber) {
   const drawCount = DCnumber;
   for (let index = 0;index < drawCount;index += 1) {
     /* 手牌已满则跳过本轮剩余抽牌，并且不消耗牌堆 */
-    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8) break;
+    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8 || !Array.isArray(fight.playercards) || fight.playercards.length === 0) break;
+    await carduse(1,"event",{"event":{"drawcard":{"value":1}}},"drawcard",null,fight,["drawcard"]);
+    if (fight.ended) break;
+    if (!Array.isArray(fight.playerhand) || fight.playerhand.length >= 8 || !Array.isArray(fight.playercards) || fight.playercards.length === 0) break;
     const cardEntry = fight.playercards.pop();
     if (!cardEntry) {
       break;
@@ -807,11 +821,14 @@ function drawPlayerCards(DCnumber) {
   window.fightplayerhand = fight.playerhand;
   updateFightPileCounts(fight);
 }
-function drawEnemyCards(DCnumber) {
+async function drawEnemyCards(DCnumber) {
   const drawCount = DCnumber;
   for (let index = 0;index < drawCount;index += 1) {
     /* 手牌已满则跳过本轮剩余抽牌，并且不消耗牌堆 */
-    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8) break;
+    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8 || !Array.isArray(fight.enemycards) || fight.enemycards.length === 0) break;
+    await carduse(0,"event",{"event":{"drawcard":{"value":1}}},"drawcard",null,fight,["drawcard"]);
+    if (fight.ended) break;
+    if (!Array.isArray(fight.enemyhand) || fight.enemyhand.length >= 8 || !Array.isArray(fight.enemycards) || fight.enemycards.length === 0) break;
     const cardEntry = fight.enemycards.pop();
     if (!cardEntry) {
       break;
@@ -1103,7 +1120,9 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
   const sourceValuechange = isObject(valuechange) ? valuechange : {};
   const sourceTag = String(source["tag"] ?? "").trim();
   const sourceIgnore = String(source["ignore"] ?? "").trim();
-
+  if (nextEffect === null) {
+    return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:-1,newEffectChain:false,rulePassed:false};
+  }
   while (true) {
     const effectKey = effectIndex === 1 ? "效果" : `效果_${effectIndex}`;
     if (!Object.prototype.hasOwnProperty.call(source,effectKey)) {
@@ -1250,7 +1269,7 @@ async function effectruleAPI(side,type,effect,tag,sidetype,fight,register,stepIn
         }
 
         const hasTrigger = Object.keys(triggerPart).length > 0;
-        const mergeResult = await effectAPI(side,type,nextEffect,tag,sidetype,fight,register,stepIndex,hasTrigger ? mergePart : filteredSource,ownerSide,sourceCount,sourceName,sourceValuechange);
+        const mergeResult = nextEffect === null ? null : await effectAPI(side,type,nextEffect,tag,sidetype,fight,register,stepIndex,hasTrigger ? mergePart : filteredSource,ownerSide,sourceCount,sourceName,sourceValuechange);
 
         if (mergeResult && Object.prototype.hasOwnProperty.call(mergeResult,"effect")) {
           nextEffect = mergeResult.effect;
@@ -2025,12 +2044,63 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   let source = isObject(sourceEffect) ? {...sourceEffect} : {};
   const isFallbackSource = !isObject(effect);
   let nextEffect = effect;
-    if (!isObject(nextEffect) && isObject(sourceEffect)) {
+    if (!isObject(nextEffect) && typeof nextEffect !== "string" && isObject(sourceEffect)) {
     nextEffect = {...sourceEffect};
-    /* 规则元数据（rule/siderule/rule_js）只用于匹配，不能混入效果 */
     for (let metaIndex = 0;metaIndex < ruleMetaKeys.length;metaIndex += 1) {
       delete nextEffect[ruleMetaKeys[metaIndex]];
     } 
+  }
+  const effectChange = source["effectchange"];
+  if (isObject(effectChange) && (Object.prototype.hasOwnProperty.call(effectChange,"delete") || Object.prototype.hasOwnProperty.call(effectChange,"add"))) {
+    const deleteConfig = effectChange["delete"];
+    const deletePaths = (Array.isArray(deleteConfig) ? deleteConfig : typeof deleteConfig === "string" ? [deleteConfig] : []).map(function (value) { return String(value).trim(); }).filter(Boolean);
+    const addConfig = isObject(effectChange["add"]) ? effectChange["add"] : {};
+    if (typeof nextEffect === "string" && deletePaths.includes(nextEffect.trim())) {
+      nextEffect = {};
+    }
+    if (isObject(nextEffect)) {
+      nextEffect = {...nextEffect};
+      for (const deletePath of deletePaths) {
+        const keys = deletePath.split(".").map(function (value) { return value.trim(); });
+        if (keys.some(function (key) { return key === ""; })) continue;
+        const parents = [nextEffect];
+        let node = nextEffect;
+        for (let keyIndex = 0;keyIndex < keys.length - 1;keyIndex += 1) {
+          if (!isObject(node[keys[keyIndex]])) {
+            node = null;
+            break;
+          }
+          node[keys[keyIndex]] = {...node[keys[keyIndex]]};
+          node = node[keys[keyIndex]];
+          parents.push(node);
+        }
+        const lastKey = keys[keys.length - 1];
+        if (!node || !Object.prototype.hasOwnProperty.call(node,lastKey)) continue;
+        delete node[lastKey];
+        for (let depth = parents.length - 1;depth > 0;depth -= 1) {
+          if (Object.keys(parents[depth]).length > 0) break;
+          delete parents[depth - 1][keys[depth - 1]];
+        }
+      }
+      for (const [addPath,addValue] of Object.entries(addConfig)) {
+        const keys = String(addPath).split(".").map(function (value) { return value.trim(); });
+        if (keys.some(function (key) { return key === ""; })) continue;
+        let node = nextEffect;
+        for (let keyIndex = 0;keyIndex < keys.length - 1;keyIndex += 1) {
+          node[keys[keyIndex]] = isObject(node[keys[keyIndex]]) ? {...node[keys[keyIndex]]} : {};
+          node = node[keys[keyIndex]];
+        }
+        node[keys[keys.length - 1]] = addValue !== null && typeof addValue === "object" ? JSON.parse(JSON.stringify(addValue)) : addValue;
+      }
+      delete nextEffect["effectchange"];
+      if (Object.keys(nextEffect).length === 0) {
+        return {side:side,type:type,effect:null,tag:tag,sidetype:sidetype,register:register};
+      }
+    }
+  }
+  if (isObject(nextEffect) && Object.prototype.hasOwnProperty.call(nextEffect,"effectchange")) {
+    nextEffect = {...nextEffect};
+    delete nextEffect["effectchange"];
   }
   const effectSide = Number(ownerSide) === 1 ? 1 : 0;
     if (isObject(nextEffect) && isObject(nextEffect["数值修改"])) {
@@ -2206,7 +2276,7 @@ async function effectAPI(side,type,effect,tag,sidetype,fight,register,stepIndex,
   }
   return {side:side,type:type,effect:nextEffect,tag:tag,sidetype:sidetype,register:register};
 }
-async function cardeffect(side,type,effect,fight,cardName = "") {
+async function cardeffect(side,type,effect,fight,cardName = "",sidetype = []) {
 //  console.log(side,type,effect,fight);
   /* 数值修改 */
   const valueModify = isObject(effect) ? effect["数值修改"] : null;
@@ -2260,10 +2330,10 @@ async function cardeffect(side,type,effect,fight,cardName = "") {
   const drawValue = isObject(drawCard) ? Number(drawCard.value) : 0;
   if (Number.isFinite(drawValue) && drawValue > 0) {
     if (side === 1) {
-      drawPlayerCards(drawValue);
+      await drawPlayerCards(drawValue);
       renderPlayerHand(fight);
     } else {
-      drawEnemyCards(drawValue);
+      await drawEnemyCards(drawValue);
       renderEnemyHand(fight);
     }
   }
@@ -2523,7 +2593,10 @@ if (isObject(getCards)) {
     renderEnemyHand(fight);
     exposeBattleGlobals(fight);
   }
-  await new Promise(function (resolve) { setTimeout(resolve,1000); });
+  const noWaitSidetypes = ["turnstart","turnend","drawcard"];
+  if (!(Array.isArray(sidetype) && sidetype.some(function (value) { return noWaitSidetypes.includes(String(value).trim()); }))) {
+    await new Promise(function (resolve) { setTimeout(resolve,1000); });
+  }
   return {side: side,type: type,effect: effect};
 }
 
@@ -2745,7 +2818,7 @@ if (isObject(getCards)) {
 
       exposeBattleGlobals(fight);
 
-      const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight,cardName);
+      const cardeffectResult = await cardeffect(result.side,result.type,result.effect,fight,cardName,result.sidetype);
       lastCardEffectResult = cardeffectResult;
     }
   }  } finally {
@@ -2857,7 +2930,7 @@ async function fightenemyactioncard(fight) {
      const fight = window.fight;
    while (true) {
      if (!fight || fight.ended) return null;
-     const turnStartResult = await carduse(0,"event","event","turnstart",null,fight);
+          const turnStartResult = await carduse(0,"event","event","turnstart",null,fight,["turnstart"]);
      // 敌方能力：查找第一个可用（remaining === 0）的能力并使用
      if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
        for (let i = 0; i < fight.enemyability.length; i += 1) {
@@ -2890,7 +2963,7 @@ async function fightenemyactioncard(fight) {
      if (fight.enemy.MP < fight.enemy.MAXMP) {
      fight.enemy.MP = fight.enemy.MAXMP;
      }
-     const turnEndResult = await carduse(0,"event","event","turnend",null,fight);
+     const turnEndResult = await carduse(0,"event","event","turnend",null,fight,["turnend"]);
      moveSiteCardsToGrave(fight);
      // 敌方：所有能力剩余冷却减 1（如果有）
      if (Array.isArray(fight.enemyability) && fight.enemyability.length > 0) {
@@ -2910,7 +2983,7 @@ async function fightenemyactioncard(fight) {
      break;
    }
    if (fight && !fight.ended) {
-     drawEnemyCards(2);
+     await drawEnemyCards(2);
      renderEnemyHand(fight);
    }
    return "end";
@@ -2931,7 +3004,7 @@ async function fightenemyactioncard(fight) {
     }
     /* 发卡 */
     if(fight.turn === 1){
-    drawPlayerCards(3);
+    await drawPlayerCards(3);
     renderPlayerHand(fight);
     
     }
@@ -2941,7 +3014,7 @@ async function fightenemyactioncard(fight) {
 
     /* 敌人初始牌 */
     if(fight.turn === 1){
-    drawEnemyCards(3);
+    await drawEnemyCards(3);
     renderEnemyHand(fight);
     }
     /*
@@ -2980,7 +3053,7 @@ async function fightenemyactioncard(fight) {
   if (fight.player.MP < fight.player.MAXMP) {
     fight.player.MP = fight.player.MAXMP;
   }
-  drawPlayerCards(2);
+  await drawPlayerCards(2);
   renderPlayerHand(fight);
    const moreturnIdx = findMorereturnTag(fight, 1);
    if (moreturnIdx !== -1) {
